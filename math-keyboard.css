@@ -1,0 +1,154 @@
+/* ========== MATH KEYBOARD STYLES ========== */
+.math-keyboard-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1.5px solid var(--line);
+  background: #0d1320;
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 600;
+  transition: .18s;
+  font-size: 14px;
+}
+.math-keyboard-toggle:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+  transform: translateY(-1px);
+}
+.math-keyboard-toggle.active {
+  background: color-mix(in srgb, var(--accent) 16%, #0d1320);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.math-keyboard {
+  position: absolute;
+  bottom: -520px;
+  left: 0;
+  right: 0;
+  width: 100%;
+  background: linear-gradient(180deg, rgba(31,41,55,.95), rgba(17,24,39,.99));
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--accent);
+  border-radius: 16px 16px 0 0;
+  padding: 16px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 -20px 50px -20px rgba(0,0,0,.9);
+  max-height: 500px;
+  overflow-y: auto;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(20px);
+  transition: opacity .25s, transform .25s, visibility .25s;
+  z-index: 100;
+}
+
+.math-keyboard.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.keyboard-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 10px;
+  overflow-x: auto;
+}
+
+.keyboard-tab {
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  transition: .18s;
+  white-space: nowrap;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.keyboard-tab:hover {
+  color: var(--ink);
+  background: rgba(255,255,255,.05);
+}
+
+.keyboard-tab.active {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.keyboard-content {
+  display: none;
+}
+
+.keyboard-content.active {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+  gap: 8px;
+}
+
+.keyboard-btn {
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: #0d1320;
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 10px 6px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  transition: .12s;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.keyboard-btn:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, #0d1320);
+  transform: translateY(-2px);
+}
+
+.keyboard-btn:active {
+  transform: translateY(0);
+}
+
+.keyboard-btn.template {
+  font-size: 11px;
+  color: var(--muted);
+  grid-column: span 2;
+}
+
+.keyboard-btn.template:hover {
+  color: var(--accent);
+}
+
+/* Scrollbar styling pour la liste des touches */
+.math-keyboard::-webkit-scrollbar {
+  width: 6px;
+}
+
+.math-keyboard::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.math-keyboard::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 3px;
+}
+
+.math-keyboard::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
