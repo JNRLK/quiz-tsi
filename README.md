@@ -1,2 +1,0 @@
-# quiz-tsi
-salut chef
