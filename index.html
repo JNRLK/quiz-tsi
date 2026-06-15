@@ -1,0 +1,2578 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Console de révision TSI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    macros: { R:"\\mathbb{R}", N:"\\mathbb{N}", Z:"\\mathbb{Z}", Q:"\\mathbb{Q}", C:"\\mathbb{C}", K:"\\mathbb{K}", U:"\\mathbb{U}" }
+  },
+  options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea'] },
+  startup: { typeset: false }
+};
+</script>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+<style>
+  :root{
+    --bg:#070b16; --panel:#111827; --panel-2:#1f2937; --line:#374151;
+    --ink:#f9fafb; --muted:#9ca3af;
+    --analyse:#ef4444; --algebre:#8b5cf6; --poly:#22c55e; --matrices:#3b82f6; --integ:#f59e0b;
+    --accent:#8b5cf6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:'Hanken Grotesk',sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 700px at 80% -10%, rgba(139,92,246,.18), transparent 60%),
+      radial-gradient(900px 600px at -10% 110%, rgba(59,130,246,.16), transparent 55%),
+      var(--bg);
+    background-attachment:fixed;
+    min-height:100vh;
+    line-height:1.55;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.5;
+    background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+    background-size:46px 46px;
+    mask-image:radial-gradient(ellipse 90% 70% at 50% 30%, #000 40%, transparent 100%);
+  }
+  .wrap{position:relative; z-index:1; max-width:820px; margin:0 auto; padding:38px 20px 80px}
+
+  /* ---------- Header ---------- */
+  .top{display:flex; align-items:flex-end; justify-content:space-between; gap:18px; margin-bottom:26px; flex-wrap:wrap}
+  .brand .eyebrow{font-size:12px; letter-spacing:.22em; text-transform:uppercase; color:var(--muted)}
+  .brand h1{
+    font-family:'Fraunces',serif; font-weight:900; font-size:clamp(34px,6vw,56px);
+    line-height:.95; margin:6px 0 0; letter-spacing:-.01em;
+    background:linear-gradient(180deg,#fff, #c7c9d4); -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .brand h1 em{font-style:italic; color:#a78bfa; -webkit-text-fill-color:#a78bfa}
+  .live-stats{display:flex; gap:10px}
+  .stat{background:rgba(17,24,39,.7); border:1px solid var(--line); border-radius:14px; padding:9px 14px; text-align:center; min-width:74px; backdrop-filter:blur(6px)}
+  .stat .n{font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:700}
+  .stat .l{font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)}
+
+  /* ---------- Cards ---------- */
+  .card{
+    background:linear-gradient(180deg, rgba(31,41,55,.35), rgba(17,24,39,.9));
+    border:1px solid var(--line); border-radius:22px; padding:26px;
+    box-shadow:0 30px 60px -30px rgba(0,0,0,.8);
+    animation:rise .5s cubic-bezier(.2,.8,.2,1) both;
+  }
+  @keyframes rise{from{opacity:0; transform:translateY(14px)}to{opacity:1; transform:none}}
+
+  /* ---------- Start screen ---------- */
+  .lead{color:var(--muted); margin:0 0 22px; font-size:16px}
+  .section-label{font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); margin:0 0 12px}
+
+  /* ---- SRS barre ---- */
+  .srs-dashboard{background:linear-gradient(135deg,color-mix(in srgb,#a78bfa 14%,#0d1320),color-mix(in srgb,#60a5fa 8%,#0d1320));
+    border:1px solid color-mix(in srgb,#a78bfa 35%,transparent); border-radius:18px; padding:16px 18px; margin-bottom:22px}
+  .srs-dash-top{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:12px}
+  .srs-dash-title{font-family:'Fraunces',serif; font-weight:700; font-size:17px}
+  .srs-counters{display:flex; gap:12px; flex-wrap:wrap}
+  .srs-cnt{display:flex; flex-direction:column; align-items:center; gap:2px; min-width:52px}
+  .srs-cnt .n{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:22px; line-height:1}
+  .srs-cnt .l{font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted)}
+  .srs-none{color:var(--muted); font-size:14px; text-align:center; padding:14px; background:#0d1320; border:1px solid var(--line); border-radius:14px; margin-bottom:22px}
+
+  /* ---- Accordéon familles ---- */
+  .fam-block{margin-bottom:14px; border:1px solid var(--line); border-radius:18px; overflow:hidden}
+  .fam-hdr{
+    display:flex; align-items:center; gap:10px; padding:13px 16px; cursor:pointer;
+    background:rgba(17,24,39,.6); transition:.15s; user-select:none; flex-wrap:nowrap
+  }
+  .fam-hdr:hover{background:rgba(31,41,55,.6)}
+  .fam-hdr .fdot{width:12px; height:12px; border-radius:4px; flex:none}
+  .fam-hdr .fname{font-family:'Fraunces',serif; font-weight:700; font-size:15px; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .fam-hdr .f-due{font-size:12px; font-weight:700; color:#a78bfa; background:color-mix(in srgb,#a78bfa 16%,#0d1320);
+    border:1px solid color-mix(in srgb,#a78bfa 35%,transparent); border-radius:999px; padding:2px 9px}
+  .fam-hdr .f-pct{font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); white-space:nowrap}
+  .fam-mini-bar{width:64px; height:6px; border-radius:99px; background:#1f2937; overflow:hidden; flex:none}
+  .fam-mini-bar i{display:block; height:100%; border-radius:99px; transition:width .5s}
+  .fam-toggle{font-size:14px; color:var(--muted); flex:none; transition:.2s}
+
+  .fam-body{border-top:1px solid var(--line)}
+  .sel-all-row{padding:8px 16px; border-bottom:1px solid var(--line)}
+  .sel-all-btn{background:none; border:1px solid var(--line); border-radius:8px; color:var(--muted); font-size:11.5px; font-weight:600; font-family:inherit; padding:4px 10px; cursor:pointer; transition:.14s; letter-spacing:.05em; text-transform:uppercase}
+  .sel-all-btn:hover{border-color:var(--accent); color:var(--ink)}
+
+  .topic-row{display:flex; align-items:center; gap:12px; padding:11px 16px; border-bottom:1px solid rgba(55,65,81,.5); transition:.15s}
+  .topic-row:last-child{border-bottom:none}
+  .topic-row.on{background:color-mix(in srgb,var(--tc) 5%,transparent)}
+  .topic-sel{width:30px; height:30px; border-radius:50%; border:2px solid var(--line); background:#0d1320; cursor:pointer; flex:none; display:flex; align-items:center; justify-content:center; transition:.16s}
+  .topic-sel .ts-dot{width:10px; height:10px; border-radius:50%; opacity:.4; transition:.16s}
+  .topic-sel.on{border-color:var(--c); background:color-mix(in srgb,var(--c) 15%,#0d1320)}
+  .topic-sel.on .ts-dot{opacity:1; box-shadow:0 0 8px var(--c)}
+  .topic-info{flex:1; min-width:0}
+  .topic-name{font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:5px}
+  .topic-bar{height:5px; border-radius:99px; background:#1f2937; overflow:hidden; margin-bottom:5px}
+  .topic-bar i{display:block; height:100%; border-radius:99px; transition:width .5s}
+  .topic-nums{display:flex; gap:8px; flex-wrap:wrap}
+  .tn-due{font-size:11.5px; font-weight:700; color:#a78bfa; background:color-mix(in srgb,#a78bfa 14%,#0d1320); border-radius:999px; padding:2px 8px}
+  .tn-new{font-size:11.5px; font-weight:700; color:#60a5fa; background:color-mix(in srgb,#60a5fa 12%,#0d1320); border-radius:999px; padding:2px 8px}
+  .tn-ok{font-size:11.5px; color:var(--muted); font-family:'JetBrains Mono',monospace}
+  .topic-rev-btn{flex:none; background:color-mix(in srgb,#a78bfa 18%,#0d1320); border:1px solid color-mix(in srgb,#a78bfa 40%,transparent); color:#c4b5fd; border-radius:10px; padding:7px 12px; font-size:12.5px; font-weight:700; font-family:inherit; cursor:pointer; transition:.15s; white-space:nowrap}
+  .topic-rev-btn:hover{background:color-mix(in srgb,#a78bfa 28%,#0d1320); transform:translateY(-1px)}
+
+  .row{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:8px}
+  .len-opts,.mode-opts{display:flex; gap:8px; flex-wrap:wrap}
+  .len,.mode{cursor:pointer; border:1.5px solid var(--line); background:#0d1320; color:var(--ink); border-radius:11px; padding:8px 14px; font-weight:600; font-family:'JetBrains Mono',monospace; transition:.16s; font-size:14px}
+  .mode{font-family:'Hanken Grotesk',sans-serif; font-size:13.5px}
+  .len.on,.mode.on{border-color:var(--accent); background:color-mix(in srgb,var(--accent) 16%,#0d1320)}
+  .toggle{display:flex; align-items:center; gap:9px; color:var(--muted); font-size:14px; cursor:pointer}
+  .toggle input{accent-color:var(--accent); width:17px; height:17px}
+
+  .btn{
+    cursor:pointer; border:none; border-radius:14px; font-weight:700; font-size:16px; padding:15px 26px;
+    color:#0a0a0a; background:linear-gradient(135deg,#a78bfa,#60a5fa); transition:.18s; font-family:inherit;
+    box-shadow:0 14px 30px -12px rgba(96,165,250,.7);
+  }
+  .btn:hover{transform:translateY(-2px); box-shadow:0 18px 36px -12px rgba(167,139,250,.8)}
+  .btn:active{transform:translateY(0)}
+  .btn.ghost{background:transparent; color:var(--ink); border:1.5px solid var(--line); box-shadow:none}
+  .btn.ghost:hover{border-color:var(--accent)}
+  .btn:disabled{opacity:.4; cursor:not-allowed; transform:none}
+  .actions{display:flex; gap:12px; align-items:center; margin-top:26px; flex-wrap:wrap}
+
+  /* ---------- Quiz ---------- */
+  .progress-wrap{margin-bottom:18px}
+  .progress-meta{display:flex; justify-content:space-between; font-size:12px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; margin-bottom:7px; font-family:'JetBrains Mono',monospace}
+  .bar{height:7px; border-radius:99px; background:#0d1320; overflow:hidden; border:1px solid var(--line)}
+  .bar > i{display:block; height:100%; width:0; border-radius:99px; background:linear-gradient(90deg,#a78bfa,#60a5fa); transition:width .45s cubic-bezier(.2,.8,.2,1)}
+
+  .badge{display:inline-block; padding:6px 12px; border-radius:999px; color:#fff; font-weight:700; font-size:12.5px; letter-spacing:.03em; margin-bottom:16px}
+  .mtag{display:inline-block; margin-left:8px; padding:5px 10px; border-radius:999px; font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; border:1px solid var(--line); color:var(--muted); vertical-align:middle}
+  .question{font-family:'Fraunces',serif; font-weight:500; font-size:clamp(21px,3.4vw,27px); line-height:1.35; margin:0 0 22px}
+
+  .choices{display:flex; flex-direction:column; gap:11px}
+  .choice{
+    text-align:left; cursor:pointer; border:1.5px solid var(--line); background:#0d1320; color:var(--ink);
+    border-radius:14px; padding:15px 17px; font-size:16.5px; font-family:inherit; transition:.16s;
+    display:flex; gap:13px; align-items:flex-start;
+  }
+  .choice .key{font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--muted); flex:none; width:22px; transition:.16s}
+  .choice:hover:not(:disabled){border-color:var(--accent); transform:translateX(3px)}
+  .choice:disabled{cursor:default}
+  .choice.correct{border-color:var(--poly); background:color-mix(in srgb,var(--poly) 14%,#0d1320); box-shadow:0 0 24px -8px var(--poly)}
+  .choice.correct .key{color:var(--poly)}
+  .choice.wrong{border-color:var(--analyse); background:color-mix(in srgb,var(--analyse) 13%,#0d1320); animation:shake .4s}
+  .choice.wrong .key{color:var(--analyse)}
+  .choice.dim{opacity:.5}
+  @keyframes shake{10%,90%{transform:translateX(-2px)}30%,70%{transform:translateX(4px)}50%{transform:translateX(-5px)}}
+
+  /* saisie / trou */
+  .ans-input{width:100%; background:#0d1320; border:1.5px solid var(--line); border-radius:14px; color:var(--ink);
+    font-family:'JetBrains Mono',monospace; font-size:16px; padding:14px 16px; transition:.16s}
+  .ans-input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 18px -8px var(--accent)}
+  .input-row{display:flex; gap:10px; flex-wrap:wrap}
+  .input-row .ans-input{flex:1; min-width:200px}
+
+  /* clavier mathématique */
+  .kb-toggle{margin-top:10px; cursor:pointer; border:1.5px solid var(--line); background:#0d1320; color:var(--muted);
+    border-radius:11px; padding:8px 13px; font-weight:600; font-size:13px; font-family:inherit; transition:.16s; display:inline-flex; align-items:center; gap:8px}
+  .kb-toggle:hover{border-color:var(--accent); color:var(--ink)}
+  .kb-toggle.on{border-color:var(--accent); background:color-mix(in srgb,var(--accent) 16%,#0d1320); color:var(--ink)}
+  .mathkb{margin-top:12px; border:1px solid var(--line); border-radius:16px; background:rgba(13,19,32,.92); backdrop-filter:blur(8px); padding:12px; animation:rise .25s both}
+  .mathkb-tabs{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px}
+  .mathkb-tab{cursor:pointer; border:1px solid var(--line); background:#0d1320; color:var(--muted); border-radius:9px; padding:6px 11px; font-size:12.5px; font-weight:600; font-family:inherit; transition:.14s}
+  .mathkb-tab:hover{color:var(--ink)}
+  .mathkb-tab.on{border-color:var(--accent); background:color-mix(in srgb,var(--accent) 18%,#0d1320); color:var(--ink)}
+  .mathkb-keys{display:grid; grid-template-columns:repeat(auto-fill, minmax(46px,1fr)); gap:7px}
+  .mathkb-key{cursor:pointer; border:1px solid var(--line); background:#111a2b; color:var(--ink); border-radius:10px;
+    padding:11px 0; font-size:18px; font-family:'JetBrains Mono',monospace; transition:.12s; line-height:1}
+  .mathkb-key:hover{border-color:var(--accent); background:color-mix(in srgb,var(--accent) 14%,#111a2b); transform:translateY(-1px)}
+  .mathkb-key:active{transform:translateY(0)}
+  /* ---------- Indicateur cloud ---------- */
+  .cloud-status{
+    position:fixed; bottom:18px; right:18px; z-index:100;
+    display:flex; align-items:center; gap:8px;
+    background:rgba(13,19,32,.92); border:1px solid var(--line);
+    border-radius:999px; padding:8px 14px; font-size:13px; font-weight:600;
+    backdrop-filter:blur(8px); box-shadow:0 4px 20px rgba(0,0,0,.4);
+    transition:opacity .4s, transform .4s;
+    opacity:0; transform:translateY(8px); pointer-events:none;
+  }
+  .cloud-status.show{opacity:1; transform:translateY(0); pointer-events:auto}
+  .cloud-status.ok{border-color:color-mix(in srgb,#22c55e 50%,transparent); color:#4ade80}
+  .cloud-status.err{border-color:color-mix(in srgb,#ef4444 50%,transparent); color:#f87171}
+  .cloud-status.sync{border-color:color-mix(in srgb,#a78bfa 50%,transparent); color:#c4b5fd}
+
+  /* ---------- Responsive mobile ---------- */
+  @media (max-width:600px){
+    .wrap{padding:18px 12px 60px}
+
+    /* header */
+    .top{flex-direction:column; align-items:flex-start; gap:12px}
+    .brand h1{font-size:clamp(28px,9vw,42px)}
+    .top-right{width:100%; flex-direction:row; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px}
+    .live-stats{gap:7px}
+    .stat{min-width:58px; padding:7px 10px}
+    .stat .n{font-size:18px}
+    .top-actions{gap:6px}
+    .btn.ghost.mini{padding:8px 11px; font-size:12px}
+
+    /* start screen */
+    .lead{font-size:14px}
+    .chip{padding:7px 11px 7px 10px; font-size:12.5px; gap:6px}
+    .chip .cnt{display:none}
+    .mode-opts,.len-opts{gap:6px}
+    .mode,.len{padding:7px 11px; font-size:12.5px}
+    .fam-head .fname{font-size:14px}
+
+    /* srs bar */
+    .srs-bar{flex-direction:column; align-items:flex-start; gap:10px}
+    .srs-bar .due-n{font-size:26px}
+    .srs-bar .btn{width:100%}
+
+    /* quiz */
+    .question{font-size:clamp(17px,4.5vw,22px)}
+    .choice{padding:13px 14px; font-size:15px}
+    .next-row{flex-wrap:wrap; gap:8px}
+    .next-row .btn{flex:1; text-align:center}
+
+    /* grading SRS */
+    .srs-grade{grid-template-columns:1fr 1fr; gap:8px}
+    .sg2{padding:11px 6px; font-size:12.5px}
+
+    /* selfgrade */
+    .selfgrade{flex-direction:column; gap:8px}
+
+    /* clavier */
+    .kb-toggle{font-size:12px; padding:7px 11px}
+    .mathkb-keys{grid-template-columns:repeat(auto-fill, minmax(36px,1fr)); gap:5px}
+    .mathkb-key{font-size:15px; padding:9px 0}
+    .mathkb-tab{padding:5px 9px; font-size:11.5px}
+    .input-row{flex-direction:column}
+    .input-row .ans-input{min-width:unset}
+    .input-row .btn{width:100%}
+
+    /* résultats */
+    .ring{width:140px; height:140px}
+    .ring svg{width:140px; height:140px}
+    .ring .pct b{font-size:36px}
+    .brk-row .name{font-size:12px}
+    .actions{flex-direction:column}
+    .actions .btn{width:100%; text-align:center}
+
+    /* stats */
+    .stat-cards{grid-template-columns:1fr 1fr}
+    .stat-card .big{font-size:24px}
+
+    /* modal */
+    .modal{padding:20px 16px}
+    .modal h2{font-size:20px}
+
+    /* auth */
+    .top-actions .btn.ghost.mini:not(#accountBtn){display:none}
+  }
+
+  @media (max-width:380px){
+    .srs-grade{grid-template-columns:1fr 1fr}
+    .mathkb-keys{grid-template-columns:repeat(auto-fill, minmax(32px,1fr))}
+    .chip{padding:6px 9px; font-size:12px}
+  }
+
+  /* flashcard */
+  .flash-hint{color:var(--muted); font-size:14px; font-style:italic; margin:0 0 14px}
+  .reveal-ans{background:var(--panel-2); border-left:5px solid var(--accent); border-radius:12px; padding:15px 17px; font-size:18px; margin-bottom:6px}
+  .reveal-ans .rl{display:block; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:6px}
+
+  .selfgrade{display:flex; gap:11px; margin-top:14px}
+  .sg{flex:1; cursor:pointer; border-radius:14px; padding:13px; font-weight:700; font-size:15px; font-family:inherit; border:1.5px solid var(--line); background:#0d1320; color:var(--ink); transition:.16s}
+  .sg.ok:hover{border-color:var(--poly); background:color-mix(in srgb,var(--poly) 16%,#0d1320)}
+  .sg.no:hover{border-color:var(--analyse); background:color-mix(in srgb,var(--analyse) 14%,#0d1320)}
+
+  .feedback{margin-top:18px; animation:rise .35s both}
+  .verdict{font-weight:700; font-size:15px; margin-bottom:10px; display:flex; align-items:center; gap:9px}
+  .verdict.ok{color:#4ade80} .verdict.no{color:#f87171}
+  .exp{background:var(--panel-2); border-left:5px solid var(--accent); border-radius:12px; padding:14px 16px; font-size:16px}
+  .vig{margin-top:12px; background:color-mix(in srgb,var(--integ) 12%,#0d1320); border:1px solid color-mix(in srgb,var(--integ) 45%,transparent); border-radius:12px; padding:13px 15px; font-size:15px; display:flex; gap:11px}
+  .vig .ic{flex:none; font-size:18px}
+  .vig b{color:#fbbf24}
+
+  .next-row{display:flex; justify-content:flex-end; margin-top:20px}
+
+  /* ---------- Results ---------- */
+  .score-hero{text-align:center; padding:14px 0 6px}
+  .ring{position:relative; width:170px; height:170px; margin:0 auto 14px}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .pct{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center}
+  .ring .pct b{font-family:'Fraunces',serif; font-size:46px; line-height:1; font-weight:900}
+  .ring .pct span{font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); margin-top:4px}
+  .verdict-line{font-family:'Fraunces',serif; font-style:italic; font-size:22px; margin:6px 0 4px}
+  .breakdown{margin-top:24px}
+  .brk-row{display:flex; align-items:center; gap:12px; margin-bottom:11px}
+  .brk-row .name{flex:1; font-weight:600; font-size:14px}
+  .brk-row .track{flex:2; height:8px; border-radius:99px; background:#0d1320; overflow:hidden; border:1px solid var(--line)}
+  .brk-row .track > i{display:block; height:100%; border-radius:99px}
+  .brk-row .frac{font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--muted); width:46px; text-align:right}
+  .review h3{font-family:'Fraunces',serif; margin:26px 0 12px; font-size:18px}
+  .miss{background:#0d1320; border:1px solid var(--line); border-left:4px solid var(--analyse); border-radius:12px; padding:13px 15px; margin-bottom:10px; font-size:15.5px}
+  .miss .ans{margin-top:7px; font-size:14px; color:var(--muted)}
+  .miss .ans b{color:#4ade80}
+  .footer-note{text-align:center; color:var(--muted); font-size:12.5px; margin-top:34px}
+
+  /* citation Dupeyrat */
+  .prof-quote{
+    margin:32px 0 0; padding:18px 22px;
+    border-left:3px solid color-mix(in srgb,#a78bfa 60%,transparent);
+    background:color-mix(in srgb,#a78bfa 6%,transparent);
+    border-radius:0 14px 14px 0;
+  }
+  .pq-mark{font-family:'Fraunces',serif; font-size:32px; line-height:1; color:#a78bfa; display:block; margin-bottom:4px}
+  .pq-text{font-family:'Fraunces',serif; font-style:italic; font-size:18px; font-weight:600; color:var(--ink); margin:0 0 10px; line-height:1.4}
+  .pq-author{font-size:12px; color:var(--muted); letter-spacing:.04em}
+
+  /* progression : bouton + tableau de bord */
+  .top-right{display:flex; flex-direction:column; align-items:flex-end; gap:10px}
+  .btn.mini{padding:9px 15px; font-size:13.5px; border-radius:12px}
+  .stat-cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(128px,1fr)); gap:12px; margin:4px 0 22px}
+  .stat-card{background:#0d1320; border:1px solid var(--line); border-radius:16px; padding:16px}
+  .stat-card .v{font-family:'Fraunces',serif; font-weight:900; font-size:30px; line-height:1}
+  .stat-card .k{font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-top:6px}
+  .spark{display:flex; align-items:flex-end; gap:6px; height:120px; padding:8px 0 0; border-bottom:1px solid var(--line); margin-bottom:22px}
+  .spark .col{flex:1; min-width:8px; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:5px; height:100%}
+  .spark .col i{display:block; width:100%; border-radius:6px 6px 0 0; transition:height .5s cubic-bezier(.2,.8,.2,1)}
+  .spark .col span{font-size:9.5px; color:var(--muted); font-family:'JetBrains Mono',monospace}
+  .hist{display:flex; flex-direction:column; gap:8px}
+  .hist .h-row{display:flex; align-items:center; gap:12px; background:#0d1320; border:1px solid var(--line); border-radius:10px; padding:10px 13px; font-size:13.5px}
+  .hist .h-row .d{color:var(--muted); font-family:'JetBrains Mono',monospace; font-size:12px}
+  .hist .h-row .m{margin-left:auto; font-family:'JetBrains Mono',monospace; font-weight:700}
+  .empty-state{text-align:center; color:var(--muted); padding:34px 10px; font-size:15px}
+
+  /* compte / auth */
+  .top-actions{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end}
+  .cloud-banner{background:#0d1320; border:1px solid var(--line); border-radius:12px; padding:11px 14px; font-size:13.5px; color:var(--muted); margin-bottom:16px}
+  .cloud-banner.ok{border-color:color-mix(in srgb,#22c55e 45%,transparent); color:#86efac}
+  .cloud-banner a{color:#a78bfa; cursor:pointer; text-decoration:underline}
+  .modal-overlay{position:fixed; inset:0; z-index:50; background:rgba(4,7,14,.72); backdrop-filter:blur(5px); display:flex; align-items:center; justify-content:center; padding:20px; animation:rise .2s both}
+  .modal{position:relative; width:100%; max-width:380px; background:linear-gradient(180deg,#1b2333,#111827); border:1px solid var(--line); border-radius:20px; padding:26px; box-shadow:0 30px 70px -20px rgba(0,0,0,.85)}
+  .modal-close{position:absolute; top:14px; right:14px; background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; line-height:1}
+  .modal-close:hover{color:var(--ink)}
+  .auth-sub{color:var(--muted); font-size:14px; margin:0 0 18px}
+  .auth-err{background:color-mix(in srgb,var(--analyse) 14%,#0d1320); border:1px solid color-mix(in srgb,var(--analyse) 45%,transparent); color:#fca5a5; border-radius:11px; padding:10px 13px; font-size:13.5px; margin-top:12px}
+  .auth-switch{text-align:center; color:var(--muted); font-size:13.5px; margin:14px 0 0}
+  .auth-switch a{color:#a78bfa; cursor:pointer; text-decoration:underline}
+  /* ---- SRS ---- */
+  .srs-bar{background:linear-gradient(135deg,color-mix(in srgb,#a78bfa 18%,#0d1320),color-mix(in srgb,#60a5fa 12%,#0d1320));
+    border:1px solid color-mix(in srgb,#a78bfa 40%,transparent); border-radius:16px; padding:14px 18px;
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+  .srs-bar .due-n{font-family:'Fraunces',serif; font-weight:900; font-size:34px; color:#a78bfa; line-height:1}
+  .srs-bar .due-txt{flex:1; min-width:120px}
+  .srs-bar .due-txt b{display:block; font-size:15px}
+  .srs-bar .due-txt small{color:var(--muted); font-size:13px}
+  .srs-bar .btn{flex:none}
+  .srs-none{color:var(--muted); font-size:14px; text-align:center; padding:14px; background:#0d1320; border:1px solid var(--line); border-radius:14px}
+  .srs-grade{display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:8px; margin-top:18px}
+  .sg2{border-radius:14px; padding:12px 6px; font-weight:700; font-size:13px; font-family:inherit;
+    border:1.5px solid var(--line); background:#0d1320; color:var(--ink); cursor:pointer; transition:.15s; line-height:1.3; text-align:center}
+  .sg2 .gl{display:block; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:3px}
+  .sg2:hover{transform:translateY(-2px)}
+  .sg2.g0:hover{border-color:#ef4444; background:color-mix(in srgb,#ef4444 16%,#0d1320)}
+  .sg2.g1:hover{border-color:#f59e0b; background:color-mix(in srgb,#f59e0b 14%,#0d1320)}
+  .sg2.g2:hover{border-color:#22c55e; background:color-mix(in srgb,#22c55e 14%,#0d1320)}
+  .sg2.g3:hover{border-color:#a78bfa; background:color-mix(in srgb,#a78bfa 14%,#0d1320)}
+  .lvl-row{display:flex; gap:5px; margin-bottom:14px; flex-wrap:wrap; align-items:center}
+  .lvl-seg{height:22px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#000; min-width:24px}
+  .due-chip{display:inline-flex; align-items:center; gap:6px; background:color-mix(in srgb,#a78bfa 16%,#0d1320);
+    border:1px solid color-mix(in srgb,#a78bfa 45%,transparent); border-radius:999px; padding:5px 12px; font-size:13px; font-weight:600; color:#c4b5fd; margin-bottom:14px}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <div class="eyebrow">Lycée Chaptal · Prépa TSI</div>
+      <h1>Console de <em>révision</em></h1>
+    </div>
+    <div class="top-right">
+      <div class="live-stats" id="liveStats">
+        <div class="stat"><div class="n" id="sScore">0</div><div class="l">Score</div></div>
+        <div class="stat"><div class="n" id="sStreak">0</div><div class="l">Série</div></div>
+      </div>
+      <div class="top-actions">
+        <span id="syncIndicator" class="sync-ind hidden"></span>
+        <button class="btn ghost mini" id="accountBtn">🔑 Se connecter</button>
+        <button class="btn ghost mini" id="statsBtn">📊 Ma progression</button>
+        <button class="btn ghost mini hidden" id="adminBtn">🎓 Vue classe</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- START -->
+  <div class="card" id="startScreen">
+
+    <!-- SRS dashboard -->
+    <div id="srsBar" style="margin-bottom:0"></div>
+
+    <!-- Sélecteur de mode -->
+    <p class="section-label" style="margin-top:20px">Mode</p>
+    <div class="mode-opts" id="modeOpts" style="margin-bottom:20px">
+      <button class="mode on" data-mode="all">Tous</button>
+      <button class="mode" data-mode="qcm">QCM</button>
+      <button class="mode" data-mode="trou">À trou</button>
+      <button class="mode" data-mode="saisie">Réponse libre</button>
+      <button class="mode" data-mode="flash">Flashcard</button>
+    </div>
+
+    <!-- Familles accordéon -->
+    <p class="section-label">Chapitres &amp; progression</p>
+    <div id="famAccordion" style="margin-bottom:18px"></div>
+
+    <!-- Longueur + options -->
+    <div class="row" style="margin-top:4px">
+      <p class="section-label" style="margin:0">Questions</p>
+      <div class="len-opts" id="lenOpts">
+        <button class="len on" data-len="10">10</button>
+        <button class="len" data-len="20">20</button>
+        <button class="len" data-len="0">Tout</button>
+      </div>
+      <label class="toggle" style="margin-left:auto"><input type="checkbox" id="shuffleToggle" checked> Mélanger</label>
+    </div>
+
+    <div class="actions" style="margin-top:18px">
+      <button class="btn" id="startBtn">Commencer →</button>
+      <span id="poolInfo" style="color:var(--muted); font-size:13px"></span>
+    </div>
+
+    <blockquote class="prof-quote">
+      <span class="pq-mark">❝</span>
+      <p class="pq-text">La vérité se trouve dans le schéma.</p>
+      <footer class="pq-author">— M. Dupeyrat, professeur de Physique-Chimie &nbsp;·&nbsp; <time datetime="2024-12-14">14 décembre 2025</time></footer>
+    </blockquote>
+  </div>
+
+  <!-- QUIZ -->
+  <div class="card hidden" id="quizScreen">
+    <div class="progress-wrap">
+      <div class="progress-meta"><span id="qCounter">01 / 10</span><span id="qTopicTag"></span></div>
+      <div class="bar"><i id="progBar"></i></div>
+    </div>
+    <div id="badge"></div>
+    <div class="question" id="qText"></div>
+    <div id="answerZone"></div>
+    <div class="feedback hidden" id="feedback"></div>
+    <div class="next-row">
+      <button class="btn ghost" id="abandonBtn" style="font-size:13px; padding:9px 14px">✕ Abandonner</button>
+      <button class="btn hidden" id="nextBtn">Suivant →</button>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="card hidden" id="resultScreen">
+    <div class="score-hero">
+      <div class="ring">
+        <svg width="170" height="170" viewBox="0 0 170 170">
+          <circle cx="85" cy="85" r="74" fill="none" stroke="#1f2937" stroke-width="13"/>
+          <circle id="ringFill" cx="85" cy="85" r="74" fill="none" stroke="#a78bfa" stroke-width="13"
+                  stroke-linecap="round" stroke-dasharray="465" stroke-dashoffset="465"
+                  style="transition:stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1)"/>
+        </svg>
+        <div class="pct"><b id="rPct">0%</b><span id="rFrac">0 / 0</span></div>
+      </div>
+      <div class="verdict-line" id="rVerdict"></div>
+    </div>
+
+    <div class="breakdown" id="breakdown"></div>
+    <div class="review" id="review"></div>
+
+    <div class="actions" style="justify-content:center; flex-wrap:wrap">
+      <button class="btn" id="againBtn">Recommencer</button>
+      <button class="btn ghost" id="homeBtn">← Changer de réglages</button>
+      <button class="btn ghost" id="resultStatsBtn">📊 Ma progression</button>
+    </div>
+    <p class="footer-note">Travaille les hypothèses précises (ouvert/fermé), les comparaisons de degrés et les cas limites — c'est là que se gagnent les points.</p>
+  </div>
+
+  <!-- STATS -->
+  <div class="card hidden" id="statsScreen">
+    <p class="section-label">Ma progression</p>
+    <div id="statsBody"></div>
+    <div class="actions" style="justify-content:space-between">
+      <button class="btn" id="statsBack">← Retour</button>
+      <button class="btn ghost" id="statsClear">Effacer mes stats locales</button>
+    </div>
+    <p class="footer-note">Connecté, ta progression est synchronisée dans le cloud (privé). Sinon, elle reste dans ce navigateur.</p>
+  </div>
+
+  <!-- ADMIN -->
+  <div class="card hidden" id="adminScreen">
+    <p class="section-label">Vue prof — toute la classe</p>
+    <div id="adminBody"></div>
+    <div class="actions"><button class="btn" id="adminBack">← Retour</button></div>
+    <p class="footer-note">Accessible uniquement aux comptes enseignants déclarés.</p>
+  </div>
+</div>
+
+<div id="cloudStatus" class="cloud-status" role="status" aria-live="polite"></div>
+
+<!-- AUTH MODAL -->
+<div class="modal-overlay hidden" id="authModal">
+  <div class="modal">
+    <button class="modal-close" id="authClose" aria-label="Fermer">✕</button>
+    <h2 id="authTitle" style="font-family:'Fraunces',serif; margin:0 0 6px">Connexion</h2>
+    <p class="auth-sub">Pour synchroniser ta progression sur tous tes appareils.</p>
+    <input class="ans-input" id="authEmail" type="email" autocomplete="email" placeholder="Adresse e-mail" style="margin-bottom:10px; width:100%">
+    <input class="ans-input" id="authPass" type="password" autocomplete="current-password" placeholder="Mot de passe (6 caractères min.)" style="width:100%">
+    <div class="auth-err hidden" id="authErr"></div>
+    <button class="btn" id="authSubmit" style="width:100%; margin-top:14px">Se connecter</button>
+    <p class="auth-switch" id="authSwitchLine">Pas encore de compte ? <a id="authSwitch">En créer un</a></p>
+  </div>
+</div>
+
+<!-- ONBOARDING -->
+<div class="modal-overlay hidden" id="onboardModal">
+  <div class="modal">
+    <button class="modal-close" id="onboardClose" aria-label="Fermer">✕</button>
+    <h2 style="font-family:'Fraunces',serif; margin:0 0 6px">🎯 Comment réviser ici</h2>
+    <p class="auth-sub">Ce site fonctionne comme <b>Anki</b> : la répétition espacée.</p>
+    <ol style="padding-left:20px; margin:0 0 8px; line-height:1.7; font-size:15px">
+      <li>Chaque question devient une <b>carte</b> avec un niveau de maîtrise.</li>
+      <li>Réponse réussie → la carte revient <b>plus tard</b> ; ratée → elle revient <b>vite</b>.</li>
+      <li>Chaque jour, la barre <b>« Révision du jour »</b> te montre les cartes à revoir. La régularité bat la quantité.</li>
+    </ol>
+    <p style="color:var(--muted); font-size:13.5px; margin:14px 0 0">💡 Connecte-toi pour retrouver ta progression sur tous tes appareils.</p>
+    <button class="btn" id="onboardStart" style="width:100%; margin-top:16px">C'est parti →</button>
+  </div>
+</div>
+
+<script type="module">
+/* ====================== FIREBASE ====================== */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBOs7FU54O37WkA9cvugGJmaWjHB6Zjg4o",
+  authDomain: "quiz-tsi.firebaseapp.com",
+  projectId: "quiz-tsi",
+  storageBucket: "quiz-tsi.firebasestorage.app",
+  messagingSenderId: "1010244690676",
+  appId: "1:1010244690676:web:ec3039e2bc464ab013b4a1"
+};
+
+// >>> METS ICI l'e-mail du compte PROF (celui que tu créeras dans l'appli).
+// Il doit être IDENTIQUE à celui mis dans les règles Firestore (voir consignes).
+const ADMIN_EMAILS = ["arthur.lesage05@gmail.com"];
+
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+let currentUser = null;
+let isAdmin = false;
+
+const Cloud = {
+  async signUp(email, pass){ const c = await createUserWithEmailAndPassword(auth, email, pass);
+    await setDoc(doc(db,'users',c.user.uid), {email:c.user.email, displayName:email.split('@')[0], createdAt:serverTimestamp()}, {merge:true}); return c.user; },
+  async signIn(email, pass){ return (await signInWithEmailAndPassword(auth, email, pass)).user; },
+  async signOut(){ return signOut(auth); },
+  async saveSession(s){
+    if(!currentUser) return;
+    const uid = currentUser.uid;
+    await addDoc(collection(db,'users',uid,'sessions'), {
+      date: serverTimestamp(), score:s.score, total:s.total, mode:s.mode, topics:s.topics, details:s.details, bestStreak:s.bestStreak||0
+    });
+    const uref = doc(db,'users',uid);
+    const snap = await getDoc(uref);
+    const cur = snap.exists()? snap.data() : {};
+    const agg = cur.agg || {totalAnswered:0, totalCorrect:0, bestStreak:0, byTopic:{}};
+    agg.totalAnswered += s.total; agg.totalCorrect += s.score;
+    agg.bestStreak = Math.max(agg.bestStreak||0, s.bestStreak||0);
+    s.details.forEach(it=>{ const t = (agg.byTopic[it.topic] || (agg.byTopic[it.topic]={a:0,c:0})); t.a++; if(it.correct) t.c++; });
+    await setDoc(uref, {email:currentUser.email, displayName:currentUser.email.split('@')[0], lastActive:serverTimestamp(), agg}, {merge:true});
+  },
+  async myAggregate(){ if(!currentUser) return null; const snap = await getDoc(doc(db,'users',currentUser.uid)); return snap.exists()? (snap.data().agg||null) : null; },
+  async mySessions(n=20){ if(!currentUser) return [];
+    const qs = await getDocs(query(collection(db,'users',currentUser.uid,'sessions'), orderBy('date','desc'), limit(n)));
+    return qs.docs.map(d=>d.data()); },
+  async allUsers(){ const qs = await getDocs(collection(db,'users')); return qs.docs.map(d=>({uid:d.id, ...d.data()})); },
+  async loadSRS(){ if(!currentUser) return null; const snap = await getDoc(doc(db,'users',currentUser.uid)); return snap.exists()? (snap.data().srs||null) : null; },
+  // ⚠️ Règles Firestore requises (à coller dans Firebase console) :
+  // allow create, update: if signedIn() && request.auth.uid == uid
+  //   && request.resource.data.keys().hasOnly(['email','displayName','createdAt','lastActive','agg','srs','srsUpdated']);
+  async saveSRS(cards){ if(!currentUser) return; await setDoc(doc(db,'users',currentUser.uid), {srs:cards, srsUpdated:serverTimestamp()}, {merge:true}); }
+};
+
+onAuthStateChanged(auth, async (user)=>{
+  currentUser = user;
+  isAdmin = !!(user && ADMIN_EMAILS.map(e=>e.toLowerCase()).includes((user.email||'').toLowerCase()));
+  if(user){
+    try{
+      const cloud = await Cloud.loadSRS();
+      if(cloud && typeof SRS!=='undefined'){ SRS.mergeCloud(cloud); SRS._syncCloud(); }
+    }catch(e){ console.warn('SRS cloud load', e); }
+  }
+  if(typeof updateAccountUI === 'function') updateAccountUI();
+  if(typeof updateSrsBar === 'function') updateSrsBar();
+});
+
+/* ====================== DONNÉES ====================== */
+const FAMILIES = {
+  "analyse": {
+    "name": "Analyse",
+    "raw": "#ef4444"
+  },
+  "algebre": {
+    "name": "Algèbre",
+    "raw": "#8b5cf6"
+  },
+  "proba_denom": {
+    "name": "Probabilités & Dénombrement",
+    "raw": "#fb7185"
+  },
+  "geometrie": {
+    "name": "Géométrie",
+    "raw": "#0ea5e9"
+  }
+};
+const TOPICS = {
+  "suites": {
+    "name": "Suites numériques",
+    "family": "analyse",
+    "raw": "#ec4899"
+  },
+  "limites": {
+    "name": "Limites & continuité",
+    "family": "analyse",
+    "raw": "#06b6d4"
+  },
+  "derivation": {
+    "name": "Dérivation",
+    "family": "analyse",
+    "raw": "#ef4444"
+  },
+  "integration": {
+    "name": "Intégration",
+    "family": "analyse",
+    "raw": "#f59e0b"
+  },
+  "dl": {
+    "name": "Développements limités",
+    "family": "analyse",
+    "raw": "#c084fc"
+  },
+  "edl": {
+    "name": "Équations différentielles",
+    "family": "analyse",
+    "raw": "#14b8a6"
+  },
+  "complexes": {
+    "name": "Nombres complexes",
+    "family": "algebre",
+    "raw": "#f97316"
+  },
+  "polynomes": {
+    "name": "Polynômes",
+    "family": "algebre",
+    "raw": "#22c55e"
+  },
+  "matrices": {
+    "name": "Calcul matriciel",
+    "family": "algebre",
+    "raw": "#3b82f6"
+  },
+  "systemes": {
+    "name": "Systèmes linéaires",
+    "family": "algebre",
+    "raw": "#f43f5e"
+  },
+  "ev": {
+    "name": "Espaces vectoriels & a.l.",
+    "family": "algebre",
+    "raw": "#6366f1"
+  },
+  "denombrement": {
+    "name": "Dénombrement",
+    "family": "proba_denom",
+    "raw": "#d946ef"
+  },
+  "proba": {
+    "name": "Probabilités",
+    "family": "proba_denom",
+    "raw": "#fb7185"
+  },
+  "trigo": {
+    "name": "Trigonométrie",
+    "family": "geometrie",
+    "raw": "#eab308"
+  },
+  "geoplan": {
+    "name": "Géométrie du plan",
+    "family": "geometrie",
+    "raw": "#0ea5e9"
+  },
+  "geoespace": {
+    "name": "Géométrie de l'espace",
+    "family": "geometrie",
+    "raw": "#10b981"
+  }
+};
+
+// mode: 'qcm' (choices), 'trou'/'saisie' (answer + accept[]), 'flash' (answer)
+const QUESTIONS = [
+  /* ==================== ANALYSE ==================== */
+
+  /* ---- Suites numériques ---- */
+  {topic:'suites', mode:'qcm', q:"Une suite $(u_n)$ converge vers $\\ell$. Que peut-on affirmer ?",
+   choices:[{t:"$(u_n)$ est bornée", c:true},{t:"$(u_n)$ est monotone", c:false},{t:"$(u_n)$ est stationnaire", c:false},{t:"$\\ell=0$ nécessairement", c:false}],
+   exp:"Toute suite convergente est bornée. La réciproque est fausse.",
+   vig:"Bornée n'implique pas convergente : $((-1)^n)$ est bornée mais diverge."},
+  {topic:'suites', mode:'qcm', q:"Une suite croissante et majorée :",
+   choices:[{t:"converge vers sa borne supérieure", c:true},{t:"converge vers son majorant $M$", c:false},{t:"diverge vers $+\\infty$", c:false},{t:"est stationnaire", c:false}],
+   exp:"Théorème de la limite monotone : elle converge vers $\\sup_n u_n \\le M$.",
+   vig:"Elle converge vers la borne sup, pas vers un majorant quelconque (on a seulement $\\ell\\le M$)."},
+  {topic:'suites', mode:'qcm', q:"Si $a_n\\le u_n\\le b_n$ et $a_n\\to\\ell$, $b_n\\to\\ell$, alors :",
+   choices:[{t:"$u_n\\to\\ell$ (gendarmes)", c:true},{t:"$u_n$ peut diverger", c:false},{t:"$u_n\\to 0$", c:false},{t:"$\\ell=0$", c:false}],
+   exp:"Théorème d'encadrement (des gendarmes)."},
+  {topic:'suites', mode:'qcm', q:"$(u_n)$ croissante, $(v_n)$ décroissante, $v_n-u_n\\to0$ (adjacentes) :",
+   choices:[{t:"convergent vers une même limite", c:true},{t:"vers des limites différentes", c:false},{t:"divergent", c:false},{t:"vérifient $u_n\\ge v_n$", c:false}],
+   exp:"Suites adjacentes : limite commune $\\ell$ avec $u_n\\le\\ell\\le v_n$."},
+  {topic:'suites', mode:'qcm', q:"$u_{n+1}=f(u_n)$, $f$ continue, $u_n\\to\\ell$. Alors :",
+   choices:[{t:"$f(\\ell)=\\ell$ (point fixe)", c:true},{t:"$\\ell=0$", c:false},{t:"$f(\\ell)=0$", c:false},{t:"$(u_n)$ constante", c:false}],
+   exp:"Par continuité, passage à la limite : $\\ell=f(\\ell)$.",
+   vig:"Ce résultat suppose la convergence DÉJÀ établie : il identifie $\\ell$, il ne la prouve pas."},
+  {topic:'suites', mode:'qcm', q:"Si $u_{2n}\\to a$ et $u_{2n+1}\\to b$ avec $a\\ne b$ :",
+   choices:[{t:"$(u_n)$ diverge", c:true},{t:"$(u_n)\\to\\frac{a+b}{2}$", c:false},{t:"$(u_n)\\to a$", c:false},{t:"$(u_n)$ converge", c:false}],
+   exp:"Deux suites extraites de limites distinctes $\\Rightarrow$ divergence."},
+  {topic:'suites', mode:'saisie', q:"Limite de la suite géométrique $(q^n)$ lorsque $|q|<1$ ?",
+   answer:"$0$", accept:["0"],
+   exp:"Pour $|q|<1$, $q^n\\to 0$. Pour $q=1$ elle vaut $1$ ; pour $q>1$ elle diverge vers $+\\infty$."},
+  {topic:'suites', mode:'flash', q:"Définition : une suite $(u_n)$ est de Cauchy-? Non — énonce la définition de « $(u_n)$ majorée ».",
+   answer:"$\\exists M\\in\\mathbb{R},\\ \\forall n,\\ u_n\\le M$.",
+   exp:"Majorée = il existe un même réel $M$ qui majore tous les termes."},
+  {topic:'suites', mode:'trou', q:"Suite arithmétique de raison $r$ : $u_n = u_0 + \\square$.",
+   answer:"$n\\,r$", accept:["nr","n*r","n r","rn"],
+   exp:"$u_n=u_0+nr$. (Géométrique : $u_n=u_0\\,q^n$.)"},
+
+  /* ---- Limites & continuité ---- */
+  {topic:'limites', mode:'qcm', q:"Lorsqu'une fonction admet une limite en un point, cette limite est :",
+   choices:[{t:"unique", c:true},{t:"toujours nulle", c:false},{t:"toujours égale à $f$ au point", c:false},{t:"non nécessairement unique", c:false}],
+   exp:"Unicité de la limite ; elle peut exister même si $f$ n'est pas définie au point."},
+  {topic:'limites', mode:'qcm', q:"Parmi ces écritures, laquelle est une forme indéterminée ?",
+   choices:[{t:"$\\frac{0}{0}$", c:true},{t:"$\\frac{1}{0^{+}}$", c:false},{t:"$0\\times 5$", c:false},{t:"$\\frac{3}{+\\infty}$", c:false}],
+   exp:"$\\frac00$ est indéterminée ; $\\frac{1}{0^+}=+\\infty$ et $\\frac{3}{+\\infty}=0$ sont déterminées."},
+  {topic:'limites', mode:'qcm', q:"Si $f(x)\\le g(x)$ au voisinage de $a$, $f\\to L$, $g\\to M$, alors :",
+   choices:[{t:"$L\\le M$", c:true},{t:"$L<M$", c:false},{t:"$L=M$", c:false},{t:"rien", c:false}],
+   exp:"Le passage à la limite conserve les inégalités au sens large.",
+   vig:"Une inégalité stricte ne donne qu'une inégalité LARGE à la limite ($\\tfrac1n>0$ mais $\\to0$)."},
+  {topic:'limites', mode:'qcm', q:"$f$ continue sur $[a,b]$ avec $f(a)<0<f(b)$. Le TVI garantit :",
+   choices:[{t:"$\\exists c\\in\\,]a,b[,\\ f(c)=0$", c:true},{t:"$f$ strictement croissante", c:false},{t:"un tel $c$ unique", c:false},{t:"$f$ dérivable", c:false}],
+   exp:"Le TVI donne l'EXISTENCE d'un zéro ; l'unicité exige la stricte monotonie."},
+  {topic:'limites', mode:'saisie', q:"$\\displaystyle\\lim_{x\\to 0}\\frac{\\sin x}{x} = ?$",
+   answer:"$1$", accept:["1"],
+   exp:"Limite de référence : $\\frac{\\sin x}{x}\\to 1$ en $0$."},
+  {topic:'limites', mode:'saisie', q:"$\\displaystyle\\lim_{x\\to +\\infty}\\frac{\\ln x}{x} = ?$",
+   answer:"$0$", accept:["0"],
+   exp:"Croissances comparées : le logarithme est négligeable devant toute puissance positive."},
+  {topic:'limites', mode:'trou', q:"Limite de référence : $\\displaystyle\\lim_{x\\to 0}\\frac{e^{x}-1}{x} = \\square$.",
+   answer:"$1$", accept:["1"],
+   exp:"$\\frac{e^x-1}{x}\\to 1$ : c'est la dérivée de $\\exp$ en $0$."},
+  {topic:'limites', mode:'flash', q:"Énonce la limite de composition.",
+   answer:"Si $u(x)\\to b$ quand $x\\to a$ et $f(y)\\to\\ell$ quand $y\\to b$, alors $f(u(x))\\to\\ell$ quand $x\\to a$.",
+   exp:"Composition des limites (sous réserve d'existence des limites intermédiaires)."},
+  {topic:'limites', mode:'flash', q:"Une fonction monotone sur $]a,b[$ : que dire de ses limites en un point intérieur ?",
+   answer:"Elle admet une limite finie à gauche et à droite en tout point intérieur.",
+   exp:"Théorème de la limite monotone (les sauts éventuels n'empêchent pas l'existence des limites latérales)."},
+
+  /* ---- Dérivation ---- */
+  {topic:'derivation', mode:'qcm', q:"Hypothèses EXACTES du théorème des accroissements finis sur $[a,b]$ :",
+   choices:[{t:"$f$ continue sur $[a,b]$ et dérivable sur $]a,b[$", c:true},{t:"$f$ dérivable sur $[a,b]$", c:false},{t:"$f$ continue sur $]a,b[$, dérivable sur $[a,b]$", c:false},{t:"$f$ de classe $\\mathcal{C}^1$", c:false}],
+   exp:"Continuité sur le fermé, dérivabilité sur l'ouvert. $\\mathcal{C}^1$ est trop fort.",
+   vig:"Ouvert/fermé : continuité sur $[a,b]$, dérivabilité sur $]a,b[$. Énonce au mot près."},
+  {topic:'derivation', mode:'qcm', q:"Quelle implication est vraie en un point $a$ ?",
+   choices:[{t:"dérivable en $a\\Rightarrow$ continue en $a$", c:true},{t:"continue $\\Rightarrow$ dérivable", c:false},{t:"équivalentes", c:false},{t:"aucun lien", c:false}],
+   exp:"La dérivabilité entraîne la continuité ; réciproque fausse ($|x|$ en $0$)."},
+  {topic:'derivation', mode:'qcm', q:"$f$ continue sur $[a,b]$, dérivable sur $]a,b]$, $f'(x)\\to\\ell$ (fini) en $a^+$. Alors :",
+   choices:[{t:"$f$ dérivable en $a$ et $f'(a)=\\ell$", c:true},{t:"$f$ non dérivable en $a$", c:false},{t:"$\\ell=0$", c:false},{t:"on ne peut rien dire", c:false}],
+   exp:"Théorème de la limite de la dérivée : $f$ se prolonge en $\\mathcal{C}^1$ avec $f'(a)=\\ell$.",
+   vig:"Si $f'$ n'a PAS de limite en $a$, on ne peut rien conclure (ni dérivable, ni non dérivable)."},
+  {topic:'derivation', mode:'qcm', q:"Sur $]a,b[$, $f'\\ge 0$ équivaut à :",
+   choices:[{t:"$f$ croissante", c:true},{t:"$f$ strictement croissante", c:false},{t:"$f$ constante", c:false},{t:"$f$ convexe", c:false}],
+   exp:"$f'\\ge0\\iff f$ croissante. $f'>0\\Rightarrow$ stricte, mais la réciproque est fausse (cube)."},
+  {topic:'derivation', mode:'trou', q:"$(\\sqrt{x})' = \\square$ (sur $]0,+\\infty[$).",
+   answer:"$\\dfrac{1}{2\\sqrt{x}}$", accept:["1/(2sqrt(x))","1/(2\\sqrt{x})","1/2sqrt(x)","1/(2 racine(x))"],
+   exp:"$(\\sqrt x)'=\\frac{1}{2\\sqrt x}$, définie sur $]0,+\\infty[$ seulement."},
+  {topic:'derivation', mode:'trou', q:"$(\\ln u)' = \\square$ (avec $u>0$).",
+   answer:"$\\dfrac{u'}{u}$", accept:["u'/u","u’/u"],
+   exp:"Dérivée d'une composée : $(\\ln u)'=\\frac{u'}{u}$."},
+  {topic:'derivation', mode:'trou', q:"$(u^n)' = \\square$ (avec $n\\in\\mathbb{N}^*$).",
+   answer:"$n\\,u'\\,u^{\\,n-1}$", accept:["nu'u^(n-1)","n u' u^{n-1}","nu'u^{n-1}"],
+   exp:"$(u^n)'=n\\,u'\\,u^{n-1}$ (règle de la chaîne)."},
+  {topic:'derivation', mode:'saisie', q:"$(e^{u})' = ?$",
+   answer:"$u'\\,e^{u}$", accept:["u'e^u","u' e^u","u'*e^u"],
+   exp:"$(e^u)'=u'e^u$."},
+  {topic:'derivation', mode:'flash', q:"Donne $\\left(\\dfrac{u}{v}\\right)'$.",
+   answer:"$\\dfrac{u'v-uv'}{v^{2}}$ (là où $v$ ne s'annule pas).",
+   exp:"Quotient : $\\frac{u'v-uv'}{v^2}$. Attention à l'ordre au numérateur.",
+   vig:"Ordre du numérateur : $u'v-uv'$ (et pas $uv'-u'v$)."},
+  {topic:'derivation', mode:'flash', q:"$(\\tan x)' = ?$ (deux écritures)",
+   answer:"$\\dfrac{1}{\\cos^{2}x}=1+\\tan^{2}x$.",
+   exp:"Les deux formes sont équivalentes."},
+  {topic:'derivation', mode:'qcm', q:"Théorème de Rolle ($f$ continue sur $[a,b]$, dérivable sur $]a,b[$, $f(a)=f(b)$). Conclusion :",
+   choices:[{t:"$\\exists c\\in\\,]a,b[,\\ f'(c)=0$", c:true},{t:"$\\exists c\\in[a,b],\\ f'(c)=0$", c:false},{t:"$f$ constante", c:false},{t:"$f'$ s'annule partout", c:false}],
+   exp:"Il existe au moins un $c$ INTÉRIEUR où $f'$ s'annule."},
+
+  /* ---- Intégration ---- */
+  {topic:'integration', mode:'qcm', q:"Intégration par parties sur $[a,b]$ ($u,v$ de classe $\\mathcal{C}^1$) :",
+   choices:[{t:"$\\int_a^b u'v=[uv]_a^b-\\int_a^b uv'$", c:true},{t:"$\\int_a^b u'v=[uv]_a^b+\\int_a^b uv'$", c:false},{t:"$\\int_a^b u'v=\\int_a^b uv'$", c:false},{t:"$\\int_a^b u'v=[uv]_a^b$", c:false}],
+   exp:"Vient de $(uv)'=u'v+uv'$ puis intégration."},
+  {topic:'integration', mode:'qcm', q:"Pour $f$ continue sur $[a,b]$, $\\int_a^b f = 0$ et $f\\ge 0$. Alors :",
+   choices:[{t:"$f$ est identiquement nulle", c:true},{t:"$f$ peut être non nulle", c:false},{t:"$f$ est constante non nulle", c:false},{t:"$f(a)=f(b)$ seulement", c:false}],
+   exp:"Pour une fonction CONTINUE positive d'intégrale nulle : $f\\equiv 0$ (propriété de positivité stricte).",
+   vig:"L'hypothèse de continuité est essentielle pour conclure $f\\equiv0$."},
+  {topic:'integration', mode:'qcm', q:"Relation de Chasles pour l'intégrale :",
+   choices:[{t:"$\\int_a^b f=\\int_a^c f+\\int_c^b f$", c:true},{t:"$\\int_a^b f=\\int_a^c f-\\int_c^b f$", c:false},{t:"$\\int_a^b f=\\int_a^c f\\times\\int_c^b f$", c:false},{t:"$\\int_a^b f=\\int_c^b f$", c:false}],
+   exp:"Chasles : additivité par rapport aux bornes."},
+  {topic:'integration', mode:'trou', q:"Une primitive de $u'e^{u}$ est $\\square$.",
+   answer:"$e^{u}$", accept:["e^u","exp(u)"],
+   exp:"$\\frac{d}{dx}e^u=u'e^u$."},
+  {topic:'integration', mode:'trou', q:"Pour $u>0$, une primitive de $\\dfrac{u'}{u}$ est $\\square$.",
+   answer:"$\\ln(u)$", accept:["ln(u)","lnu","ln u"],
+   exp:"Forme $\\frac{u'}{u}$ : primitive $\\ln u$."},
+  {topic:'integration', mode:'saisie', q:"$\\displaystyle\\int_b^a f(t)\\,dt$ vaut, en fonction de $\\int_a^b f$ ?",
+   answer:"$-\\displaystyle\\int_a^b f(t)\\,dt$", accept:["-int_a^b f","-\\int_a^b f(t)dt","-integrale","- l'intégrale de a à b"],
+   exp:"Inverser les bornes change le signe ; et $\\int_a^a f=0$."},
+  {topic:'integration', mode:'flash', q:"Énonce l'inégalité triangulaire intégrale.",
+   answer:"$\\left|\\displaystyle\\int_a^b f(t)\\,dt\\right|\\le \\displaystyle\\int_a^b |f(t)|\\,dt$ (pour $a\\le b$).",
+   exp:"La valeur absolue de l'intégrale est majorée par l'intégrale de la valeur absolue."},
+  {topic:'integration', mode:'flash', q:"Somme de Riemann : $S_n(f)=\\dfrac{b-a}{n}\\sum_{k=0}^{n-1} f\\!\\left(a+k\\tfrac{b-a}{n}\\right)$. Vers quoi tend-elle ?",
+   answer:"$\\displaystyle\\lim_{n\\to+\\infty}S_n(f)=\\int_a^b f(t)\\,dt$ ($f$ continue).",
+   exp:"Convergence des sommes de Riemann vers l'intégrale."},
+
+  /* ---- Développements limités ---- */
+  {topic:'dl', mode:'trou', q:"DL en $0$ : $e^{x}=1+x+\\square+\\dfrac{x^3}{6}+o(x^3)$.",
+   answer:"$\\dfrac{x^{2}}{2}$", accept:["x^2/2","x²/2","(1/2)x^2","x^2/2!"],
+   exp:"$e^x=\\sum_{k\\ge0}\\frac{x^k}{k!}$."},
+  {topic:'dl', mode:'trou', q:"DL en $0$ : $\\ln(1+x)=x-\\dfrac{x^2}{2}+\\square+o(x^3)$.",
+   answer:"$\\dfrac{x^{3}}{3}$", accept:["x^3/3","x³/3"],
+   exp:"$\\ln(1+x)=\\sum_{k\\ge1}\\frac{(-1)^{k+1}}{k}x^k$ : signes alternés.",
+   vig:"Pas de terme constant ($\\ln 1=0$) et signes alternés."},
+  {topic:'dl', mode:'trou', q:"DL en $0$ : $\\sin x = x-\\square+o(x^4)$.",
+   answer:"$\\dfrac{x^{3}}{6}$", accept:["x^3/6","x³/6"],
+   exp:"$\\sin x=x-\\frac{x^3}{6}+\\frac{x^5}{120}-\\dots$ (impaire)."},
+  {topic:'dl', mode:'trou', q:"DL en $0$ : $\\cos x = 1-\\square+o(x^3)$.",
+   answer:"$\\dfrac{x^{2}}{2}$", accept:["x^2/2","x²/2"],
+   exp:"$\\cos x=1-\\frac{x^2}{2}+\\frac{x^4}{24}-\\dots$ (paire)."},
+  {topic:'dl', mode:'qcm', q:"DL en $0$ de $\\dfrac{1}{1-x}$ :",
+   choices:[{t:"$1+x+x^2+\\dots+x^n+o(x^n)$", c:true},{t:"$1-x+x^2-\\dots$", c:false},{t:"$\\sum\\frac{x^k}{k!}$", c:false},{t:"$1-x-x^2-\\dots$", c:false}],
+   exp:"Somme géométrique ; pour $\\frac{1}{1+x}$ les signes alternent."},
+  {topic:'dl', mode:'qcm', q:"DL de $(1+x)^{\\alpha}$ à l'ordre 2 :",
+   choices:[{t:"$1+\\alpha x+\\frac{\\alpha(\\alpha-1)}{2}x^2+o(x^2)$", c:true},{t:"$1+\\alpha x+\\frac{\\alpha(\\alpha+1)}{2}x^2+o(x^2)$", c:false},{t:"$1+\\alpha x+\\alpha^2 x^2+o(x^2)$", c:false},{t:"$1+\\frac{x}{\\alpha}+o(x)$", c:false}],
+   exp:"Coefficient d'ordre 2 : $\\binom{\\alpha}{2}=\\frac{\\alpha(\\alpha-1)}{2}$."},
+  {topic:'dl', mode:'qcm', q:"Pour multiplier deux DL connus à l'ordre $n$, on doit :",
+   choices:[{t:"développer puis tronquer à l'ordre $n$", c:true},{t:"garder tous les termes", c:false},{t:"additionner les DL", c:false},{t:"ne garder que le bas degré", c:false}],
+   exp:"On tronque à l'ordre $n$ : au-delà, les termes sont faux.",
+   vig:"Ne conserve jamais les termes de degré $>n$ d'un produit de DL."},
+  {topic:'dl', mode:'flash', q:"Donne le DL en $0$ de $\\arctan x$ (terme général).",
+   answer:"$\\arctan x=\\displaystyle\\sum_{k=0}^{n}\\frac{(-1)^k x^{2k+1}}{2k+1}+o(x^{2n+2})=x-\\frac{x^3}{3}+\\frac{x^5}{5}-\\dots$",
+   exp:"Série alternée des puissances impaires sur les impairs."},
+
+  /* ---- Équations différentielles ---- */
+  {topic:'edl', mode:'qcm', q:"Solutions de $y'+ay=0$ ($a$ constante) :",
+   choices:[{t:"$y=Ce^{-ax}$", c:true},{t:"$y=Ce^{ax}$", c:false},{t:"$y=Ce^{-x}$", c:false},{t:"$y=-ax+C$", c:false}],
+   exp:"Droite vectorielle $\\{Ce^{-ax}\\}$.",
+   vig:"Signe de l'exposant : $y'+ay=0\\Rightarrow e^{-ax}$."},
+  {topic:'edl', mode:'qcm', q:"Structure des solutions de $y'+ay=b(x)$ :",
+   choices:[{t:"solution particulière + solution homogène", c:true},{t:"solution particulière seule", c:false},{t:"produit des deux familles", c:false},{t:"homogène seule", c:false}],
+   exp:"Structure affine : $y=y_p+y_h$, $y_h=Ce^{-ax}$."},
+  {topic:'edl', mode:'qcm', q:"$y'+ay=Ke^{\\alpha x}$ avec $\\alpha=-a$ (résonance) : une solution particulière de la forme :",
+   choices:[{t:"$Kx\\,e^{-ax}$", c:true},{t:"$Ke^{-ax}$", c:false},{t:"$\\frac{K}{\\alpha+a}e^{\\alpha x}$", c:false},{t:"$Ke^{ax}$", c:false}],
+   exp:"$e^{\\alpha x}$ est solution homogène : on multiplie par $x$.",
+   vig:"Cas résonant : second membre solution de l'homogène $\\Rightarrow$ multiplier par $x$."},
+  {topic:'edl', mode:'qcm', q:"EDL2 $ay''+by'+cy=0$ : équation caractéristique :",
+   choices:[{t:"$ar^2+br+c=0$", c:true},{t:"$ar+b=0$", c:false},{t:"$r^2+1=0$", c:false},{t:"$ar^2+br+c=y$", c:false}],
+   exp:"On cherche $e^{rx}$ : $r$ vérifie $ar^2+br+c=0$."},
+  {topic:'edl', mode:'qcm', q:"Racine double $r$ de l'équation caractéristique (EDL2) : solutions réelles :",
+   choices:[{t:"$(\\lambda+\\mu x)e^{rx}$", c:true},{t:"$\\lambda e^{rx}+\\mu e^{-rx}$", c:false},{t:"$\\lambda e^{rx}$", c:false},{t:"$\\lambda\\cos rx+\\mu\\sin rx$", c:false}],
+   exp:"Solutions $e^{rx}$ et $xe^{rx}$.",
+   vig:"Racine double : ne pas oublier le facteur $x$."},
+  {topic:'edl', mode:'saisie', q:"Problème de Cauchy d'ordre 1 : combien de solution(s) ?",
+   answer:"une seule (existence et unicité)", accept:["1","une","une seule","unique","existence et unicite","existence et unicité"],
+   exp:"La condition initiale fixe la constante $C$ : solution unique."},
+  {topic:'edl', mode:'flash', q:"$y'+ay=K$ (constante), avec $a\\ne0$. Solution particulière constante ?",
+   answer:"$y_p=\\dfrac{K}{a}$.",
+   exp:"On cherche $y_p$ constante : $0+a y_p=K\\Rightarrow y_p=K/a$."},
+
+  /* ==================== ALGÈBRE ==================== */
+
+  /* ---- Nombres complexes ---- */
+  {topic:'complexes', mode:'qcm', q:"Pour $z\\in\\mathbb{C}$, on a toujours :",
+   choices:[{t:"$z\\bar z=|z|^2$", c:true},{t:"$z\\bar z=z^2$", c:false},{t:"$z+\\bar z=2i\\,\\mathrm{Im}(z)$", c:false},{t:"$|z|=z$", c:false}],
+   exp:"$z\\bar z=|z|^2$ ; $z+\\bar z=2\\mathrm{Re}(z)$, $z-\\bar z=2i\\,\\mathrm{Im}(z)$."},
+  {topic:'complexes', mode:'qcm', q:"Formule de Moivre : $(\\cos\\theta+i\\sin\\theta)^n=$ ?",
+   choices:[{t:"$\\cos(n\\theta)+i\\sin(n\\theta)$", c:true},{t:"$\\cos(\\theta^n)+i\\sin(\\theta^n)$", c:false},{t:"$n\\cos\\theta+in\\sin\\theta$", c:false},{t:"$\\cos(n\\theta)-i\\sin(n\\theta)$", c:false}],
+   exp:"$(e^{i\\theta})^n=e^{in\\theta}$."},
+  {topic:'complexes', mode:'saisie', q:"Combien y a-t-il de racines $n$-ièmes de l'unité dans $\\mathbb{C}$ ?",
+   answer:"$n$", accept:["n"],
+   exp:"Les $e^{2ik\\pi/n}$, $k=0,\\dots,n-1$ : exactement $n$."},
+  {topic:'complexes', mode:'saisie', q:"$e^{-i\\pi/2}=$ ?",
+   answer:"$-i$", accept:["-i"],
+   exp:"$e^{-i\\pi/2}=\\cos(-\\frac\\pi2)+i\\sin(-\\frac\\pi2)=-i$."},
+  {topic:'complexes', mode:'trou', q:"Forme exponentielle : $1+i\\sqrt3 = 2\\,e^{\\,i\\,\\square}$.",
+   answer:"$\\dfrac{\\pi}{3}$", accept:["pi/3","π/3","\\frac{\\pi}{3}"],
+   exp:"Module $2$, argument $\\arctan(\\sqrt3)=\\frac\\pi3$."},
+  {topic:'complexes', mode:'qcm', q:"Inégalité triangulaire dans $\\mathbb{C}$ :",
+   choices:[{t:"$|z+z'|\\le|z|+|z'|$", c:true},{t:"$|z+z'|=|z|+|z'|$", c:false},{t:"$|z+z'|\\ge|z|+|z'|$", c:false},{t:"$|z+z'|=|z||z'|$", c:false}],
+   exp:"Inégalité large pour la somme ; en revanche $|zz'|=|z||z'|$ est une égalité."},
+  {topic:'complexes', mode:'flash', q:"Formules d'Euler : $\\cos\\theta$ et $\\sin\\theta$ en fonction de $e^{i\\theta}$ ?",
+   answer:"$\\cos\\theta=\\dfrac{e^{i\\theta}+e^{-i\\theta}}{2}$, $\\sin\\theta=\\dfrac{e^{i\\theta}-e^{-i\\theta}}{2i}$.",
+   exp:"Attention au $2i$ au dénominateur du sinus.",
+   vig:"Le sinus a $2i$ (et non $2$) au dénominateur."},
+
+  /* ---- Polynômes ---- */
+  {topic:'polynomes', mode:'qcm', q:"Pour $P,Q$ non nuls, en toute généralité :",
+   choices:[{t:"$\\deg(P+Q)\\le\\max(\\deg P,\\deg Q)$", c:true},{t:"$\\deg(P+Q)=\\max(\\deg P,\\deg Q)$", c:false},{t:"$\\deg(P+Q)=\\deg P+\\deg Q$", c:false},{t:"$\\deg(P+Q)\\ge\\max$", c:false}],
+   exp:"Inégalité large : compensation possible des termes dominants.",
+   vig:"Somme de polynômes : inégalité large sur les degrés."},
+  {topic:'polynomes', mode:'qcm', q:"Sur un corps, $\\deg(PQ)=$ ?",
+   choices:[{t:"$\\deg P+\\deg Q$", c:true},{t:"$\\max(\\deg P,\\deg Q)$", c:false},{t:"$\\deg P\\times\\deg Q$", c:false},{t:"$|\\deg P-\\deg Q|$", c:false}],
+   exp:"$\\mathbb{K}[X]$ intègre : degré du produit = somme des degrés."},
+  {topic:'polynomes', mode:'qcm', q:"Un polynôme de $\\mathbb{C}[X]$ non constant est :",
+   choices:[{t:"toujours scindé sur $\\mathbb{C}$", c:true},{t:"jamais scindé", c:false},{t:"scindé si $\\deg$ pair", c:false},{t:"scindé sur $\\mathbb{R}$ seulement", c:false}],
+   exp:"Théorème de d'Alembert-Gauss : $\\mathbb{C}$ algébriquement clos."},
+  {topic:'polynomes', mode:'saisie', q:"Le nombre de racines (comptées avec multiplicité) d'un polynôme non nul est majoré par ?",
+   answer:"son degré", accept:["son degre","son degré","deg","le degre","le degré","degré","degre"],
+   exp:"Au plus $\\deg P$ racines comptées avec multiplicité."},
+  {topic:'polynomes', mode:'flash', q:"Degré du polynôme nul, par convention ?",
+   answer:"$-\\infty$.",
+   exp:"Convention $\\deg(0)=-\\infty$, cohérente avec $\\deg(PQ)=\\deg P+\\deg Q$."},
+  {topic:'polynomes', mode:'flash', q:"Caractérisation de la multiplicité $m$ d'une racine $a$ de $P$ par les dérivées.",
+   answer:"$P(a)=P'(a)=\\dots=P^{(m-1)}(a)=0$ et $P^{(m)}(a)\\ne0$.",
+   exp:"La racine $a$ est de multiplicité $m$ ssi les dérivées s'annulent jusqu'à l'ordre $m-1$."},
+
+  /* ---- Calcul matriciel ---- */
+  {topic:'matrices', mode:'qcm', q:"$(AB)^{\\mathsf{T}}=$ ?",
+   choices:[{t:"$B^{\\mathsf{T}}A^{\\mathsf{T}}$", c:true},{t:"$A^{\\mathsf{T}}B^{\\mathsf{T}}$", c:false},{t:"$AB$", c:false},{t:"$(BA)^{\\mathsf{T}}$", c:false}],
+   exp:"La transposition renverse l'ordre."},
+  {topic:'matrices', mode:'qcm', q:"Pour $A,B\\in GL_n(\\mathbb{K})$, $(AB)^{-1}=$ ?",
+   choices:[{t:"$B^{-1}A^{-1}$", c:true},{t:"$A^{-1}B^{-1}$", c:false},{t:"$(BA)^{-1}$", c:false},{t:"$A^{-1}+B^{-1}$", c:false}],
+   exp:"L'inverse d'un produit renverse l'ordre."},
+  {topic:'matrices', mode:'qcm', q:"$A\\in\\mathcal{M}_n(\\mathbb{K})$ inversible $\\iff$ ?",
+   choices:[{t:"$\\det A\\ne0$", c:true},{t:"$\\det A=0$", c:false},{t:"$\\det A=1$", c:false},{t:"$A$ symétrique", c:false}],
+   exp:"Inversibilité $\\iff$ déterminant non nul."},
+  {topic:'matrices', mode:'flash', q:"Pour $f$ endomorphisme et $\\mathscr{B}$ une base : $M_{\\mathscr B}(f^n)=$ ?",
+   answer:"$\\big(M_{\\mathscr B}(f)\\big)^{n}$.",
+   exp:"La matrice de $f^n$ est la puissance $n$-ième de la matrice de $f$."},
+  {topic:'matrices', mode:'flash', q:"Composée d'applications linéaires : $M_{\\mathscr B,\\mathscr D}(g\\circ f)=$ ?",
+   answer:"$M_{\\mathscr C,\\mathscr D}(g)\\times M_{\\mathscr B,\\mathscr C}(f)$.",
+   exp:"La matrice de la composée est le produit des matrices, dans le bon ordre.",
+   vig:"Ordre : la matrice de $g$ (à gauche) fois celle de $f$ (à droite)."},
+
+  /* ---- Systèmes linéaires ---- */
+  {topic:'systemes', mode:'qcm', q:"Système de Cramer ($n$ équations, $n$ inconnues, $\\det\\ne0$) :",
+   choices:[{t:"une unique solution", c:true},{t:"une infinité", c:false},{t:"aucune solution", c:false},{t:"solution ssi second membre nul", c:false}],
+   exp:"$\\det\\ne0\\Rightarrow$ matrice inversible $\\Rightarrow X=A^{-1}B$ unique."},
+  {topic:'systemes', mode:'qcm', q:"Le rang d'un système est :",
+   choices:[{t:"le nombre de pivots après échelonnement", c:true},{t:"le nombre d'inconnues", c:false},{t:"le nombre d'équations", c:false},{t:"toujours $0$", c:false}],
+   exp:"Nombre de pivots non nuls de la matrice échelonnée."},
+  {topic:'systemes', mode:'qcm', q:"Une opération $L_i\\leftarrow L_i+\\lambda L_j$ :",
+   choices:[{t:"ne change pas l'ensemble des solutions", c:true},{t:"change les solutions", c:false},{t:"supprime des solutions", c:false},{t:"n'est valide que si $\\lambda=1$", c:false}],
+   exp:"Opérations élémentaires : système équivalent."},
+  {topic:'systemes', mode:'saisie', q:"Un système homogène $AX=0$ admet toujours au moins quelle solution ?",
+   answer:"la solution nulle $X=0$", accept:["0","x=0","la solution nulle","nulle","solution nulle","le vecteur nul"],
+   exp:"$X=0$ est toujours solution : un système homogène est toujours compatible."},
+  {topic:'systemes', mode:'flash', q:"Système compatible de rang $r$ à $n$ inconnues ($r<n$) : combien de solutions ?",
+   answer:"Une infinité, décrite par $n-r$ paramètres (inconnues libres).",
+   exp:"Espace affine de dimension $n-r$."},
+
+  /* ---- Espaces vectoriels & applications linéaires ---- */
+  {topic:'ev', mode:'qcm', q:"$p\\in\\mathcal{L}(E)$ est un PROJECTEUR $\\iff$ ?",
+   choices:[{t:"$p\\circ p=p$", c:true},{t:"$p\\circ p=\\mathrm{Id}$", c:false},{t:"$p^2=-\\mathrm{Id}$", c:false},{t:"$\\det p=1$", c:false}],
+   exp:"Endomorphisme idempotent : $p^2=p$."},
+  {topic:'ev', mode:'qcm', q:"$s\\in\\mathcal{L}(E)$ est une SYMÉTRIE $\\iff$ ?",
+   choices:[{t:"$s\\circ s=\\mathrm{Id}$", c:true},{t:"$s\\circ s=s$", c:false},{t:"$s=-\\mathrm{Id}$", c:false},{t:"$\\mathrm{tr}(s)=0$", c:false}],
+   exp:"Involution linéaire : $s^2=\\mathrm{Id}$."},
+  {topic:'ev', mode:'qcm', q:"Théorème du rang ($u\\in\\mathcal{L}(E,F)$, $E$ dim finie) :",
+   choices:[{t:"$\\dim E=\\dim\\ker u+\\mathrm{rg}(u)$", c:true},{t:"$\\dim F=\\dim\\ker u+\\mathrm{rg}(u)$", c:false},{t:"$\\mathrm{rg}(u)=\\dim\\ker u$", c:false},{t:"$\\dim E=\\dim F$", c:false}],
+   exp:"$\\dim\\ker u+\\dim\\mathrm{Im}\\,u=\\dim E$."},
+  {topic:'ev', mode:'qcm', q:"$u$ est INJECTIVE $\\iff$ ?",
+   choices:[{t:"$\\ker u=\\{0\\}$", c:true},{t:"$\\mathrm{Im}\\,u=F$", c:false},{t:"$\\ker u=E$", c:false},{t:"$\\mathrm{rg}(u)=0$", c:false}],
+   exp:"Noyau réduit au vecteur nul."},
+  {topic:'ev', mode:'qcm', q:"Une famille $(v_1,\\dots,v_p)$ est LIBRE $\\iff$ ?",
+   choices:[{t:"$\\sum\\lambda_i v_i=0\\Rightarrow\\forall i,\\ \\lambda_i=0$", c:true},{t:"elle engendre $E$", c:false},{t:"un $v_i$ est nul", c:false},{t:"$p=\\dim E$", c:false}],
+   exp:"Seule la combinaison triviale est nulle."},
+  {topic:'ev', mode:'qcm', q:"Somme directe $F\\oplus G$ $\\iff$ ?",
+   choices:[{t:"$F\\cap G=\\{0\\}$", c:true},{t:"$F\\cap G=F$", c:false},{t:"$F=G$", c:false},{t:"$F+G=E$", c:false}],
+   exp:"Intersection réduite à $\\{0\\}$ (décomposition unique)."},
+  {topic:'ev', mode:'trou', q:"Formule de Grassmann : $\\dim(F+G)=\\dim F+\\dim G-\\square$.",
+   answer:"$\\dim(F\\cap G)$", accept:["dim(f∩g)","dim(f inter g)","dim(fcapg)","dim f inter g"],
+   exp:"$\\dim(F+G)=\\dim F+\\dim G-\\dim(F\\cap G)$."},
+  {topic:'ev', mode:'flash', q:"Définition d'une BASE de $E$.",
+   answer:"Une famille à la fois libre et génératrice (tout vecteur s'écrit de façon unique).",
+   exp:"Libre + génératrice."},
+  {topic:'ev', mode:'flash', q:"Lien entre $\\mathrm{Im}(p)$ et $\\ker(p-\\mathrm{Id})$ pour un projecteur $p$.",
+   answer:"$\\mathrm{Im}(p)=\\ker(p-\\mathrm{Id})$ (vecteurs invariants), et $E=\\ker p\\oplus\\mathrm{Im}\\,p$.",
+   exp:"$x\\in\\mathrm{Im}(p)\\iff p(x)=x$."},
+
+  /* ---- Dénombrement ---- */
+  {topic:'denombrement', mode:'qcm', q:"Nombre de $p$-listes (ordonné, AVEC remise) d'un ensemble à $n$ éléments :",
+   choices:[{t:"$n^{p}$", c:true},{t:"$p^{n}$", c:false},{t:"$\\frac{n!}{(n-p)!}$", c:false},{t:"$\\binom{n}{p}$", c:false}],
+   exp:"$n$ choix par position : $n^p$."},
+  {topic:'denombrement', mode:'qcm', q:"Nombre d'arrangements (ordonné, SANS remise) de $p$ parmi $n$ :",
+   choices:[{t:"$\\frac{n!}{(n-p)!}$", c:true},{t:"$\\frac{n!}{p!(n-p)!}$", c:false},{t:"$n^p$", c:false},{t:"$p!$", c:false}],
+   exp:"$A_n^p=\\frac{n!}{(n-p)!}$.",
+   vig:"Ordonné = arrangement ; non ordonné = combinaison (le $p!$ fait la différence)."},
+  {topic:'denombrement', mode:'saisie', q:"Nombre de parties d'un ensemble à $n$ éléments ?",
+   answer:"$2^{n}$", accept:["2^n","2**n"],
+   exp:"$\\mathrm{Card}(\\mathcal P(E))=2^n$."},
+  {topic:'denombrement', mode:'saisie', q:"Nombre de permutations d'un ensemble à $n$ éléments ?",
+   answer:"$n!$", accept:["n!","factorielle n","n factorielle"],
+   exp:"Bijections de l'ensemble sur lui-même : $n!$."},
+  {topic:'denombrement', mode:'trou', q:"Combinaisons : $\\dbinom{n}{p}=\\dfrac{n!}{\\square}$.",
+   answer:"$p!\\,(n-p)!$", accept:["p!(n-p)!","p! (n-p)!","p!*(n-p)!"],
+   exp:"$\\binom{n}{p}=\\frac{n!}{p!(n-p)!}$."},
+  {topic:'denombrement', mode:'flash', q:"Formule du crible pour $\\mathrm{Card}(A\\cup B)$.",
+   answer:"$\\mathrm{Card}(A\\cup B)=\\mathrm{Card}\\,A+\\mathrm{Card}\\,B-\\mathrm{Card}(A\\cap B)$.",
+   exp:"On retranche l'intersection comptée deux fois."},
+
+  /* ---- Probabilités ---- */
+  {topic:'proba', mode:'qcm', q:"$P(A\\cup B)=$ ?",
+   choices:[{t:"$P(A)+P(B)-P(A\\cap B)$", c:true},{t:"$P(A)+P(B)$", c:false},{t:"$P(A)P(B)$", c:false},{t:"$P(A)+P(B)+P(A\\cap B)$", c:false}],
+   exp:"Formule du crible ; égalité simple seulement si $A$ et $B$ sont incompatibles ($P(A\\cap B)=0$)."},
+  {topic:'proba', mode:'qcm', q:"$A$ et $B$ sont INDÉPENDANTS si et seulement si :",
+   choices:[{t:"$P(A\\cap B)=P(A)\\,P(B)$", c:true},{t:"$A\\cap B=\\emptyset$", c:false},{t:"$P(A\\cup B)=P(A)+P(B)$", c:false},{t:"$P(A)=P(B)$", c:false}],
+   exp:"Indépendance probabiliste : $P(A\\cap B)=P(A)P(B)$.",
+   vig:"Indépendant $\\ne$ incompatible : deux événements incompatibles de probabilités non nulles sont dépendants."},
+  {topic:'proba', mode:'trou', q:"Probabilités composées : $P(A\\cap B)=P(A)\\times\\square$ (si $P(A)\\ne0$).",
+   answer:"$P_A(B)$", accept:["p_a(b)","pa(b)","p(b|a)","p(b sachant a)","p_a(b)"],
+   exp:"$P(A\\cap B)=P(A)\\,P_A(B)$. Le produit $P(A)P(B)$ n'est valable que si $A$ et $B$ sont indépendants."},
+  {topic:'proba', mode:'trou', q:"Formule de Bayes : $P_B(A)=\\dfrac{P(A)\\,P_A(B)}{\\square}$ (si $P(B)\\ne0$).",
+   answer:"$P(B)$", accept:["p(b)"],
+   exp:"$P_B(A)=\\dfrac{P(A\\cap B)}{P(B)}=\\dfrac{P(A)P_A(B)}{P(B)}$ : Bayes « renverse » le conditionnement."},
+  {topic:'proba', mode:'flash', q:"Formule des probabilités totales avec un système complet $(A_i)$.",
+   answer:"$P(B)=\\displaystyle\\sum_i P(A_i)\\,P_{A_i}(B)$.",
+   exp:"On décompose $B$ selon la partition $(A_i)$ : chaque terme est $P(A_i\\cap B)$."},
+  {topic:'proba', mode:'qcm', q:"Quelle condition pour que $P_B(A)$ soit définie ?",
+   choices:[{t:"$P(B)\\ne0$", c:true},{t:"$P(A)\\ne0$", c:false},{t:"$A$ et $B$ indépendants", c:false},{t:"$A\\subset B$", c:false}],
+   exp:"On divise par $P(B)$ : il faut $P(B)\\ne0$."},
+  {topic:'proba', mode:'qcm', q:"Si $A$ et $B$ sont incompatibles ($A\\cap B=\\emptyset$) et $P(A),P(B)>0$, alors :",
+   choices:[{t:"$A$ et $B$ sont dépendants", c:true},{t:"$A$ et $B$ sont indépendants", c:false},{t:"on ne peut rien dire", c:false},{t:"$P(A\\cup B)=P(A)\\,P(B)$", c:false}],
+   exp:"$P(A\\cap B)=0\\ne P(A)P(B)>0$ : les événements incompatibles de probabilités non nulles sont toujours dépendants.",
+   vig:"Piège classique : incompatible n'implique PAS indépendant, c'est même le contraire."},
+  {topic:'proba', mode:'flash', q:"Définition : probabilité conditionnelle $P_B(A)$.",
+   answer:"$P_B(A)=\\dfrac{P(A\\cap B)}{P(B)}$ (définie ssi $P(B)\\ne0$).",
+   exp:"C'est la probabilité de $A$ sachant que $B$ est réalisé."},
+  {topic:'proba', mode:'saisie', q:"Si $(A_i)$ est une partition de $\\Omega$ et tous les $A_i$ ont probabilité nulle sauf un, quelle est la valeur de $\\sum_i P(A_i)$ ?",
+   answer:"$1$", accept:["1"],
+   exp:"Tout système complet d'événements vérifie $\\sum_i P(A_i)=1$ (partition de l'univers)."},
+
+  /* ==================== GÉOMÉTRIE ==================== */
+
+  /* ---- Trigonométrie ---- */
+  {topic:'trigo', mode:'trou', q:"Identité fondamentale : $\\cos^2 x+\\sin^2 x=\\square$.",
+   answer:"$1$", accept:["1"],
+   exp:"Conséquence de $|e^{ix}|=1$."},
+  {topic:'trigo', mode:'qcm', q:"$\\cos(a+b)=$ ?",
+   choices:[{t:"$\\cos a\\cos b-\\sin a\\sin b$", c:true},{t:"$\\cos a\\cos b+\\sin a\\sin b$", c:false},{t:"$\\cos a\\sin b-\\sin a\\cos b$", c:false},{t:"$\\cos a+\\cos b$", c:false}],
+   exp:"Signe $-$ pour le cosinus ; la 2e donne $\\cos(a-b)$.",
+   vig:"$\\cos(a+b)$ a un $-$, $\\cos(a-b)$ a un $+$ ; inverse pour le sinus."},
+  {topic:'trigo', mode:'saisie', q:"$\\cos\\!\\left(\\dfrac{\\pi}{6}\\right)=$ ?",
+   answer:"$\\dfrac{\\sqrt3}{2}$", accept:["sqrt(3)/2","√3/2","racine(3)/2","\\frac{\\sqrt3}{2}"],
+   exp:"$\\cos\\frac\\pi6=\\frac{\\sqrt3}2$ (et $\\sin\\frac\\pi6=\\frac12$).",
+   vig:"Ne confonds pas $\\frac\\pi6$ et $\\frac\\pi3$ : cos et sin sont échangés."},
+  {topic:'trigo', mode:'saisie', q:"Pour $x\\in[-1,1]$, $\\cos(\\arcsin x)=$ ?",
+   answer:"$\\sqrt{1-x^{2}}$", accept:["sqrt(1-x^2)","√(1-x^2)","racine(1-x^2)"],
+   exp:"$\\theta=\\arcsin x\\in[-\\frac\\pi2,\\frac\\pi2]\\Rightarrow\\cos\\theta\\ge0$."},
+  {topic:'trigo', mode:'trou', q:"$\\sin(2a)=\\square$.",
+   answer:"$2\\sin a\\cos a$", accept:["2sinacosa","2 sin a cos a","2*sin(a)*cos(a)"],
+   exp:"Formule de duplication."},
+  {topic:'trigo', mode:'flash', q:"Formule d'Euler pour $\\cos\\theta$.",
+   answer:"$\\cos\\theta=\\dfrac{e^{i\\theta}+e^{-i\\theta}}{2}$.",
+   exp:"Et $\\sin\\theta=\\frac{e^{i\\theta}-e^{-i\\theta}}{2i}$."},
+
+  /* ---- Géométrie du plan ---- */
+  {topic:'geoplan', mode:'qcm', q:"Produit scalaire de deux vecteurs :",
+   choices:[{t:"$\\vec u\\cdot\\vec v=\\lVert\\vec u\\rVert\\,\\lVert\\vec v\\rVert\\cos\\theta$", c:true},{t:"$=\\lVert\\vec u\\rVert\\,\\lVert\\vec v\\rVert\\sin\\theta$", c:false},{t:"$=\\lVert\\vec u\\rVert+\\lVert\\vec v\\rVert$", c:false},{t:"est un vecteur", c:false}],
+   exp:"Le produit scalaire est un réel ($\\cos$)."},
+  {topic:'geoplan', mode:'qcm', q:"Pour $\\vec u,\\vec v$ non nuls, $\\vec u\\cdot\\vec v=0$ signifie :",
+   choices:[{t:"orthogonaux", c:true},{t:"colinéaires", c:false},{t:"$\\vec u=\\vec v$", c:false},{t:"$\\vec u=\\vec0$", c:false}],
+   exp:"$\\cos\\theta=0\\Rightarrow$ orthogonalité."},
+  {topic:'geoplan', mode:'saisie', q:"Al-Kashi : $a^2=b^2+c^2-\\square$ (côté $a$ opposé à l'angle $A$).",
+   answer:"$2bc\\cos A$", accept:["2bccos(a)","2bccosa","2*b*c*cos(a)","2 bc cos a"],
+   exp:"Généralise Pythagore ; si $A=\\frac\\pi2$, terme nul."},
+  {topic:'geoplan', mode:'flash', q:"Comment savoir si trois points $A,B,C$ sont alignés (vecteurs) ?",
+   answer:"$\\overrightarrow{AB}$ et $\\overrightarrow{AC}$ colinéaires (déterminant nul).",
+   exp:"Alignement $\\iff$ colinéarité des vecteurs."},
+
+  /* ---- Géométrie de l'espace ---- */
+  {topic:'geoespace', mode:'qcm', q:"$\\lVert\\vec u\\wedge\\vec v\\rVert$ est égale :",
+   choices:[{t:"à l'aire du parallélogramme", c:true},{t:"au produit scalaire", c:false},{t:"au volume", c:false},{t:"à $0$", c:false}],
+   exp:"$\\lVert\\vec u\\wedge\\vec v\\rVert=\\lVert\\vec u\\rVert\\lVert\\vec v\\rVert|\\sin\\theta|$."},
+  {topic:'geoespace', mode:'qcm', q:"Le produit vectoriel vérifie :",
+   choices:[{t:"$\\vec u\\wedge\\vec v=-\\vec v\\wedge\\vec u$", c:true},{t:"$\\vec u\\wedge\\vec v=\\vec v\\wedge\\vec u$", c:false},{t:"$\\vec u\\wedge\\vec u=\\vec u$", c:false},{t:"est un scalaire", c:false}],
+   exp:"Antisymétrie ; $\\vec u\\wedge\\vec u=\\vec0$.",
+   vig:"Le produit vectoriel n'est PAS commutatif."},
+  {topic:'geoespace', mode:'qcm', q:"$\\vec w\\in\\mathrm{Vect}(\\vec u,\\vec v)$ ($\\vec u,\\vec v$ non colinéaires) $\\iff$ :",
+   choices:[{t:"$\\det(\\vec u,\\vec v,\\vec w)=0$ (produit mixte)", c:true},{t:"$\\vec w\\cdot\\vec u=0$", c:false},{t:"$\\vec w=\\vec u+\\vec v$", c:false},{t:"$\\lVert\\vec w\\rVert=1$", c:false}],
+   exp:"Coplanarité $\\iff$ produit mixte nul."},
+  {topic:'geoespace', mode:'flash', q:"Que vaut $\\vec u\\cdot(\\vec u\\wedge\\vec v)$ ?",
+   answer:"$0$ : $\\vec u\\wedge\\vec v$ est orthogonal à $\\vec u$ (et à $\\vec v$).",
+   exp:"Le produit vectoriel est orthogonal aux deux facteurs."},
+
+  /* ============ AJOUTS (paquets Anki) ============ */
+
+  /* ---- Suites : définitions & explicites ---- */
+  {topic:'suites', mode:'flash', q:"Définition : $(u_n)$ est minorée.",
+   answer:"$\\exists m\\in\\mathbb{R},\\ \\forall n,\\ u_n\\ge m$.",
+   exp:"Un même réel $m$ minore tous les termes."},
+  {topic:'suites', mode:'flash', q:"Définition : $(u_n)$ est bornée.",
+   answer:"$(u_n)$ est à la fois majorée et minorée, i.e. $\\exists M,\\ \\forall n,\\ |u_n|\\le M$.",
+   exp:"Bornée $\\iff$ majorée et minorée."},
+  {topic:'suites', mode:'trou', q:"Suite géométrique de raison $q$ : $u_n = u_0\\,\\square$.",
+   answer:"$q^{\\,n}$", accept:["q^n","q**n"],
+   exp:"$u_n=u_0 q^n$."},
+  {topic:'suites', mode:'qcm', q:"Méthode pour une suite arithmético-géométrique $u_{n+1}=au_n+b$ ($a\\ne1$) :",
+   choices:[{t:"chercher le point fixe $\\ell=a\\ell+b$ puis poser $v_n=u_n-\\ell$ (géométrique)", c:true},{t:"poser $v_n=u_n+n$", c:false},{t:"sommer terme à terme", c:false},{t:"dériver la relation", c:false}],
+   exp:"$v_n=u_n-\\ell$ avec $\\ell=\\frac{b}{1-a}$ est géométrique de raison $a$."},
+  {topic:'suites', mode:'flash', q:"Définition : $\\displaystyle\\lim_{n\\to+\\infty}u_n=\\ell$.",
+   answer:"$\\forall\\varepsilon>0,\\ \\exists N,\\ \\forall n\\ge N,\\ |u_n-\\ell|\\le\\varepsilon$.",
+   exp:"À partir d'un certain rang, tous les termes sont dans $[\\ell-\\varepsilon,\\ell+\\varepsilon]$."},
+  {topic:'suites', mode:'flash', q:"$u_n=o(v_n)$ : que signifie cette notation ?",
+   answer:"$u_n=\\varepsilon_n v_n$ avec $\\varepsilon_n\\to0$ ; si $v_n\\ne0$, $\\frac{u_n}{v_n}\\to0$.",
+   exp:"$u_n$ est négligeable devant $v_n$."},
+  {topic:'suites', mode:'flash', q:"$u_n\\sim v_n$ : que signifie cette notation ?",
+   answer:"$\\frac{u_n}{v_n}\\to 1$ (pour $v_n\\ne0$), i.e. $u_n=v_n+o(v_n)$.",
+   exp:"Suites équivalentes."},
+
+  /* ---- Limites & continuité : équivalents usuels, continuité ---- */
+  {topic:'limites', mode:'flash', q:"Définition : $f$ continue en $a$.",
+   answer:"$f$ est définie en $a$ et $\\displaystyle\\lim_{x\\to a}f(x)=f(a)$.",
+   exp:"La limite existe et vaut la valeur de $f$ au point."},
+  {topic:'limites', mode:'trou', q:"Équivalent en $0$ : $e^{x}-1\\sim\\square$.",
+   answer:"$x$", accept:["x"],
+   exp:"$e^x-1\\sim x$ en $0$ (dérivée de $\\exp$ en $0$)."},
+  {topic:'limites', mode:'trou', q:"Équivalent en $0$ : $\\ln(1+x)\\sim\\square$.",
+   answer:"$x$", accept:["x"],
+   exp:"$\\ln(1+x)\\sim x$ en $0$."},
+  {topic:'limites', mode:'trou', q:"Équivalent en $0$ : $1-\\cos x\\sim\\square$.",
+   answer:"$\\dfrac{x^{2}}{2}$", accept:["x^2/2","x²/2"],
+   exp:"$1-\\cos x\\sim\\frac{x^2}{2}$ en $0$.",
+   vig:"$\\cos x-1\\sim -\\frac{x^2}{2}$ : attention au signe."},
+  {topic:'limites', mode:'trou', q:"Équivalent en $0$ : $(1+x)^{\\alpha}-1\\sim\\square$.",
+   answer:"$\\alpha x$", accept:["alphax","alpha x","αx","α x"],
+   exp:"$(1+x)^\\alpha-1\\sim\\alpha x$ en $0$."},
+  {topic:'limites', mode:'qcm', q:"Pour montrer que $f$ est prolongeable par continuité en $a$ (où $f$ n'est pas définie), il faut :",
+   choices:[{t:"que $f$ admette une limite finie en $a$", c:true},{t:"que $f$ soit bornée", c:false},{t:"que $f$ soit dérivable en $a$", c:false},{t:"que $f(a)=0$", c:false}],
+   exp:"On pose alors $f(a):=\\lim_{x\\to a}f(x)$ (finie)."},
+  {topic:'limites', mode:'flash', q:"Donne 5 exemples de fonctions bornées qui n'atteignent pas leurs bornes.",
+   answer:"1. $x\\mapsto\\arctan x$ sur $\\mathbb{R}$ : valeurs dans $]-\\frac\\pi2,\\frac\\pi2[$, bornes jamais atteintes.\\n2. $x\\mapsto\\frac{x}{1+|x|}$ sur $\\mathbb{R}$ : valeurs dans $]-1,1[$.\\n3. $x\\mapsto e^{-x^2}$ sur $\\mathbb{R}$ : tend vers $0$ sans jamais y être.\\n4. $x\\mapsto\\sin x$ sur $]0,2\\pi[$ (ouvert) : les extrema $\\pm1$ ne sont jamais atteints.\\n5. $x\\mapsto\\frac{1}{1+e^{-x}}$ sur $\\mathbb{R}$ : valeurs dans $]0,1[$.",
+   exp:"Idée intuitive : sur un intervalle fermé borné $[a,b]$, une fonction continue est «coincée» et finit toujours par atteindre son max et son min. Sur $\\mathbb{R}$ ou un intervalle ouvert, la fonction peut «s'approcher indéfiniment» d'une valeur sans jamais la toucher — comme $\\arctan$ qui s'approche de $\\frac\\pi2$ sans l'atteindre.",
+   vig:"Ce phénomène n'arrive pas sur un segment fermé avec une fonction continue. Dès qu'on ouvre les bords ou qu'on travaille sur $\\mathbb{R}$, plus rien ne le garantit."},
+
+  /* ---- TVI & bijection (vers limites) ---- */
+  {topic:'limites', mode:'flash', q:"Énonce le théorème des valeurs intermédiaires.",
+   answer:"Si $f$ est continue sur $[a,b]$, alors pour tout $y$ entre $f(a)$ et $f(b)$, il existe $c\\in[a,b]$ tel que $f(c)=y$.",
+   exp:"Continuité $\\Rightarrow$ image d'un intervalle est un intervalle."},
+  {topic:'limites', mode:'flash', q:"Énonce le théorème de la bijection.",
+   answer:"Si $f$ est continue et strictement monotone sur $[a,b]$, elle réalise une bijection de $[a,b]$ sur $[f(a),f(b)]$ (ou l'inverse).",
+   exp:"Continuité + stricte monotonie $\\Rightarrow$ bijection, et la réciproque est continue de même monotonie."},
+
+  /* ---- Dérivation : arc, Taylor, Leibniz, IAF ---- */
+  {topic:'derivation', mode:'trou', q:"$(\\arctan x)' = \\square$.",
+   answer:"$\\dfrac{1}{1+x^{2}}$", accept:["1/(1+x^2)","1/(1+x²)"],
+   exp:"$(\\arctan)'(x)=\\frac{1}{1+x^2}$, sur $\\mathbb{R}$."},
+  {topic:'derivation', mode:'trou', q:"$(\\arcsin x)' = \\square$ (sur $]-1,1[$).",
+   answer:"$\\dfrac{1}{\\sqrt{1-x^{2}}}$", accept:["1/sqrt(1-x^2)","1/√(1-x^2)","1/racine(1-x^2)"],
+   exp:"$(\\arcsin)'(x)=\\frac{1}{\\sqrt{1-x^2}}$."},
+  {topic:'derivation', mode:'qcm', q:"Dérivée de $\\arccos$ sur $]-1,1[$ :",
+   choices:[{t:"$-\\dfrac{1}{\\sqrt{1-x^2}}$", c:true},{t:"$\\dfrac{1}{\\sqrt{1-x^2}}$", c:false},{t:"$\\dfrac{1}{1+x^2}$", c:false},{t:"$-\\dfrac{1}{1+x^2}$", c:false}],
+   exp:"$(\\arccos)'=-\\frac{1}{\\sqrt{1-x^2}}$ : opposée de $(\\arcsin)'$."},
+  {topic:'derivation', mode:'flash', q:"Formule de Taylor-Young à l'ordre $n$ en $a$.",
+   answer:"$f(x)=\\displaystyle\\sum_{k=0}^{n}\\frac{f^{(k)}(a)}{k!}(x-a)^k+o\\big((x-a)^n\\big)$.",
+   exp:"DL à l'ordre $n$ pour $f$ de classe $\\mathcal{C}^n$ au voisinage de $a$."},
+  {topic:'derivation', mode:'flash', q:"Inégalité des accroissements finis.",
+   answer:"Si $|f'|\\le M$ sur $I$, alors $|f(b)-f(a)|\\le M\\,|b-a|$ pour $a,b\\in I$.",
+   exp:"Contrôle de la variation par la dérivée."},
+  {topic:'derivation', mode:'flash', q:"Formule de Leibniz : $(uv)^{(n)}=$ ?",
+   answer:"$\\displaystyle\\sum_{k=0}^{n}\\binom{n}{k}u^{(k)}v^{(n-k)}$.",
+   exp:"Analogue du binôme pour la dérivée $n$-ième d'un produit."},
+  {topic:'derivation', mode:'flash', q:"Définition : $f$ de classe $\\mathcal{C}^k$ sur $I$.",
+   answer:"$f$ est $k$ fois dérivable sur $I$ et $f^{(k)}$ est continue sur $I$.",
+   exp:"$\\mathcal{C}^\\infty$ : de classe $\\mathcal{C}^k$ pour tout $k$."},
+  {topic:'derivation', mode:'trou', q:"Équation de la tangente à $\\mathcal{C}_f$ au point d'abscisse $a$ : $y=\\square$.",
+   answer:"$f(a)+f'(a)(x-a)$", accept:["f(a)+f'(a)(x-a)","f(a)+f’(a)(x-a)"],
+   exp:"Tangente : $y=f'(a)(x-a)+f(a)$."},
+  {topic:'derivation', mode:'flash', q:"Dérivée d'une composée $f\\circ u$ ?",
+   answer:"$(f\\circ u)'=u'\\times(f'\\circ u)$, i.e. $\\frac{d}{dx}f(u(x))=u'(x)\\,f'(u(x))$.",
+   exp:"Règle de la chaîne."},
+
+  /* ---- Intégration : primitives, FTC, IPP, changement de variable ---- */
+  {topic:'integration', mode:'trou', q:"Primitive de $u'u^{n}$ ($n\\ne -1$) : $\\square$.",
+   answer:"$\\dfrac{u^{\\,n+1}}{n+1}$", accept:["u^(n+1)/(n+1)","u^{n+1}/(n+1)"],
+   exp:"$\\int u'u^n=\\frac{u^{n+1}}{n+1}$."},
+  {topic:'integration', mode:'qcm', q:"$f$ continue, $F(x)=\\displaystyle\\int_a^x f(t)\\,dt$. Alors :",
+   choices:[{t:"$F$ est dérivable et $F'=f$", c:true},{t:"$F'=f'$", c:false},{t:"$F$ est constante", c:false},{t:"$F(x)=f(x)$", c:false}],
+   exp:"Théorème fondamental : $F'=f$, donc le signe de $f$ donne les variations de $F$."},
+  {topic:'integration', mode:'qcm', q:"Croissance de l'intégrale : si $f\\le g$ sur $[a,b]$ ($a\\le b$), alors :",
+   choices:[{t:"$\\int_a^b f\\le\\int_a^b g$", c:true},{t:"$\\int_a^b f\\ge\\int_a^b g$", c:false},{t:"$\\int_a^b f=\\int_a^b g$", c:false},{t:"rien", c:false}],
+   exp:"L'intégrale conserve l'ordre (sur $[a,b]$ avec $a\\le b$)."},
+  {topic:'integration', mode:'qcm', q:"Changement de variable $t=x^2$ : $dt=$ ?",
+   choices:[{t:"$2x\\,dx$", c:true},{t:"$x\\,dx$", c:false},{t:"$2\\,dx$", c:false},{t:"$x^2\\,dx$", c:false}],
+   exp:"$dt=2x\\,dx$ ; il faut aussi changer les bornes et tout exprimer dans la nouvelle variable.",
+   vig:"Lors d'un changement de variable : changer l'intégrande, le $dt$ ET les bornes."},
+  {topic:'integration', mode:'flash', q:"Condition de la formule d'intégration par parties ?",
+   answer:"$u$ et $v$ de classe $\\mathcal{C}^1$ sur $[a,b]$ : $\\int_a^b u'v=[uv]_a^b-\\int_a^b uv'$.",
+   exp:"Régularité $\\mathcal{C}^1$ requise pour les deux fonctions."},
+
+  /* ---- DL : séries complètes, Taylor-Young, applications ---- */
+  {topic:'dl', mode:'flash', q:"DL en $0$ de $\\sin x$ (terme général à l'ordre $2n+1$).",
+   answer:"$\\sin x=\\displaystyle\\sum_{k=0}^{n}\\frac{(-1)^k x^{2k+1}}{(2k+1)!}+o(x^{2n+2})$.",
+   exp:"Puissances impaires, signes alternés, factorielles impaires."},
+  {topic:'dl', mode:'flash', q:"DL en $0$ de $\\cos x$ (terme général à l'ordre $2n$).",
+   answer:"$\\cos x=\\displaystyle\\sum_{k=0}^{n}\\frac{(-1)^k x^{2k}}{(2k)!}+o(x^{2n+1})$.",
+   exp:"Puissances paires, signes alternés, factorielles paires."},
+  {topic:'dl', mode:'trou', q:"DL en $0$ : $\\dfrac{1}{1+x}=1-x+x^{2}-\\square+o(x^3)$.",
+   answer:"$x^{3}$", accept:["x^3","x³"],
+   exp:"$\\frac{1}{1+x}=\\sum(-1)^k x^k$ : signes alternés."},
+  {topic:'dl', mode:'qcm', q:"Un DL de $f$ en $0$ donne $f(x)=a_0+a_1x+o(x)$ alors que $f$ n'est pas définie en $0$. On en déduit :",
+   choices:[{t:"$f$ se prolonge par continuité en $0$ avec $f(0)=a_0$", c:true},{t:"$f$ n'est pas prolongeable", c:false},{t:"$f$ est dérivable en $0$ et $f'(0)=a_0$", c:false},{t:"$a_0=0$", c:false}],
+   exp:"$f(x)\\to a_0$ : on prolonge par $f(0)=a_0$ (et alors $f'(0)=a_1$)."},
+  {topic:'dl', mode:'qcm', q:"DL $f(x)=a_0+a_1x+a_p x^p+o(x^p)$ avec $a_p\\ne0$ (premier terme non nul après $a_1$). Position locale de $\\mathcal{C}_f$ / sa tangente :",
+   choices:[{t:"donnée par le signe de $a_p x^p$ près de $0$", c:true},{t:"toujours au-dessus", c:false},{t:"toujours en dessous", c:false},{t:"indéterminable", c:false}],
+   exp:"La tangente est $y=a_0+a_1x$ ; le signe de $a_p x^p$ donne la position locale de la courbe par rapport à elle."},
+  {topic:'dl', mode:'flash', q:"À partir d'un DL, comment obtenir un équivalent simple de $f$ en $a$ ?",
+   answer:"On garde le premier terme non nul du DL : c'est un équivalent de $f$.",
+   exp:"Ex. $\\sin x=x-\\frac{x^3}6+\\dots\\Rightarrow \\sin x\\sim x$ en $0$."},
+
+  /* ---- Complexes : module, conjugué, valeurs, racines ---- */
+  {topic:'complexes', mode:'trou', q:"Module de $z=a+bi$ : $|z|=\\square$.",
+   answer:"$\\sqrt{a^{2}+b^{2}}$", accept:["sqrt(a^2+b^2)","√(a^2+b^2)","racine(a^2+b^2)"],
+   exp:"$|z|=\\sqrt{a^2+b^2}$."},
+  {topic:'complexes', mode:'saisie', q:"Conjugué de $z=a+bi$ ?",
+   answer:"$a-bi$", accept:["a-bi","a-ib"],
+   exp:"$\\bar z=a-bi$."},
+  {topic:'complexes', mode:'saisie', q:"$e^{i\\pi}=$ ?",
+   answer:"$-1$", accept:["-1"],
+   exp:"Identité d'Euler : $e^{i\\pi}=-1$."},
+  {topic:'complexes', mode:'saisie', q:"$e^{i\\pi/2}=$ ?",
+   answer:"$i$", accept:["i"],
+   exp:"$e^{i\\pi/2}=\\cos\\frac\\pi2+i\\sin\\frac\\pi2=i$."},
+  {topic:'complexes', mode:'saisie', q:"Somme des racines $n$-ièmes de l'unité $\\displaystyle\\sum_{k=0}^{n-1}e^{2ik\\pi/n}$ (pour $n\\ge2$) ?",
+   answer:"$0$", accept:["0"],
+   exp:"Somme géométrique de raison $e^{2i\\pi/n}\\ne1$ : elle vaut $0$ pour $n\\ge2$."},
+  {topic:'complexes', mode:'trou', q:"Forme exponentielle de $z=1+i$ : $z=\\sqrt{2}\\,e^{\\,i\\,\\square}$.",
+   answer:"$\\dfrac{\\pi}{4}$", accept:["pi/4","π/4"],
+   exp:"$|1+i|=\\sqrt2$, argument $\\frac\\pi4$."},
+
+  /* ---- Polynômes / second degré ---- */
+  {topic:'polynomes', mode:'saisie', q:"Discriminant de $ax^2+bx+c=0$ ?",
+   answer:"$\\Delta=b^{2}-4ac$", accept:["b^2-4ac","b²-4ac","delta=b^2-4ac"],
+   exp:"$\\Delta=b^2-4ac$."},
+  {topic:'polynomes', mode:'qcm', q:"Si $\\Delta=0$, l'équation $ax^2+bx+c=0$ admet :",
+   choices:[{t:"une racine double $x=-\\dfrac{b}{2a}$", c:true},{t:"deux racines distinctes", c:false},{t:"aucune racine réelle", c:false},{t:"une infinité", c:false}],
+   exp:"Racine double $-\\frac{b}{2a}$."},
+  {topic:'polynomes', mode:'qcm', q:"Signe de $ax^2+bx+c$ avec $a>0$ et $\\Delta>0$ (racines $x_1<x_2$) :",
+   choices:[{t:"$>0$ à l'extérieur de $[x_1,x_2]$, $<0$ entre les racines", c:true},{t:"$>0$ partout", c:false},{t:"$<0$ partout", c:false},{t:"$<0$ à l'extérieur, $>0$ entre", c:false}],
+   exp:"Du signe de $a$ à l'extérieur des racines (« signe de $a$ partout sauf entre »).",
+   vig:"Règle : signe de $a$ à l'extérieur des racines, signe de $-a$ entre les racines."},
+  {topic:'polynomes', mode:'qcm', q:"Signe de $ax^2+bx+c$ avec $\\Delta<0$ :",
+   choices:[{t:"du signe de $a$ sur tout $\\mathbb{R}$", c:true},{t:"du signe de $-a$", c:false},{t:"change de signe une fois", c:false},{t:"s'annule en un point", c:false}],
+   exp:"Pas de racine réelle : le trinôme garde le signe de $a$ partout."},
+  {topic:'polynomes', mode:'flash', q:"Deux nombres de somme $S$ et produit $P$ : de quelle équation sont-ils racines ?",
+   answer:"$x^2-Sx+P=0$.",
+   exp:"Somme et produit des racines : $x_1+x_2=S$, $x_1x_2=P$."},
+
+  /* ---- Trigonométrie / fonctions réciproques ---- */
+  {topic:'trigo', mode:'saisie', q:"$\\arccos\\!\\left(\\dfrac{1}{2}\\right)=$ ?",
+   answer:"$\\dfrac{\\pi}{3}$", accept:["pi/3","π/3"],
+   exp:"$\\cos\\frac\\pi3=\\frac12$ et $\\frac\\pi3\\in[0,\\pi]$."},
+  {topic:'trigo', mode:'saisie', q:"$\\arcsin\\!\\left(-\\dfrac{1}{2}\\right)=$ ?",
+   answer:"$-\\dfrac{\\pi}{6}$", accept:["-pi/6","-π/6"],
+   exp:"$\\sin(-\\frac\\pi6)=-\\frac12$ et $-\\frac\\pi6\\in[-\\frac\\pi2,\\frac\\pi2]$."},
+  {topic:'trigo', mode:'qcm', q:"Ensemble de définition et image de $\\arcsin$ :",
+   choices:[{t:"$[-1,1]\\to[-\\frac{\\pi}{2},\\frac{\\pi}{2}]$", c:true},{t:"$\\mathbb{R}\\to[-\\frac{\\pi}{2},\\frac{\\pi}{2}]$", c:false},{t:"$[-1,1]\\to[0,\\pi]$", c:false},{t:"$\\mathbb{R}\\to\\mathbb{R}$", c:false}],
+   exp:"$\\arcsin:[-1,1]\\to[-\\frac\\pi2,\\frac\\pi2]$.",
+   vig:"$\\arccos:[-1,1]\\to[0,\\pi]$ ; ne pas confondre les images."},
+  {topic:'trigo', mode:'qcm', q:"$\\arcsin(\\sin x)=x$ est vraie pour :",
+   choices:[{t:"$x\\in[-\\frac{\\pi}{2},\\frac{\\pi}{2}]$", c:true},{t:"tout $x\\in\\mathbb{R}$", c:false},{t:"$x\\in[0,\\pi]$", c:false},{t:"$x\\in[-1,1]$", c:false}],
+   exp:"L'identité ne vaut que sur l'image de $\\arcsin$.",
+   vig:"$\\sin(\\arcsin x)=x$ sur $[-1,1]$, mais $\\arcsin(\\sin x)=x$ seulement sur $[-\\frac\\pi2,\\frac\\pi2]$."},
+  {topic:'trigo', mode:'saisie', q:"Pour $x\\in[-1,1]$, $\\sin(\\arccos x)=$ ?",
+   answer:"$\\sqrt{1-x^{2}}$", accept:["sqrt(1-x^2)","√(1-x^2)","racine(1-x^2)"],
+   exp:"$\\theta=\\arccos x\\in[0,\\pi]\\Rightarrow\\sin\\theta\\ge0$."},
+  {topic:'trigo', mode:'qcm', q:"$\\tan(\\arctan x)=x$ est vraie pour :",
+   choices:[{t:"tout $x\\in\\mathbb{R}$", c:true},{t:"$x\\in[-1,1]$", c:false},{t:"$x\\in[-\\frac{\\pi}{2},\\frac{\\pi}{2}]$", c:false},{t:"$x>0$", c:false}],
+   exp:"$\\arctan:\\mathbb{R}\\to]-\\frac\\pi2,\\frac\\pi2[$ et $\\tan\\circ\\arctan=\\mathrm{id}_{\\mathbb{R}}$."},
+
+  /* ==================== AJOUTS — chapitres à étoffer ==================== */
+
+  /* ---- Calcul matriciel (+) ---- */
+  {topic:'matrices', mode:'flash', q:"Que vaut $\\mathrm{tr}(AB)$ comparé à $\\mathrm{tr}(BA)$ ?",
+   answer:"$\\mathrm{tr}(AB)=\\mathrm{tr}(BA)$.",
+   exp:"La trace est invariante par permutation circulaire d'un produit."},
+  {topic:'matrices', mode:'qcm', q:"Le produit matriciel est-il commutatif ?",
+   choices:[{t:"Non en général ($AB\\\\ne BA$)", c:true},{t:"Oui toujours", c:false},{t:"Oui si même taille", c:false},{t:"Oui si carrées", c:false}],
+   exp:"Même quand les deux produits existent, en général $AB\\\\ne BA$."},
+  {topic:'matrices', mode:'qcm', q:"$AB=0$ implique-t-il $A=0$ ou $B=0$ ?",
+   choices:[{t:"Non : $\\\\mathcal{M}_n(\\\\mathbb{K})$ n'est pas intègre", c:true},{t:"Oui toujours", c:false},{t:"Oui si $A$ inversible seulement", c:false},{t:"Oui en dimension 2", c:false}],
+   exp:"Le produit matriciel n'est pas intègre : un produit nul n'impose pas un facteur nul.",
+   vig:"Si $A$ est inversible, alors $AB=0\\\\Rightarrow B=0$ ; c'est le seul cas favorable."},
+  {topic:'matrices', mode:'qcm', q:"$A\\\\in\\\\mathcal{M}_n(\\\\mathbb{K})$ est inversible $\\\\iff$ son rang vaut :",
+   choices:[{t:"$n$", c:true},{t:"$0$", c:false},{t:"$n-1$", c:false},{t:"$1$", c:false}],
+   exp:"Inversible $\\\\iff$ rang $n$ $\\\\iff$ $n$ pivots $\\\\iff$ équivalente à $I_n$."},
+  {topic:'matrices', mode:'trou', q:"Pour $A=\\\\begin{pmatrix}a&b\\\\\\\\c&d\\\\end{pmatrix}$, $\\\\det A=\\\\;?$",
+   answer:"ad-bc", accept:["ad-bc","ad - bc","a d - b c"],
+   exp:"Déterminant d'une matrice $2\\\\times2$ : $ad-bc$."},
+  {topic:'matrices', mode:'saisie', q:"Inverse de la matrice diagonale $\\\\mathrm{diag}(2,3)$ ? (donne la diagonale)",
+   answer:"diag(1/2,1/3)", accept:["diag(1/2,1/3)","(1/2,1/3)","1/2,1/3","diag(1/2 ; 1/3)"],
+   exp:"L'inverse d'une diagonale s'obtient en inversant chaque coefficient diagonal."},
+  {topic:'matrices', mode:'flash', q:"Méthode de la matrice augmentée $(A\\\\,|\\\\,I_n)$ : qu'obtient-on après réduction de Gauss-Jordan ?",
+   answer:"$(I_n\\\\,|\\\\,A^{-1})$ — la partie droite donne $A^{-1}$ (si $A$ inversible).",
+   exp:"On applique les mêmes opérations élémentaires à $A$ et à $I_n$ ; quand $A$ devient $I_n$, $I_n$ est devenue $A^{-1}$."},
+  {topic:'matrices', mode:'qcm', q:"$(A^{\\\\mathsf{T}})^{\\\\mathsf{T}}=\\\\;?$",
+   choices:[{t:"$A$", c:true},{t:"$A^{-1}$", c:false},{t:"$A^{\\\\mathsf{T}}$", c:false},{t:"$-A$", c:false}],
+   exp:"La transposition est involutive."},
+  {topic:'matrices', mode:'flash', q:"Formule du binôme pour deux matrices $A,B$ qui commutent ($AB=BA$) : $(A+B)^n=\\\\;?$",
+   answer:"$\\\\displaystyle\\\\sum_{k=0}^{n}\\\\binom{n}{k}A^k B^{\\\\,n-k}$.",
+   exp:"La formule du binôme n'est valable que si $A$ et $B$ commutent.",
+   vig:"Sans commutation, la formule est fausse ; développer $(A+B)^2=A^2+AB+BA+B^2$."},
+  {topic:'matrices', mode:'qcm', q:"En TSI1, la comatrice est :",
+   choices:[{t:"hors programme", c:true},{t:"au programme", c:false},{t:"l'inverse", c:false},{t:"la transposée", c:false}],
+   exp:"La notion de comatrice est explicitement hors programme : on inverse par le pivot de Gauss."},
+  {topic:'matrices', mode:'saisie', q:"Pour $A\\\\in\\\\mathcal{M}_2(\\\\mathbb{R})$, $\\\\det(2A)$ en fonction de $\\\\det A$ ?",
+   answer:"4 det A", accept:["4det a","4 det a","4·det a","4*det a","4 deta"],
+   exp:"$\\\\det(\\\\lambda A)=\\\\lambda^{n}\\\\det A$ ; ici $n=2$ donc $\\\\det(2A)=4\\\\det A$."},
+
+  /* ---- Systèmes linéaires (+) ---- */
+  {topic:'systemes', mode:'qcm', q:"Un système linéaire homogène $AX=0$ admet :",
+   choices:[{t:"toujours au moins la solution nulle", c:true},{t:"jamais de solution", c:false},{t:"toujours une infinité", c:false},{t:"toujours une unique solution", c:false}],
+   exp:"$X=0$ est toujours solution d'un système homogène."},
+  {topic:'systemes', mode:'qcm', q:"Sur $\\\\mathbb{R}$, le nombre de solutions d'un système linéaire est :",
+   choices:[{t:"$0$, $1$, ou une infinité", c:true},{t:"toujours $1$", c:false},{t:"au plus $2$", c:false},{t:"toujours infini", c:false}],
+   exp:"Trois cas seulement : aucune solution, solution unique, ou une infinité."},
+  {topic:'systemes', mode:'flash', q:"Quelles sont les opérations élémentaires licites sur les lignes (méthode du pivot) ?",
+   answer:"Échanger deux lignes ; multiplier une ligne par un scalaire non nul ; ajouter à une ligne un multiple d'une autre.",
+   exp:"Ces opérations conservent l'ensemble des solutions du système."},
+  {topic:'systemes', mode:'qcm', q:"Un système carré $AX=B$ avec $\\\\det A\\\\ne0$ (système de Cramer) :",
+   choices:[{t:"a une unique solution", c:true},{t:"n'a pas de solution", c:false},{t:"a une infinité de solutions", c:false},{t:"a la solution nulle", c:false}],
+   exp:"$A$ inversible $\\\\Rightarrow X=A^{-1}B$ : solution unique."},
+  {topic:'systemes', mode:'trou', q:"Le rang d'un système échelonné est égal au nombre de ___.",
+   answer:"pivots", accept:["pivots","pivot","de pivots"],
+   exp:"Rang = nombre de pivots de la forme échelonnée."},
+  {topic:'systemes', mode:'qcm', q:"Un système homogène avec strictement plus d'inconnues que d'équations :",
+   choices:[{t:"admet des solutions non nulles", c:true},{t:"n'a que la solution nulle", c:false},{t:"n'a aucune solution", c:false},{t:"est de Cramer", c:false}],
+   exp:"Le rang $\\\\le$ nombre d'équations $<$ nombre d'inconnues : il y a des inconnues libres, donc des solutions non triviales."},
+  {topic:'systemes', mode:'saisie', q:"Solution de $\\\\{x+y=2,\\\\;x-y=0\\\\}$ ? (donne $x$ puis $y$)",
+   answer:"x=1, y=1", accept:["x=1,y=1","x=1 y=1","(1,1)","1,1","1 1"],
+   exp:"En sommant : $2x=2$ donc $x=1$, puis $y=1$."},
+  {topic:'systemes', mode:'flash', q:"Que devient l'ensemble des solutions quand on applique une opération élémentaire sur les lignes ?",
+   answer:"Il est inchangé : les opérations élémentaires donnent un système équivalent.",
+   exp:"C'est ce qui justifie la méthode du pivot de Gauss."},
+
+  /* ---- Espaces vectoriels & applications linéaires (+) ---- */
+  {topic:'ev', mode:'qcm', q:"Dimension de $\\\\mathbb{R}^n$ ?",
+   choices:[{t:"$n$", c:true},{t:"$n+1$", c:false},{t:"$2n$", c:false},{t:"$n^2$", c:false}],
+   exp:"La base canonique de $\\\\mathbb{R}^n$ compte $n$ vecteurs."},
+  {topic:'ev', mode:'qcm', q:"Dimension de $\\\\mathbb{R}_n[X]$ (polynômes de degré $\\\\le n$) ?",
+   choices:[{t:"$n+1$", c:true},{t:"$n$", c:false},{t:"$n-1$", c:false},{t:"infinie", c:false}],
+   exp:"Base $(1,X,\\\\dots,X^n)$ : $n+1$ vecteurs.",
+   vig:"Attention : degré $\\\\le n$ donne $n+1$, pas $n$."},
+  {topic:'ev', mode:'qcm', q:"Dimension de $\\\\mathcal{M}_{n,p}(\\\\mathbb{K})$ ?",
+   choices:[{t:"$np$", c:true},{t:"$n+p$", c:false},{t:"$n^2$", c:false},{t:"$\\\\max(n,p)$", c:false}],
+   exp:"Base des matrices élémentaires $E_{ij}$ : $np$ matrices."},
+  {topic:'ev', mode:'flash', q:"Caractérisation d'un sous-espace vectoriel $F$ de $E$ ?",
+   answer:"$F$ contient $0_E$, et est stable par addition et par multiplication par un scalaire (stable par combinaison linéaire).",
+   exp:"Équivalent : $F\\\\ne\\\\varnothing$ et $\\\\forall(\\\\lambda,u,v)\\\\in\\\\mathbb{K}\\\\times F^2,\\\\ \\\\lambda u+v\\\\in F$."},
+  {topic:'ev', mode:'qcm', q:"$\\\\mathrm{Vect}(v_1,\\\\dots,v_p)$ est :",
+   choices:[{t:"le plus petit sous-espace contenant ces vecteurs", c:true},{t:"une base", c:false},{t:"toujours $E$ entier", c:false},{t:"un singleton", c:false}],
+   exp:"$\\\\mathrm{Vect}$ est l'ensemble des combinaisons linéaires : le sous-espace engendré."},
+  {topic:'ev', mode:'flash', q:"Définition d'une base d'un espace vectoriel ?",
+   answer:"Une famille à la fois libre et génératrice.",
+   exp:"Tout vecteur s'écrit alors de façon unique comme combinaison linéaire des vecteurs de la base."},
+  {topic:'ev', mode:'qcm', q:"Dans un espace de dimension $n$, une famille de $p<n$ vecteurs :",
+   choices:[{t:"ne peut pas être génératrice", c:true},{t:"est toujours une base", c:false},{t:"est toujours liée", c:false},{t:"engendre $E$", c:false}],
+   exp:"Une famille génératrice a au moins $n$ vecteurs ; avec $p<n$, impossible d'engendrer.",
+   vig:"À l'inverse, une famille de $p>n$ vecteurs est nécessairement liée."},
+  {topic:'ev', mode:'saisie', q:"Dimension de l'espace des solutions d'un système homogène de rang $r$ à $n$ inconnues ?",
+   answer:"n-r", accept:["n-r","n - r"],
+   exp:"Le nombre d'inconnues libres est $n-r$, c'est la dimension de l'espace des solutions."},
+  {topic:'ev', mode:'flash', q:"Que dit le théorème de la base incomplète ?",
+   answer:"Toute famille libre d'un espace de dimension finie peut être complétée en une base.",
+   exp:"On ajoute des vecteurs (par exemple d'une base connue) pour atteindre une famille libre maximale."},
+
+  /* ---- Géométrie du plan (+) ---- */
+  {topic:'geoplan', mode:'trou', q:"Deux vecteurs $\\\\vec u(a,b)$ et $\\\\vec v(c,d)$ sont colinéaires $\\\\iff$ ___ $=0$.",
+   answer:"ad-bc", accept:["ad-bc","ad - bc","det"],
+   exp:"Le déterminant $\\\\begin{vmatrix}a&c\\\\\\\\b&d\\\\end{vmatrix}=ad-bc$ s'annule ssi les vecteurs sont colinéaires."},
+  {topic:'geoplan', mode:'qcm', q:"En base orthonormée, $\\\\vec u(x,y)\\\\cdot\\\\vec v(x',y')=\\\\;?$",
+   choices:[{t:"$xx'+yy'$", c:true},{t:"$xy'+x'y$", c:false},{t:"$xx'-yy'$", c:false},{t:"$xy-x'y'$", c:false}],
+   exp:"Expression analytique du produit scalaire en base orthonormée."},
+  {topic:'geoplan', mode:'flash', q:"Un vecteur normal à la droite d'équation $ax+by+c=0$ ?",
+   answer:"$\\\\vec n(a,b)$.",
+   exp:"Les coefficients de $x$ et $y$ donnent un vecteur normal ; $(-b,a)$ est alors directeur."},
+  {topic:'geoplan', mode:'flash', q:"Distance d'un point $M_0(x_0,y_0)$ à la droite $ax+by+c=0$ ?",
+   answer:"$\\\\dfrac{|ax_0+by_0+c|}{\\\\sqrt{a^2+b^2}}$.",
+   exp:"Formule de la distance point-droite en repère orthonormé."},
+  {topic:'geoplan', mode:'qcm', q:"Deux droites de vecteurs directeurs $\\\\vec u,\\\\vec v$ sont parallèles $\\\\iff$ :",
+   choices:[{t:"$\\\\vec u$ et $\\\\vec v$ colinéaires", c:true},{t:"$\\\\vec u\\\\cdot\\\\vec v=0$", c:false},{t:"$\\\\vec u=\\\\vec v$", c:false},{t:"$\\\\|\\\\vec u\\\\|=\\\\|\\\\vec v\\\\|$", c:false}],
+   exp:"Parallélisme $\\\\iff$ directions colinéaires."},
+  {topic:'geoplan', mode:'qcm', q:"$\\\\vec u\\\\cdot\\\\vec v=0$ (vecteurs non nuls) signifie :",
+   choices:[{t:"$\\\\vec u\\\\perp\\\\vec v$", c:true},{t:"$\\\\vec u\\\\parallel\\\\vec v$", c:false},{t:"$\\\\vec u=\\\\vec v$", c:false},{t:"$\\\\vec u=-\\\\vec v$", c:false}],
+   exp:"Produit scalaire nul $\\\\iff$ vecteurs orthogonaux."},
+  {topic:'geoplan', mode:'saisie', q:"Norme du vecteur $\\\\vec u(3,4)$ ?",
+   answer:"5", accept:["5","5.0"],
+   exp:"$\\\\sqrt{3^2+4^2}=\\\\sqrt{25}=5$."},
+  {topic:'geoplan', mode:'flash', q:"Équation cartésienne de la droite passant par $A(x_A,y_A)$ de vecteur normal $\\\\vec n(a,b)$ ?",
+   answer:"$a(x-x_A)+b(y-y_A)=0$.",
+   exp:"$\\\\vec{AM}\\\\cdot\\\\vec n=0$ donne directement l'équation."},
+
+  /* ---- Géométrie de l'espace (+) ---- */
+  {topic:'geoespace', mode:'qcm', q:"Équation cartésienne d'un plan de vecteur normal $\\\\vec n(a,b,c)$ ?",
+   choices:[{t:"$ax+by+cz+d=0$", c:true},{t:"$ax+by+cz=1$", c:false},{t:"$x/a+y/b+z/c=0$", c:false},{t:"$a x^2+by^2+cz^2=0$", c:false}],
+   exp:"Tout plan a une équation de la forme $ax+by+cz+d=0$, où $(a,b,c)$ est normal."},
+  {topic:'geoespace', mode:'flash', q:"Le produit vectoriel $\\\\vec u\\\\wedge\\\\vec v$ est orthogonal à quoi ?",
+   answer:"À la fois à $\\\\vec u$ et à $\\\\vec v$.",
+   exp:"$\\\\vec u\\\\wedge\\\\vec v$ est normal au plan engendré par $\\\\vec u$ et $\\\\vec v$."},
+  {topic:'geoespace', mode:'trou', q:"En base orthonormée, $\\\\vec u(x,y,z)\\\\cdot\\\\vec v(x',y',z')=$ ___.",
+   answer:"xx'+yy'+zz'", accept:["xx'+yy'+zz'","x x' + y y' + z z'"],
+   exp:"Produit scalaire analytique dans l'espace."},
+  {topic:'geoespace', mode:'qcm', q:"$\\\\|\\\\vec u\\\\wedge\\\\vec v\\\\|$ vaut :",
+   choices:[{t:"$\\\\|\\\\vec u\\\\|\\\\,\\\\|\\\\vec v\\\\|\\\\,|\\\\sin\\\\theta|$", c:true},{t:"$\\\\|\\\\vec u\\\\|\\\\,\\\\|\\\\vec v\\\\|\\\\cos\\\\theta$", c:false},{t:"$\\\\vec u\\\\cdot\\\\vec v$", c:false},{t:"$\\\\|\\\\vec u\\\\|+\\\\|\\\\vec v\\\\|$", c:false}],
+   exp:"C'est l'aire du parallélogramme construit sur $\\\\vec u,\\\\vec v$.",
+   vig:"Le produit scalaire utilise $\\\\cos\\\\theta$, le produit vectoriel $\\\\sin\\\\theta$."},
+  {topic:'geoespace', mode:'flash', q:"Le produit mixte $[\\\\vec u,\\\\vec v,\\\\vec w]=\\\\det(\\\\vec u,\\\\vec v,\\\\vec w)$ est nul $\\\\iff$ ?",
+   answer:"Les trois vecteurs sont coplanaires (liés).",
+   exp:"Le produit mixte est le déterminant $3\\\\times3$ : nul ssi famille liée."},
+  {topic:'geoespace', mode:'saisie', q:"Norme du vecteur $\\\\vec u(2,1,2)$ ?",
+   answer:"3", accept:["3","3.0"],
+   exp:"$\\\\sqrt{4+1+4}=\\\\sqrt9=3$."},
+  {topic:'geoespace', mode:'qcm', q:"Un vecteur normal au plan $2x-y+3z=5$ est :",
+   choices:[{t:"$(2,-1,3)$", c:true},{t:"$(2,1,3)$", c:false},{t:"$(5,0,0)$", c:false},{t:"$(-2,1,-3,5)$", c:false}],
+   exp:"Les coefficients de $x,y,z$ donnent un vecteur normal."},
+  {topic:'geoespace', mode:'flash', q:"Distance d'un point $M_0(x_0,y_0,z_0)$ au plan $ax+by+cz+d=0$ ?",
+   answer:"$\\\\dfrac{|ax_0+by_0+cz_0+d|}{\\\\sqrt{a^2+b^2+c^2}}$.",
+   exp:"Généralisation à l'espace de la distance point-droite."},
+
+  /* ---- Équations différentielles (+) ---- */
+  {topic:'edl', mode:'qcm', q:"Solution générale de $y'=ay$ ($a$ constante) ?",
+   choices:[{t:"$y(x)=Ce^{ax}$", c:true},{t:"$y(x)=Cx^a$", c:false},{t:"$y(x)=ae^{Cx}$", c:false},{t:"$y(x)=C+ax$", c:false}],
+   exp:"Solutions de l'équation linéaire homogène d'ordre 1 à coefficient constant."},
+  {topic:'edl', mode:'flash', q:"Méthode pour résoudre $y'+a(x)y=b(x)$ ?",
+   answer:"Solution homogène $+$ une solution particulière (variation de la constante).",
+   exp:"L'ensemble des solutions est une droite affine : $y_p+\\\\{$solutions homogènes$\\\\}$."},
+  {topic:'edl', mode:'qcm', q:"Les solutions de $y'=ay+b$ forment :",
+   choices:[{t:"un espace affine (sol. particulière $+Ce^{ax}$)", c:true},{t:"un espace vectoriel", c:false},{t:"un singleton", c:false},{t:"l'ensemble vide", c:false}],
+   exp:"Solution constante particulière $-b/a$ (si $a\\\\ne0$) plus les solutions homogènes."},
+  {topic:'edl', mode:'trou', q:"Solution générale réelle de $y''+\\\\omega^2 y=0$ ($\\\\omega>0$) : $y(x)=$ ___.",
+   answer:"A cos(wx)+B sin(wx)", accept:["a cos(wx)+b sin(wx)","acos(wx)+bsin(wx)","a cos(omega x)+b sin(omega x)","c1 cos(wx)+c2 sin(wx)"],
+   exp:"Équation caractéristique $r^2+\\\\omega^2=0$, racines $\\\\pm i\\\\omega$."},
+  {topic:'edl', mode:'flash', q:"Dimension de l'espace des solutions d'une EDL homogène d'ordre 2 ?",
+   answer:"$2$.",
+   exp:"Deux conditions initiales (valeur et dérivée) déterminent une solution unique."},
+  {topic:'edl', mode:'qcm', q:"Un problème de Cauchy $y'=ay+b$, $y(x_0)=y_0$ admet :",
+   choices:[{t:"une unique solution", c:true},{t:"aucune solution", c:false},{t:"une infinité", c:false},{t:"deux solutions", c:false}],
+   exp:"La condition initiale fixe la constante : solution unique."},
+
+  /* ---- Polynômes (+) ---- */
+  {topic:'polynomes', mode:'qcm', q:"Division euclidienne de $A$ par $B\\\\ne0$ : que peut-on affirmer ?",
+   choices:[{t:"$\\\\exists!(Q,R),\\\\ A=BQ+R$ avec $\\\\deg R<\\\\deg B$", c:true},{t:"elle n'existe pas toujours", c:false},{t:"$R=0$ toujours", c:false},{t:"$\\\\deg R\\\\ge\\\\deg B$", c:false}],
+   exp:"Existence et unicité du quotient et du reste, avec $\\\\deg R<\\\\deg B$."},
+  {topic:'polynomes', mode:'flash', q:"$a$ est racine de $P$ $\\\\iff$ ?",
+   answer:"$(X-a)$ divise $P$.",
+   exp:"Caractérisation des racines par la divisibilité."},
+  {topic:'polynomes', mode:'qcm', q:"Pour $Q$ non constant, $\\\\deg(P\\\\circ Q)=$ ?",
+   choices:[{t:"$\\\\deg P\\\\times\\\\deg Q$", c:true},{t:"$\\\\deg P+\\\\deg Q$", c:false},{t:"$\\\\deg P$", c:false},{t:"$\\\\deg Q$", c:false}],
+   exp:"Le degré d'une composée est le produit des degrés."},
+  {topic:'polynomes', mode:'saisie', q:"Si $\\\\deg P=n\\\\ge1$, alors $\\\\deg(P')=$ ?",
+   answer:"n-1", accept:["n-1","n - 1"],
+   exp:"Dériver abaisse le degré d'une unité."},
+  {topic:'polynomes', mode:'flash', q:"Pour $aX^2+bX+c$ ($a\\\\ne0$) de racines $x_1,x_2$ : somme et produit ?",
+   answer:"$x_1+x_2=-\\\\dfrac{b}{a}$ et $x_1x_2=\\\\dfrac{c}{a}$.",
+   exp:"Relations coefficients-racines du trinôme."},
+  {topic:'polynomes', mode:'qcm', q:"Un polynôme de degré $n$ a au plus combien de racines ?",
+   choices:[{t:"$n$", c:true},{t:"$n+1$", c:false},{t:"$2n$", c:false},{t:"une infinité", c:false}],
+   exp:"Au plus $\\\\deg P$ racines comptées avec multiplicité."},
+
+  /* ---- Dénombrement (+) ---- */
+  {topic:'denombrement', mode:'qcm', q:"Nombre de $p$-listes (avec répétition, ordonnées) d'un ensemble à $n$ éléments ?",
+   choices:[{t:"$n^p$", c:true},{t:"$p^n$", c:false},{t:"$n!$", c:false},{t:"$\\\\binom{n}{p}$", c:false}],
+   exp:"Chacune des $p$ positions admet $n$ choix indépendants : $n^p$."},
+  {topic:'denombrement', mode:'qcm', q:"Nombre d'arrangements de $p$ éléments parmi $n$ (ordonnés, sans répétition) ?",
+   choices:[{t:"$\\\\dfrac{n!}{(n-p)!}$", c:true},{t:"$\\\\binom{n}{p}$", c:false},{t:"$n^p$", c:false},{t:"$p!$", c:false}],
+   exp:"$A_n^p=n(n-1)\\\\cdots(n-p+1)=\\\\dfrac{n!}{(n-p)!}$."},
+  {topic:'denombrement', mode:'trou', q:"Nombre de combinaisons de $p$ parmi $n$ : $\\\\binom{n}{p}=$ ___.",
+   answer:"n!/(p!(n-p)!)", accept:["n!/(p!(n-p)!)","n!/(p!*(n-p)!)","n!/((n-p)!p!)"],
+   exp:"Choix non ordonné, sans répétition."},
+  {topic:'denombrement', mode:'flash', q:"Nombre de parties d'un ensemble à $n$ éléments ?",
+   answer:"$2^n$.",
+   exp:"Chaque élément est inclus ou non : $2$ choix, $n$ fois."},
+  {topic:'denombrement', mode:'qcm', q:"Nombre de permutations de $n$ éléments distincts ?",
+   choices:[{t:"$n!$", c:true},{t:"$2^n$", c:false},{t:"$n^2$", c:false},{t:"$\\\\binom{n}{2}$", c:false}],
+   exp:"Une permutation est un arrangement de tous les éléments : $A_n^n=n!$."},
+  {topic:'denombrement', mode:'saisie', q:"Nombre de façons de choisir $2$ éléments parmi $5$ (sans ordre) ?",
+   answer:"10", accept:["10"],
+   exp:"$\\\\binom{5}{2}=\\\\dfrac{5\\\\times4}{2}=10$."},
+
+  /* ---- Probabilités (+) ---- */
+  {topic:'proba', mode:'qcm', q:"$P(\\\\bar A)=$ ?",
+   choices:[{t:"$1-P(A)$", c:true},{t:"$-P(A)$", c:false},{t:"$1/P(A)$", c:false},{t:"$P(A)-1$", c:false}],
+   exp:"Probabilité de l'événement contraire."},
+  {topic:'proba', mode:'flash', q:"Espérance d'une variable aléatoire finie $X$ ?",
+   answer:"$E(X)=\\\\sum_i x_i\\\\,P(X=x_i)$.",
+   exp:"Moyenne des valeurs pondérée par les probabilités."},
+  {topic:'proba', mode:'qcm', q:"$E(aX+b)=$ ?",
+   choices:[{t:"$aE(X)+b$", c:true},{t:"$aE(X)$", c:false},{t:"$E(X)+b$", c:false},{t:"$abE(X)$", c:false}],
+   exp:"Linéarité de l'espérance."},
+  {topic:'proba', mode:'qcm', q:"Pour $X\\\\sim\\\\mathcal{B}(n,p)$, $P(X=k)=$ ?",
+   choices:[{t:"$\\\\binom{n}{k}p^k(1-p)^{n-k}$", c:true},{t:"$p^k(1-p)^{n-k}$", c:false},{t:"$\\\\binom{n}{k}p^k$", c:false},{t:"$\\\\dfrac{1}{n}$", c:false}],
+   exp:"Loi binomiale : $k$ succès parmi $n$ épreuves indépendantes."},
+  {topic:'proba', mode:'flash', q:"Espérance d'une loi binomiale $\\\\mathcal{B}(n,p)$ ?",
+   answer:"$E(X)=np$.",
+   exp:"Par linéarité, somme de $n$ Bernoulli d'espérance $p$."},
+  {topic:'proba', mode:'saisie', q:"Probabilité de l'univers $\\\\Omega$ tout entier ?",
+   answer:"1", accept:["1","1.0","100%"],
+   exp:"$P(\\\\Omega)=1$ par définition d'une probabilité."},
+];
+
+/* ====================== ÉTAT ====================== */
+let selected = new Set(Object.keys(TOPICS));
+let selectedMode = 'all';
+let chosenLen = 10;
+let pool = [];
+let idx = 0, score = 0, streak = 0, bestStreak = 0;
+let answeredFlag = false;
+
+const $ = s => document.querySelector(s);
+const shuffle = a => { for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]];} return a; };
+function typeset(el){ if(window.MathJax && window.MathJax.typesetPromise){ window.MathJax.typesetPromise([el]).catch(()=>{}); } }
+
+const MODE_LABEL = {qcm:'QCM', trou:'À trou', saisie:'Réponse libre', flash:'Flashcard'};
+
+/* ============================================================
+   RÉPÉTITION ESPACÉE — algorithme inspiré de SM-2 (Anki)
+   ============================================================
+   Structure par question (clé = qHash) :
+   {
+     q       : string     énoncé (pour affichage)
+     topic   : string
+     lvl     : 0-5        niveau de maîtrise
+     ef      : float      ease factor (2.5 par défaut)
+     interval: int        jours avant la prochaine révision
+     due     : int        timestamp (ms) de la prochaine révision
+     reps    : int        nombre total de révisions
+     lapses  : int        nombre d'oublis
+   }
+   ============================================================ */
+const STATS_KEY = 'quiztsi_srs_v1';
+const SRS = {
+  _d(){ try{ return JSON.parse(localStorage.getItem(STATS_KEY)) || {cards:{}, sessions:[]}; }catch(e){ return {cards:{},sessions:[]}; } },
+  _save(d){ try{ localStorage.setItem(STATS_KEY, JSON.stringify(d)); }catch(e){} },
+
+  // synchro cloud (différée pour éviter les écritures multiples)
+  _cloudTimer: null,
+  _syncCloud(){
+    if(typeof currentUser==='undefined' || !currentUser) return;
+    clearTimeout(this._cloudTimer);
+    this._cloudTimer = setTimeout(async ()=>{
+      try{
+        cloudSync('↑ Synchronisation…');
+        await Cloud.saveSRS(this._d().cards);
+        cloudOk('☁️ SRS sauvegardé');
+      }catch(e){
+        console.warn('SRS cloud sync', e);
+        cloudErr('⚠️ Sync SRS échouée');
+      }
+    }, 1500);
+  },
+  // fusionne les cartes du cloud avec le local (on garde la plus avancée)
+  mergeCloud(cloudCards){
+    if(!cloudCards) return;
+    const d = this._d();
+    for(const h in cloudCards){
+      const cc = cloudCards[h], lc = d.cards[h];
+      if(!lc || (cc.reps||0) > (lc.reps||0) || ((cc.reps||0)===(lc.reps||0) && (cc.due||0) > (lc.due||0))){
+        d.cards[h] = cc;
+      }
+    }
+    this._save(d);
+  },
+
+  // Retourne la carte (ou crée-la)
+  card(h, q, topic){
+    const d = this._d();
+    if(!d.cards[h]) d.cards[h] = {q, topic, lvl:0, ef:2.5, interval:0, due:Date.now(), reps:0, lapses:0};
+    return {d, card: d.cards[h]};
+  },
+
+  // Met à jour après réponse : grade 0-3 (0=oubli, 1=difficile, 2=correct, 3=facile)
+  review(h, q, topic, grade){
+    const {d, card: c} = this.card(h, q, topic);
+    const now = Date.now();
+    c.reps++;
+
+    if(grade === 0){                         // oubli → reset
+      c.lapses++;
+      c.lvl = 0;
+      c.interval = 1;
+      c.ef = Math.max(1.3, c.ef - 0.2);
+    } else {
+      const q_ef = grade===1 ? -0.14 : grade===2 ? 0 : 0.1;
+      c.ef = Math.max(1.3, c.ef + q_ef);
+
+      if(c.lvl === 0)      c.interval = 1;
+      else if(c.lvl === 1) c.interval = 3;
+      else                 c.interval = Math.round(c.interval * c.ef);
+
+      c.lvl = Math.min(5, c.lvl + 1);
+    }
+    c.due = now + c.interval * 86400000;
+    d.cards[h] = c;
+    this._save(d);
+    this._syncCloud();
+    return c;
+  },
+
+  // Enregistre une session de quiz classique
+  recordSession(s){
+    const d = this._d();
+    d.sessions.push(s);
+    if(d.sessions.length > 300) d.sessions = d.sessions.slice(-300);
+    // mise à jour SRS implicite depuis les détails
+    s.details.forEach(it=>{
+      const grade = it.correct ? 2 : 0;
+      const {d: d2, card: c} = this.card(it.h, it.q, it.topic);
+      // mise à jour légère sans recalcul complet si la carte a déjà été révisée aujourd'hui
+      c.reps++;
+      if(!it.correct){ c.lapses++; c.lvl=Math.max(0,c.lvl-1); c.ef=Math.max(1.3,c.ef-0.15); c.interval=Math.max(1,c.interval); }
+      else { if(c.lvl<5) c.lvl++; }
+      d2.cards[it.h]=c;
+    });
+    this._save(d);
+    this._syncCloud();
+  },
+
+  // Cartes dues aujourd'hui (tri : plus en retard en premier)
+  due(){
+    const d = this._d(), now = Date.now();
+    return Object.entries(d.cards)
+      .filter(([,c]) => c.due <= now)
+      .sort(([,a],[,b]) => a.due - b.due)
+      .map(([h,c]) => ({h,...c}));
+  },
+
+  // Cartes apprises (lvl ≥ 1)
+  learned(){ const d=this._d(); return Object.values(d.cards).filter(c=>c.lvl>0).length; },
+
+  // Total cartes vues
+  total(){ const d=this._d(); return Object.keys(d.cards).length; },
+
+  // Stats globales
+  globalStats(){
+    const d=this._d();
+    const cards=Object.values(d.cards);
+    const total=cards.length, learned=cards.filter(c=>c.lvl>0).length;
+    const reps=cards.reduce((s,c)=>s+c.reps,0), lapses=cards.reduce((s,c)=>s+c.lapses,0);
+    const byLvl=[0,0,0,0,0,0]; cards.forEach(c=>byLvl[c.lvl]++);
+    const now=Date.now();
+    const due=cards.filter(c=>c.due<=now).length;
+    const dueIn7=cards.filter(c=>c.due<=now+7*86400000).length;
+    return {total,learned,reps,lapses,due,dueIn7,byLvl, sessions:d.sessions};
+  },
+
+  // Historique des sessions
+  sessions(){ return (this._d().sessions||[]).slice(-14); },
+
+  clear(){ try{ localStorage.removeItem(STATS_KEY); }catch(e){} }
+};
+
+/* Compatibilité ancienne clé v1 */
+const OLD_KEY = 'quiztsi_stats_v1';
+try{ const old=JSON.parse(localStorage.getItem(OLD_KEY));
+  if(old && old.sessions && old.sessions.length){ const nd=SRS._d(); nd.sessions=[...old.sessions,...nd.sessions]; SRS._save(nd); localStorage.removeItem(OLD_KEY); }
+}catch(e){}
+
+function qHash(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h*31 + s.charCodeAt(i))|0; } return 'q'+(h>>>0).toString(36); }
+
+// Rétrocompatibilité : Stats.record pointe vers SRS
+const Stats = { record: s => SRS.recordSession(s), getAll: ()=>({sessions:SRS.sessions(), qstat:{}}), clear: ()=>SRS.clear() };
+
+// normalisation souple pour la vérification automatique des réponses tapées
+const KB_UNI = {'π':'pi','α':'alpha','β':'beta','γ':'gamma','δ':'delta','ε':'epsilon','θ':'theta','λ':'lambda','μ':'mu','σ':'sigma','φ':'phi','ω':'omega','Δ':'delta','Σ':'sum','Π':'prod','Ω':'omega','√':'sqrt','×':'*','÷':'/','−':'-','±':'+-','∞':'infty','∫':'int','∑':'sum','∏':'prod','∂':'d','≤':'<=','≥':'>=','≠':'!=','≈':'~','∈':'in','∉':'notin','⊂':'subset','⊃':'supset','∀':'forall','∃':'exists','∅':'0','ℝ':'r','ℂ':'c','ℕ':'n','ℤ':'z','ℚ':'q','→':'to','⇒':'=>','⇔':'<=>','↦':'mapsto'};
+function norm(s){
+  return (s||'')
+    .replace(/[^\x00-\x7F]/g, ch => (ch in KB_UNI) ? KB_UNI[ch] : ch)
+    .replace(/\s+/g,'')
+    .replace(/\\left|\\right|\\,|\\;|\\!|\\:/g,'')
+    .replace(/\\dfrac|\\tfrac|\\frac/g,'frac')
+    .replace(/\\cdot|\\times/g,'*')
+    .replace(/\\sqrt/g,'sqrt')
+    .replace(/[${}]/g,'')
+    .replace(/\\/g,'')
+    .replace(/[«»"']/g,'')
+    .toLowerCase();
+}
+function autoCheck(q, typed){
+  if(!q.accept || !q.accept.length) return null; // pas de correction auto -> auto-évaluation
+  const t = norm(typed);
+  if(!t) return false;
+  return q.accept.some(a => norm(a) === t);
+}
+
+/* ====================== SRS — TABLEAU DE BORD ACCUEIL ====================== */
+const LVL_COLOR = ['#374151','#ef4444','#f59e0b','#3b82f6','#8b5cf6','#22c55e'];
+const LVL_LABEL = ['Nouveau','Difficile','Moyen','Bien','Très bien','Maîtrisé'];
+
+function srsStatsForTopic(key, d, now){
+  const qs = QUESTIONS.filter(q=>q.topic===key);
+  let due=0, learned=0, seen=0;
+  qs.forEach(q=>{
+    const h=qHash(q.q), c=d.cards[h];
+    if(c){ seen++; if(c.lvl>0) learned++; if(c.due<=now) due++; }
+  });
+  return {total:qs.length, seen, due, learned, newCards:qs.length-seen};
+}
+
+function updateSrsBar(){
+  const bar = $('#srsBar'); if(!bar) return;
+  const d = SRS._d(), now = Date.now();
+  const allCards = Object.values(d.cards);
+  const totalDue = allCards.filter(c=>c.due<=now).length;
+  const totalLearned = allCards.filter(c=>c.lvl>0).length;
+  const totalCards = QUESTIONS.length;
+  const totalNew = totalCards - allCards.length;
+  const help = `<a id="srsHelp" style="color:#a78bfa;cursor:pointer;font-size:12px;text-decoration:underline">Comment ça marche ?</a>`;
+
+  if(allCards.length === 0){
+    bar.innerHTML = `<div class="srs-none">Lance un quiz : chaque question deviendra une carte à réviser au bon moment. ${help}</div>`;
+    const h=$('#srsHelp'); if(h) h.onclick=openOnboarding;
+    return;
+  }
+
+  const dueColor = totalDue>0 ? '#a78bfa' : '#4ade80';
+  bar.innerHTML = `<div class="srs-dashboard">
+    <div class="srs-dash-top">
+      <span class="srs-dash-title">Révision du jour</span>
+      ${help}
+    </div>
+    <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap">
+      <div class="srs-counters">
+        <div class="srs-cnt"><span class="n" style="color:${dueColor}">${totalDue}</span><span class="l">À réviser</span></div>
+        <div class="srs-cnt"><span class="n" style="color:#60a5fa">${totalNew}</span><span class="l">Nouvelles</span></div>
+        <div class="srs-cnt"><span class="n" style="color:#4ade80">${totalLearned}</span><span class="l">Acquises</span></div>
+        <div class="srs-cnt"><span class="n" style="color:var(--muted)">${totalCards}</span><span class="l">Total</span></div>
+      </div>
+      ${totalDue>0
+        ? `<button class="btn" id="srsStartBtn" style="margin-left:auto">Réviser les ${totalDue} dues →</button>`
+        : `<span style="color:#4ade80;font-size:14px;font-weight:600;margin-left:auto">✓ Tout à jour !</span>`}
+    </div>
+    ${totalCards>0 ? `
+    <div style="margin-top:12px; height:6px; border-radius:99px; background:#1f2937; overflow:hidden">
+      <div style="width:${Math.round(totalLearned/totalCards*100)}%;height:100%;background:linear-gradient(90deg,#a78bfa,#22c55e);border-radius:99px;transition:width .6s"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:var(--muted)">
+      <span>${Math.round(totalLearned/totalCards*100)}% du programme acquis</span>
+      <span>${totalLearned}/${totalCards}</span>
+    </div>` : ''}
+  </div>`;
+
+  const sb=$('#srsStartBtn'); if(sb) sb.onclick=startSrsReview;
+  const sh=$('#srsHelp'); if(sh) sh.onclick=openOnboarding;
+}
+
+/* ====================== ACCORDÉON FAMILLES ====================== */
+function buildFamilyAccordion(){
+  const host=$('#famAccordion'); if(!host) return;
+  host.innerHTML='';
+  const d=SRS._d(), now=Date.now();
+  // état ouvert par famille (mémoriser entre rebuild)
+  if(!buildFamilyAccordion._open) buildFamilyAccordion._open={};
+  const openState=buildFamilyAccordion._open;
+
+  for(const [fkey,fam] of Object.entries(FAMILIES)){
+    const famTopics=Object.entries(TOPICS).filter(([,t])=>t.family===fkey);
+    // stats famille
+    let famDue=0, famLearned=0, famTotal=0;
+    famTopics.forEach(([key])=>{
+      const s=srsStatsForTopic(key,d,now);
+      famDue+=s.due; famLearned+=s.learned; famTotal+=s.total;
+    });
+    const famPct=famTotal?Math.round(famLearned/famTotal*100):0;
+    const isOpen = openState[fkey]!==false; // ouvert par défaut
+
+    const block=document.createElement('div'); block.className='fam-block';
+
+    /* ---- header ---- */
+    const hdr=document.createElement('div'); hdr.className='fam-hdr';
+    hdr.innerHTML=`
+      <span class="fdot" style="background:${fam.raw}"></span>
+      <span class="fname">${fam.name}</span>
+      ${famDue>0?`<span class="f-due">📅 ${famDue}</span>`:''}
+      <span class="f-pct">${famLearned}/${famTotal}</span>
+      <div class="fam-mini-bar"><i style="width:${famPct}%;background:${fam.raw}"></i></div>
+      <span class="fam-toggle">${isOpen?'▾':'▸'}</span>`;
+
+    /* ---- body ---- */
+    const body=document.createElement('div'); body.className='fam-body';
+    if(!isOpen) body.style.display='none';
+
+    // bouton tout sélectionner
+    const selRow=document.createElement('div'); selRow.className='sel-all-row';
+    const allOn=famTopics.every(([k])=>selected.has(k));
+    const selBtn=document.createElement('button'); selBtn.className='sel-all-btn';
+    selBtn.textContent=allOn?'Tout désélectionner':'Tout sélectionner';
+    selBtn.onclick=()=>{
+      const nowAllOn=famTopics.every(([k])=>selected.has(k));
+      famTopics.forEach(([k])=>{ if(nowAllOn){ if(selected.size>1) selected.delete(k); } else selected.add(k); });
+      buildFamilyAccordion(); updatePoolInfo();
+    };
+    selRow.appendChild(selBtn); body.appendChild(selRow);
+
+    /* ---- lignes chapitre ---- */
+    for(const [key,t] of famTopics){
+      const s=srsStatsForTopic(key,d,now);
+      const pct=s.total?Math.round(s.learned/s.total*100):0;
+      const on=selected.has(key);
+
+      const row=document.createElement('div');
+      row.className='topic-row'+(on?' on':'');
+      row.style.setProperty('--tc',t.raw);
+
+      // bouton sélection (cercle coloré)
+      const selBt=document.createElement('button');
+      selBt.className='topic-sel'+(on?' on':'');
+      selBt.style.setProperty('--c',t.raw);
+      selBt.setAttribute('aria-label',(on?'Désélectionner ':'Sélectionner ')+t.name);
+      selBt.innerHTML=`<span class="ts-dot" style="background:${t.raw}"></span>`;
+      selBt.onclick=e=>{ e.stopPropagation();
+        if(selected.has(key)){ if(selected.size>1) selected.delete(key); }
+        else selected.add(key);
+        buildFamilyAccordion(); updatePoolInfo();
+      };
+
+      // info chapitre
+      const info=document.createElement('div'); info.className='topic-info';
+      const numsHtml=[
+        s.due>0   ?`<span class="tn-due">📅 ${s.due} due${s.due>1?'s':''}</span>`:'',
+        s.newCards>0?`<span class="tn-new">✨ ${s.newCards} nouvelle${s.newCards>1?'s':''}</span>`:'',
+        `<span class="tn-ok">✅ ${s.learned}/${s.total}</span>`,
+      ].filter(Boolean).join('');
+      info.innerHTML=`
+        <div class="topic-name" style="color:${on?t.raw:'var(--ink)'}">${t.name}</div>
+        <div class="topic-bar"><i style="width:${pct}%;background:${t.raw}"></i></div>
+        <div class="topic-nums">${numsHtml}</div>`;
+
+      row.appendChild(selBt);
+      row.appendChild(info);
+
+      // bouton "Réviser" si des cartes sont dues
+      if(s.due>0){
+        const revBt=document.createElement('button');
+        revBt.className='topic-rev-btn';
+        revBt.textContent=`Réviser →`;
+        revBt.onclick=e=>{ e.stopPropagation(); startSrsReviewForTopic(key); };
+        row.appendChild(revBt);
+      }
+
+      body.appendChild(row);
+    }
+
+    block.appendChild(hdr); block.appendChild(body); host.appendChild(block);
+
+    // toggle accordéon
+    hdr.addEventListener('click', ()=>{
+      const now2=body.style.display==='none';
+      body.style.display=now2?'':'none';
+      hdr.querySelector('.fam-toggle').textContent=now2?'▾':'▸';
+      openState[fkey]=now2;
+    });
+  }
+}
+
+/* Révision SRS ciblée sur un chapitre */
+function startSrsReviewForTopic(topicKey){
+  const d=SRS._d(), now=Date.now();
+  const hMap={}; QUESTIONS.forEach(q=>{ hMap[qHash(q.q)]=q; });
+  const dueForTopic=Object.entries(d.cards)
+    .filter(([h,c])=>c.due<=now && c.topic===topicKey)
+    .sort(([,a],[,b])=>a.due-b.due)
+    .map(([h])=>hMap[h]).filter(Boolean);
+  if(!dueForTopic.length){ alert('Aucune carte due pour ce chapitre.'); return; }
+  pool=dueForTopic.map(q=>({...q, _choices:q.mode==='qcm'?shuffle(q.choices.map((c,i)=>({...c,orig:i}))):undefined}));
+  idx=0; score=0; streak=0; bestStreak=0;
+  $('#sScore').textContent='0'; $('#sStreak').textContent='0';
+  ['startScreen','resultScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
+  $('#quizScreen').classList.remove('hidden');
+  renderQuestion();
+}
+
+/* Onboarding (répétition espacée) */
+const ONBOARD_KEY = 'quiztsi_onboarded';
+function openOnboarding(){ $('#onboardModal').classList.remove('hidden'); }
+function closeOnboarding(){ $('#onboardModal').classList.add('hidden'); try{ localStorage.setItem(ONBOARD_KEY,'1'); }catch(e){} }
+$('#onboardClose').onclick = closeOnboarding;
+$('#onboardStart').onclick = closeOnboarding;
+$('#onboardModal').addEventListener('click', e=>{ if(e.target.id==='onboardModal') closeOnboarding(); });
+function maybeOnboard(){ try{ if(!localStorage.getItem(ONBOARD_KEY)) openOnboarding(); }catch(e){} }
+
+function humanDue(ms){
+  const m=Math.round(ms/60000), h=Math.round(ms/3600000), d=Math.round(ms/86400000);
+  if(m<60) return m+'min'; if(h<24) return h+'h'; return d+' jour'+(d>1?'s':'');
+}
+
+/* Lance une session de révision espacée */
+let srsMode = false;
+let srsQueue = [];
+function startSrsReview(){
+  srsMode = true;
+  // on matche les cartes dues avec les questions disponibles
+  const due = SRS.due();
+  const hMap = {};
+  QUESTIONS.forEach(q => { const h=qHash(q.q); hMap[h]=q; });
+  srsQueue = due.map(c => hMap[c.h]).filter(Boolean).slice(0,30);
+  if(!srsQueue.length){
+    alert('Les cartes dues ne correspondent pas aux questions chargées. Lance un quiz normal d\'abord !');
+    srsMode = false; return;
+  }
+  // on utilise le flux quiz normal mais avec les questions de la file SRS
+  pool = srsQueue.map(q=>({...q, _choices: q.mode==='qcm'? shuffle(q.choices.map((c,i)=>({...c,orig:i}))) : undefined }));
+  idx=0; score=0; streak=0; bestStreak=0;
+  $('#sScore').textContent='0'; $('#sStreak').textContent='0';
+  $('#startScreen').classList.add('hidden'); $('#resultScreen').classList.add('hidden');
+  $('#quizScreen').classList.remove('hidden');
+  renderQuestion();
+}
+
+/* ====================== START SCREEN ====================== */
+function poolFilter(q){ return selected.has(q.topic) && (selectedMode==='all' || q.mode===selectedMode); }
+function topicCount(key){ return QUESTIONS.filter(q=>q.topic===key && (selectedMode==='all'||q.mode===selectedMode)).length; }
+
+function poolSize(){ return QUESTIONS.filter(poolFilter).length; }
+function updatePoolInfo(){
+  const tot = poolSize();
+  const n = chosenLen===0 ? tot : Math.min(chosenLen, tot);
+  $('#poolInfo').textContent = tot===0
+    ? 'Aucune question pour ce filtre — change de mode ou de chapitre.'
+    : `${n} question${n>1?'s':''} sur ${tot} disponibles`;
+}
+$('#lenOpts').addEventListener('click', e=>{
+  const b = e.target.closest('.len'); if(!b) return;
+  document.querySelectorAll('.len').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); chosenLen = +b.dataset.len; updatePoolInfo();
+});
+$('#modeOpts').addEventListener('click', e=>{
+  const b = e.target.closest('.mode'); if(!b) return;
+  document.querySelectorAll('.mode').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); selectedMode = b.dataset.mode;
+  updatePoolInfo();
+});
+
+/* ====================== QUIZ FLOW ====================== */
+$('#startBtn').onclick = ()=>{
+  let qs = QUESTIONS.filter(poolFilter).map(q=>({...q}));
+  if(qs.length===0){ updatePoolInfo(); return; }
+  if($('#shuffleToggle').checked) shuffle(qs);
+  if(chosenLen>0) qs = qs.slice(0, chosenLen);
+  qs.forEach(q=>{ if(q.mode==='qcm') q._choices = shuffle(q.choices.map((c,i)=>({...c, orig:i}))); });
+  pool = qs; idx=0; score=0; streak=0; bestStreak=0;
+  $('#sScore').textContent='0'; $('#sStreak').textContent='0';
+  $('#startScreen').classList.add('hidden');
+  $('#resultScreen').classList.add('hidden');
+  $('#quizScreen').classList.remove('hidden');
+  renderQuestion();
+};
+
+function renderQuestion(){
+  answeredFlag=false;
+  const q = pool[idx], t = TOPICS[q.topic];
+  const pad = n => String(n).padStart(2,'0');
+  $('#qCounter').textContent = `${pad(idx+1)} / ${pad(pool.length)}`;
+  $('#qTopicTag').textContent = t.name;
+  $('#qTopicTag').style.color = t.raw;
+  $('#progBar').style.width = ((idx)/pool.length*100)+'%';
+
+  $('#badge').innerHTML = `<span class="badge" style="background:${t.raw}">${t.name}</span><span class="mtag">${MODE_LABEL[q.mode]||''}</span>`;
+  $('#qText').innerHTML = q.q;
+
+  const zone = $('#answerZone'); zone.innerHTML='';
+  if(q.mode==='qcm') renderQCM(zone, q);
+  else if(q.mode==='flash') renderFlash(zone, q);
+  else renderTyped(zone, q);
+
+  const fb = $('#feedback'); fb.className='feedback hidden'; fb.innerHTML='';
+  $('#nextBtn').classList.add('hidden');
+  $('#nextBtn').textContent = idx===pool.length-1 ? 'Voir le bilan →' : 'Suivant →';
+
+  typeset($('#quizScreen'));
+  $('#quizScreen').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+/* ---- QCM ---- */
+function renderQCM(zone, q){
+  const box = document.createElement('div'); box.className='choices';
+  const keys = ['A','B','C','D','E'];
+  q._choices.forEach((c,i)=>{
+    const b = document.createElement('button');
+    b.className='choice';
+    b.innerHTML = `<span class="key">${keys[i]}</span><span>${c.t}</span>`;
+    b.onclick = ()=> answerQCM(b, c, q);
+    box.appendChild(b);
+  });
+  zone.appendChild(box);
+}
+function answerQCM(btn, choice, q){
+  if(answeredFlag) return; answeredFlag=true;
+  const buttons = [...btn.parentElement.children];
+  buttons.forEach((b,i)=>{
+    b.disabled=true; const c = q._choices[i];
+    if(c.c) b.classList.add('correct');
+    if(b===btn && !choice.c) b.classList.add('wrong');
+    if(!c.c && b!==btn) b.classList.add('dim');
+  });
+  finalize(q, !!choice.c);
+}
+
+/* ---- Saisie / Trou ---- */
+function renderTyped(zone, q){
+  const wrap = document.createElement('div');
+  const ph = q.mode==='trou' ? 'Complète la formule…' : 'Tape ta réponse…';
+  wrap.innerHTML = `<div class="input-row">
+      <input class="ans-input" id="ansInput" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${ph}">
+      <button class="btn" id="checkBtn">Vérifier</button></div>
+      <button class="kb-toggle" id="kbToggle" type="button">⌨️ Clavier maths</button>
+      <div id="kbMount"></div>`;
+  zone.appendChild(wrap);
+  const input = wrap.querySelector('#ansInput');
+  input.focus();
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter') wrap.querySelector('#checkBtn').click(); });
+
+  // clavier mathématique (replié par défaut)
+  const kbMount = wrap.querySelector('#kbMount');
+  const kbToggle = wrap.querySelector('#kbToggle');
+  let kbOpen=false;
+  kbToggle.onclick = ()=>{
+    kbOpen=!kbOpen; kbToggle.classList.toggle('on',kbOpen);
+    if(kbOpen){ buildMathKeyboard(input, kbMount); input.focus(); }
+    else kbMount.innerHTML='';
+  };
+
+  wrap.querySelector('#checkBtn').onclick = ()=>{
+    if(answeredFlag) return; answeredFlag=true;
+    input.disabled=true;
+    if(kbMount) kbMount.innerHTML='';
+    const auto = autoCheck(q, input.value);
+    revealTyped(q, input.value, auto);
+  };
+}
+
+/* ---- Clavier mathématique ---- */
+const KB_TABS = [
+  {name:'Grec',      keys:['π','α','β','γ','δ','ε','θ','λ','μ','σ','φ','ω','Δ','Σ','Ω']},
+  {name:'Opér.',     keys:['+','−','×','÷','±','√','^','_','/','(',')','∫','∑','∏','∂','∞','!']},
+  {name:'Relations', keys:['=','≠','<','>','≤','≥','≈','→','⇒','⇔','↦']},
+  {name:'Ensembles', keys:['ℝ','ℂ','ℕ','ℤ','ℚ','∈','∉','⊂','∀','∃','∅']},
+];
+// touches qui insèrent une paire avec curseur à l'intérieur
+const KB_PAIRS = {'√':'√()','(':'()'};
+function insertAtCursor(input, text, caretInside){
+  const s = input.selectionStart ?? input.value.length;
+  const e = input.selectionEnd ?? input.value.length;
+  input.value = input.value.slice(0,s) + text + input.value.slice(e);
+  let pos = s + text.length;
+  if(caretInside){ const rel = text.indexOf(')'); if(rel>=0) pos = s + rel; }
+  input.setSelectionRange(pos,pos);
+  input.focus();
+}
+function buildMathKeyboard(input, mount){
+  mount.innerHTML='';
+  const panel = document.createElement('div'); panel.className='mathkb';
+  const tabs = document.createElement('div'); tabs.className='mathkb-tabs';
+  const keys = document.createElement('div'); keys.className='mathkb-keys';
+  function fillKeys(tab){
+    keys.innerHTML='';
+    tab.keys.forEach(k=>{
+      const b = document.createElement('button'); b.className='mathkb-key'; b.type='button';
+      b.textContent = k==='√' ? '√▢' : k;
+      b.addEventListener('mousedown', ev=>{ ev.preventDefault();   // conserver le curseur de l'input
+        if(KB_PAIRS[k]) insertAtCursor(input, KB_PAIRS[k], true);
+        else insertAtCursor(input, k, false);
+      });
+      keys.appendChild(b);
+    });
+  }
+  KB_TABS.forEach((tab,ti)=>{
+    const t = document.createElement('button'); t.className='mathkb-tab'+(ti===0?' on':''); t.type='button'; t.textContent=tab.name;
+    t.onclick=()=>{ [...tabs.children].forEach(x=>x.classList.remove('on')); t.classList.add('on'); fillKeys(tab); };
+    tabs.appendChild(t);
+  });
+  fillKeys(KB_TABS[0]);
+  panel.appendChild(tabs); panel.appendChild(keys); mount.appendChild(panel);
+}
+function revealTyped(q, typed, auto){
+  const fb = $('#feedback');
+  let html = '';
+  if(auto===true) html += `<div class="verdict ok">✓ Réponse reconnue comme correcte</div>`;
+  else if(auto===false) html += `<div class="verdict no">✗ Réponse non reconnue automatiquement — compare ci-dessous</div>`;
+  html += `<div class="reveal-ans"><span class="rl">Réponse attendue</span>${q.answer}</div>`;
+  if(q.exp) html += `<div class="exp" style="margin-top:10px">${q.exp}</div>`;
+  if(q.vig) html += `<div class="vig"><span class="ic">⚠️</span><span><b>Vigilance.</b> ${q.vig}</span></div>`;
+  html += `<div class="selfgrade">
+      <button class="sg ok" id="sgOk">✓ Je l'avais</button>
+      <button class="sg no" id="sgNo">✗ À revoir</button></div>`;
+  fb.innerHTML = html; fb.className='feedback';
+  // si l'auto-correction est sûre, on présélectionne mais l'élève tranche
+  $('#sgOk').onclick = ()=> finalizeSelf(q, true);
+  $('#sgNo').onclick = ()=> finalizeSelf(q, false);
+  typeset(fb);
+}
+
+/* ---- Flashcard ---- */
+function renderFlash(zone, q){
+  zone.innerHTML = `<p class="flash-hint">Réfléchis à la réponse, puis révèle pour t'auto-évaluer.</p>
+    <button class="btn" id="revealBtn">Afficher la réponse</button>`;
+  zone.querySelector('#revealBtn').onclick = ()=>{
+    if(answeredFlag) return; answeredFlag=true;
+    const fb = $('#feedback');
+    let html = `<div class="reveal-ans"><span class="rl">Réponse</span>${q.answer}</div>`;
+    if(q.exp) html += `<div class="exp" style="margin-top:10px">${q.exp}</div>`;
+    if(q.vig) html += `<div class="vig"><span class="ic">⚠️</span><span><b>Vigilance.</b> ${q.vig}</span></div>`;
+    html += `<div class="selfgrade">
+        <button class="sg ok" id="sgOk">✓ Je savais</button>
+        <button class="sg no" id="sgNo">✗ À revoir</button></div>`;
+    fb.innerHTML = html; fb.className='feedback';
+    $('#sgOk').onclick = ()=> finalizeSelf(q, true);
+    $('#sgNo').onclick = ()=> finalizeSelf(q, false);
+    zone.querySelector('#revealBtn').disabled = true;
+    typeset(fb);
+  };
+}
+
+/* ---- Finalisation commune ---- */
+function srsGradeButtons(q, container){
+  const h = qHash(q.q);
+  const div = document.createElement('div'); div.className='srs-grade';
+  const grades=[
+    {g:0,label:'Oubli',emoji:'😵'},
+    {g:1,label:'Difficile',emoji:'😰'},
+    {g:2,label:'Correct',emoji:'👍'},
+    {g:3,label:'Facile',emoji:'⚡'},
+  ];
+  grades.forEach(({g,label,emoji})=>{
+    const b=document.createElement('button'); b.className=`sg2 g${g}`; b.type='button';
+    b.innerHTML=`<span class="gl">${label}</span>${emoji}`;
+    b.onclick=()=>{
+      SRS.review(h, q.q, q.topic, g);
+      div.querySelectorAll('.sg2').forEach(x=>{x.disabled=true; x.style.opacity=x===b?'1':'.3';});
+      $('#nextBtn').classList.remove('hidden');
+    };
+    div.appendChild(b);
+  });
+  container.appendChild(div);
+}
+
+function finalize(q, ok){
+  if(ok){ score++; streak++; bestStreak=Math.max(bestStreak,streak); }
+  else { streak=0; q._missed=true; }
+  $('#sScore').textContent = score;
+  $('#sStreak').textContent = streak;
+  $('#progBar').style.width = ((idx+1)/pool.length*100)+'%';
+  const fb = $('#feedback');
+  if(q.mode==='qcm'){
+    let html = `<div class="verdict ${ok?'ok':'no'}">${ok?'✓ Correct':'✗ Incorrect'}${ok&&streak>=3?` · série de ${streak} 🔥`:''}</div>`;
+    html += `<div class="exp">${q.exp}</div>`;
+    if(q.vig) html += `<div class="vig"><span class="ic">⚠️</span><span><b>Vigilance.</b> ${q.vig}</span></div>`;
+    fb.innerHTML = html; fb.className='feedback'; typeset(fb);
+    // mise à jour SRS immédiate pour QCM (pas de selfgrade)
+    SRS.review(qHash(q.q), q.q, q.topic, ok ? 2 : 0);
+    // boutons de nuance si la réponse est correcte
+    if(ok){
+      const hint=document.createElement('p'); hint.style.cssText='color:var(--muted);font-size:13px;margin:12px 0 0';
+      hint.textContent='Affine ton évaluation :'; fb.appendChild(hint);
+      srsGradeButtons(q, fb);
+    } else {
+      $('#nextBtn').classList.remove('hidden');
+    }
+  } else {
+    $('#nextBtn').classList.remove('hidden');
+  }
+}
+
+function finalizeSelf(q, ok){
+  const sg = document.querySelector('.selfgrade'); if(sg) sg.remove();
+  if(ok){ score++; streak++; bestStreak=Math.max(bestStreak,streak); }
+  else { streak=0; q._missed=true; }
+  $('#sScore').textContent = score;
+  $('#sStreak').textContent = streak;
+  $('#progBar').style.width = ((idx+1)/pool.length*100)+'%';
+  const fb = $('#feedback');
+  const v = document.createElement('div');
+  v.className = 'verdict '+(ok?'ok':'no'); v.style.marginTop='12px';
+  v.textContent = ok ? ('✓ Acquis'+(streak>=3?` · série de ${streak} 🔥`:'')) : '✗ À retravailler';
+  fb.appendChild(v);
+  // grading SRS 4 niveaux
+  const hint=document.createElement('p'); hint.style.cssText='color:var(--muted);font-size:13px;margin:12px 0 0';
+  hint.textContent='Évalue ta maîtrise :'; fb.appendChild(hint);
+  srsGradeButtons(q, fb);
+}
+
+$('#nextBtn').onclick = ()=>{
+  if(idx < pool.length-1){ idx++; renderQuestion(); }
+  else showResults();
+};
+
+/* ====================== RESULTS ====================== */
+function showResults(){
+  $('#quizScreen').classList.add('hidden');
+  $('#resultScreen').classList.remove('hidden');
+
+  const total = pool.length, pct = Math.round(score/total*100);
+
+  // enregistrement local de la session (anonyme, dans ce navigateur)
+  const sessionRec = {
+    date: Date.now(), score, total, mode: selectedMode,
+    topics: [...new Set(pool.map(q=>q.topic))], bestStreak,
+    details: pool.map(q=>({h:qHash(q.q), q:q.q, topic:q.topic, mode:q.mode, correct:!q._missed}))
+  };
+  try { Stats.record(sessionRec); } catch(e){}
+  // synchro cloud si connecté
+  if(currentUser){
+    cloudSync('↑ Sauvegarde…');
+    Cloud.saveSession(sessionRec)
+      .then(()=> cloudOk('☁️ Session sauvegardée'))
+      .catch(err=>{ console.warn('cloud save', err); cloudErr('⚠️ Session non sauvegardée'); });
+  }
+
+  $('#rPct').textContent = pct+'%';
+  $('#rFrac').textContent = `${score} / ${total}`;
+  const C = 2*Math.PI*74;
+  const fill = $('#ringFill');
+  const col = pct>=80?'#22c55e':pct>=50?'#f59e0b':'#ef4444';
+  fill.setAttribute('stroke', col);
+  $('#rPct').style.color = col;
+  requestAnimationFrame(()=> fill.style.strokeDashoffset = C*(1-pct/100));
+
+  let verdict;
+  if(pct>=90) verdict="Niveau concours. Solide.";
+  else if(pct>=70) verdict="Bonne maîtrise — soigne les détails.";
+  else if(pct>=50) verdict="Les bases sont là, à consolider.";
+  else verdict="À retravailler sérieusement.";
+  $('#rVerdict').textContent = verdict;
+
+  const stats = {};
+  pool.forEach(q=>{ (stats[q.topic] ??= {ok:0,n:0}); stats[q.topic].n++; if(!q._missed) stats[q.topic].ok++; });
+  let bh = '<p class="section-label">Par chapitre</p>';
+  for(const [key,s] of Object.entries(stats)){
+    const t = TOPICS[key], r = Math.round(s.ok/s.n*100);
+    bh += `<div class="brk-row"><div class="name" style="color:${t.raw}">${t.name}</div>
+      <div class="track"><i style="width:${r}%;background:${t.raw}"></i></div>
+      <div class="frac">${s.ok}/${s.n}</div></div>`;
+  }
+  $('#breakdown').innerHTML = bh;
+
+  const missed = pool.filter(q=>q._missed);
+  let rv='';
+  if(missed.length){
+    rv = `<h3>À revoir (${missed.length})</h3>`;
+    missed.forEach(q=>{
+      const good = q.mode==='qcm' ? q._choices.find(c=>c.c).t : q.answer;
+      rv += `<div class="miss">${q.q}<div class="ans">Réponse : <b>${good}</b>${q.exp?` — ${q.exp}`:''}${q.vig?` <span style="color:#fbbf24">⚠️ ${q.vig}</span>`:''}</div></div>`;
+    });
+  } else {
+    rv = `<h3>Sans faute 🎯</h3><div class="miss" style="border-left-color:#22c55e">Rien à revoir sur cette série. Augmente la longueur ou ajoute des chapitres.</div>`;
+  }
+  $('#review').innerHTML = rv;
+  typeset($('#resultScreen'));
+  $('#resultScreen').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+$('#againBtn').onclick = ()=> $('#startBtn').click();
+$('#homeBtn').onclick = ()=>{
+  $('#resultScreen').classList.add('hidden');
+  $('#startScreen').classList.remove('hidden');
+  updateSrsBar(); buildFamilyAccordion(); updatePoolInfo();
+  $('#startScreen').scrollIntoView({behavior:'smooth', block:'start'});
+};
+$('#resultStatsBtn').onclick = showStats;
+$('#abandonBtn').onclick = ()=>{
+  if(confirm('Abandonner ce quiz et revenir à l\'accueil ?')){
+    $('#quizScreen').classList.add('hidden');
+    $('#startScreen').classList.remove('hidden');
+    updateSrsBar(); buildFamilyAccordion(); updatePoolInfo();
+    $('#startScreen').scrollIntoView({behavior:'smooth', block:'start'});
+  }
+};
+
+/* ====================== TABLEAU DE BORD ====================== */
+async function renderStats(){
+  const body = $('#statsBody');
+  const banner = currentUser
+    ? `<div class="cloud-banner ok">☁️ Connecté — progression synchronisée (${currentUser.email}).</div>`
+    : `<div class="cloud-banner">Stats locales à cet appareil. <a id="statsLogin">Connecte-toi</a> pour les synchroniser sur tous tes appareils.</div>`;
+
+  let answered=0, correct=0, best=0, nSessions=0;
+  const byTopic={}; let sparkVals=[]; let history=[]; let missedList=[];
+
+  if(currentUser){
+    body.innerHTML = banner + '<div class="empty-state">Chargement de ta progression…</div>';
+    let agg=null, sessions=[];
+    try{ agg = await Cloud.myAggregate(); sessions = await Cloud.mySessions(20); }
+    catch(e){ body.innerHTML = banner + `<div class="empty-state">Lecture impossible.<br><span style="font-size:13px">${e.code||e.message}</span></div>`; return; }
+    if(agg){ answered=agg.totalAnswered||0; correct=agg.totalCorrect||0; best=agg.bestStreak||0;
+      for(const k in (agg.byTopic||{})){ byTopic[k]={ok:agg.byTopic[k].c, n:agg.byTopic[k].a}; } }
+    nSessions = sessions.length;
+    const ordered = sessions.slice().reverse(); // ancien -> récent
+    sparkVals = ordered.slice(-14).map(s=>Math.round(s.score/s.total*100));
+    history = sessions.slice(0,12).map(s=>({date: s.date && s.date.toDate? s.date.toDate().getTime():Date.now(), score:s.score, total:s.total, mode:s.mode}));
+  } else {
+    const d = Stats.getAll();
+    if(!d.sessions.length){ body.innerHTML = banner + '<div class="empty-state">Aucune session enregistrée.<br>Termine un quiz pour voir ta progression ici.</div>';
+      const lg=$('#statsLogin'); if(lg) lg.onclick=openAuth; return; }
+    d.sessions.forEach(s=>{ best=Math.max(best,s.bestStreak||0);
+      s.details.forEach(it=>{ answered++; if(it.correct) correct++; (byTopic[it.topic] ??= {ok:0,n:0}); byTopic[it.topic].n++; if(it.correct) byTopic[it.topic].ok++; }); });
+    nSessions = d.sessions.length;
+    sparkVals = d.sessions.slice(-14).map(s=>Math.round(s.score/s.total*100));
+    history = d.sessions.slice().reverse().slice(0,12).map(s=>({date:s.date, score:s.score, total:s.total, mode:s.mode}));
+    missedList = Object.values(d.qstat).filter(e=>e.missed>0).sort((a,b)=>(b.missed/b.seen)-(a.missed/a.seen)||b.missed-a.missed).slice(0,6);
+  }
+
+  if(!answered && !g.total){ body.innerHTML = banner + '<div class="empty-state">Aucune session enregistrée.<br>Termine un quiz pour voir ta progression ici.</div>';
+    const lg=$('#statsLogin'); if(lg) lg.onclick=openAuth; return; }
+  const gpct = answered ? Math.round(correct/answered*100) : 0;
+
+  // --- bloc SRS ---
+  const g = SRS.globalStats();
+  let html = banner;
+  if(g.total > 0){
+    const totalCards = QUESTIONS.length;
+    const pctLearned = Math.round(g.learned/totalCards*100);
+    html += `<div class="due-chip">📅 ${g.due} carte${g.due!==1?'s':''} dues aujourd'hui · ${g.dueIn7} dans 7 jours</div>`;
+    html += `<p class="section-label">Maîtrise des cartes (${g.learned}/${totalCards} apprises — ${pctLearned}%)</p>
+    <div class="lvl-row">`;
+    const lvlColors=['#374151','#ef4444','#f59e0b','#3b82f6','#8b5cf6','#22c55e'];
+    const lvlNames=['Nouveaux','Difficile','Moyen','Bien','Très bien','Maîtrisé'];
+    g.byLvl.forEach((n,l)=>{
+      if(!n) return;
+      const w = Math.max(5, Math.round(n/g.total*100));
+      html += `<div class="lvl-seg" style="width:${w}%;background:${lvlColors[l]}" title="${lvlNames[l]}: ${n}">${n}</div>`;
+    });
+    html += `</div>`;
+    // légende
+    html += `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;font-size:12px;color:var(--muted)">`;
+    g.byLvl.forEach((n,l)=>{ if(!n) return;
+      html += `<span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${lvlColors[l]};margin-right:4px"></span>${lvlNames[l]} (${n})</span>`; });
+    html += `</div>`;
+  }
+
+  html += `<div class="stat-cards">
+     <div class="stat-card"><div class="v">${answered}</div><div class="k">Questions</div></div>
+     <div class="stat-card"><div class="v">${gpct}%</div><div class="k">Réussite</div></div>
+     <div class="stat-card"><div class="v">${best}</div><div class="k">Meilleure série</div></div>
+     <div class="stat-card"><div class="v">${nSessions}</div><div class="k">Sessions</div></div>
+   </div>`;
+
+  if(sparkVals.length){
+    html += `<p class="section-label">Progression (derniers quiz)</p><div class="spark">`;
+    sparkVals.forEach(p=>{ const c=p>=80?'#22c55e':p>=50?'#f59e0b':'#ef4444';
+      html += `<div class="col"><i style="height:${Math.max(4,p)}%;background:${c}"></i><span>${p}</span></div>`; });
+    html += `</div>`;
+  }
+
+  const rows = Object.entries(byTopic).map(([k,s])=>({k,ok:s.ok,n:s.n,r:s.ok/s.n})).sort((a,b)=>a.r-b.r);
+  if(rows.length){
+    html += `<p class="section-label">Par chapitre (points faibles en tête)</p><div class="breakdown">`;
+    rows.forEach(({k,ok,n})=>{ const t=TOPICS[k]; if(!t) return; const r=Math.round(ok/n*100);
+      html += `<div class="brk-row"><div class="name" style="color:${t.raw}">${t.name}</div>
+        <div class="track"><i style="width:${r}%;background:${t.raw}"></i></div><div class="frac">${ok}/${n}</div></div>`; });
+    html += `</div>`;
+  }
+
+  if(missedList.length){
+    html += `<div class="review"><h3>Questions les plus ratées</h3>`;
+    missedList.forEach(e=>{ const t=TOPICS[e.topic];
+      html += `<div class="miss">${e.q}<div class="ans">Raté ${e.missed}/${e.seen} fois${t?` · <span style="color:${t.raw}">${t.name}</span>`:''}</div></div>`; });
+    html += `</div>`;
+  }
+
+  html += `<p class="section-label" style="margin-top:22px">Historique récent</p><div class="hist">`;
+  history.forEach(s=>{ const p=Math.round(s.score/s.total*100);
+    const dt=new Date(s.date);
+    const ds=dt.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})+' '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    const ml=({all:'Tous',qcm:'QCM',trou:'À trou',saisie:'Libre',flash:'Flash'})[s.mode]||s.mode;
+    const c=p>=80?'#4ade80':p>=50?'#fbbf24':'#f87171';
+    html += `<div class="h-row"><span class="d">${ds}</span><span>${ml}</span><span class="m" style="color:${c}">${s.score}/${s.total}</span></div>`; });
+  html += `</div>`;
+
+  body.innerHTML = html;
+  const lg=$('#statsLogin'); if(lg) lg.onclick=openAuth;
+  typeset(body);
+}
+function showStats(){
+  ['startScreen','quizScreen','resultScreen','adminScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
+  $('#statsScreen').classList.remove('hidden');
+  $('#statsBody').innerHTML = '<div class="empty-state">Chargement…</div>';
+  $('#statsScreen').scrollIntoView({behavior:'smooth', block:'start'});
+  renderStats().catch(e=>{ $('#statsBody').innerHTML = `<div class="empty-state">Erreur : ${e.message||e}</div>`; });
+}
+$('#statsBtn').onclick = showStats;
+$('#statsBack').onclick = ()=>{
+  $('#statsScreen').classList.add('hidden');
+  $('#startScreen').classList.remove('hidden');
+  $('#startScreen').scrollIntoView({behavior:'smooth',block:'start'});
+};
+$('#statsClear').onclick = ()=>{
+  if(confirm('Effacer définitivement toutes tes statistiques locales ?')){ Stats.clear(); renderStats(); }
+};
+
+/* ====================== INDICATEUR CLOUD ====================== */
+let _cloudStatusTimer = null;
+function cloudToast(type, msg){
+  const el = $('#cloudStatus');
+  if(!el) return;
+  el.className = 'cloud-status show ' + type;
+  el.textContent = msg;
+  clearTimeout(_cloudStatusTimer);
+  if(type !== 'sync'){
+    _cloudStatusTimer = setTimeout(()=>{ el.classList.remove('show'); }, 3000);
+  }
+}
+function cloudOk(msg='☁️ Sauvegardé'){ cloudToast('ok', msg); }
+function cloudErr(msg='⚠️ Non sauvegardé — hors ligne ?'){ cloudToast('err', msg); }
+function cloudSync(msg='↑ Synchronisation…'){ cloudToast('sync', msg); }
+function updateAccountUI(){
+  const btn = $('#accountBtn');
+  if(currentUser){
+    btn.textContent = '👤 ' + currentUser.email.split('@')[0];
+    btn.title = currentUser.email + (isAdmin?' (prof)':'');
+  } else {
+    btn.textContent = '🔑 Se connecter';
+    btn.title = 'Synchroniser ma progression';
+  }
+  const adminBtn = $('#adminBtn');
+  if(adminBtn) adminBtn.classList.toggle('hidden', !isAdmin);
+  // si le tableau de bord est ouvert, le rafraîchir
+  if(!$('#statsScreen').classList.contains('hidden')) renderStats();
+}
+let authMode = 'login';
+function openAuth(){ authMode='login'; refreshAuthModal(); $('#authModal').classList.remove('hidden'); $('#authEmail').focus(); }
+function closeAuth(){ $('#authModal').classList.add('hidden'); $('#authErr').classList.add('hidden'); $('#authEmail').value=''; $('#authPass').value=''; }
+function refreshAuthModal(){
+  $('#authTitle').textContent = authMode==='login' ? 'Connexion' : 'Créer un compte';
+  $('#authSubmit').textContent = authMode==='login' ? 'Se connecter' : "Créer mon compte";
+  $('#authSwitchLine').innerHTML = authMode==='login'
+    ? 'Pas encore de compte ? <a id="authSwitch">En créer un</a>'
+    : 'Déjà inscrit ? <a id="authSwitch">Se connecter</a>';
+  $('#authSwitch').onclick = ()=>{ authMode = authMode==='login'?'signup':'login'; refreshAuthModal(); };
+}
+function authError(msg){ const e=$('#authErr'); e.textContent=msg; e.classList.remove('hidden'); }
+const AUTH_MSG = {
+  'auth/invalid-email':"Adresse e-mail invalide.",
+  'auth/missing-password':"Entre un mot de passe.",
+  'auth/weak-password':"Mot de passe trop court (6 caractères minimum).",
+  'auth/email-already-in-use':"Cet e-mail a déjà un compte — connecte-toi.",
+  'auth/invalid-credential':"E-mail ou mot de passe incorrect.",
+  'auth/wrong-password':"Mot de passe incorrect.",
+  'auth/user-not-found':"Aucun compte avec cet e-mail.",
+  'auth/network-request-failed':"Problème de connexion réseau."
+};
+$('#accountBtn').onclick = ()=>{
+  if(currentUser){
+    if(confirm('Te déconnecter ?')) Cloud.signOut();
+  } else openAuth();
+};
+$('#authClose').onclick = closeAuth;
+$('#authModal').addEventListener('click', e=>{ if(e.target.id==='authModal') closeAuth(); });
+$('#authSubmit').onclick = async ()=>{
+  const email = $('#authEmail').value.trim(), pass = $('#authPass').value;
+  $('#authErr').classList.add('hidden');
+  $('#authSubmit').disabled = true;
+  try{
+    if(authMode==='login') await Cloud.signIn(email, pass);
+    else await Cloud.signUp(email, pass);
+    closeAuth();
+  }catch(err){ authError(AUTH_MSG[err.code] || ('Erreur : '+(err.code||err.message))); }
+  finally{ $('#authSubmit').disabled = false; }
+};
+$('#authPass').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#authSubmit').click(); });
+
+/* ====================== TABLEAU DE BORD PROF ====================== */
+async function renderAdmin(){
+  const body = $('#adminBody');
+  body.innerHTML = '<div class="empty-state">Chargement des données de la classe…</div>';
+  let users;
+  try{ users = await Cloud.allUsers(); }
+  catch(err){ body.innerHTML = `<div class="empty-state">Lecture impossible (règles Firestore ?).<br><span style="font-size:13px">${err.code||err.message}</span></div>`; return; }
+
+  if(!users.length){ body.innerHTML = '<div class="empty-state">Aucun compte pour l\'instant.<br>Les élèves apparaîtront dès qu\'ils auront créé un compte.</div>'; return; }
+
+  const active = users.filter(u=>u.agg && u.agg.totalAnswered);
+  const inactive = users.filter(u=>!(u.agg && u.agg.totalAnswered));
+
+  // agrégat classe par chapitre (élèves actifs)
+  const classByTopic = {};
+  active.forEach(u=>{ const bt=u.agg.byTopic||{}; for(const k in bt){ (classByTopic[k] ||= {a:0,c:0}); classByTopic[k].a+=bt[k].a; classByTopic[k].c+=bt[k].c; } });
+
+  let html = `<div class="stat-cards">
+    <div class="stat-card"><div class="v">${users.length}</div><div class="k">Comptes inscrits</div></div>
+    <div class="stat-card"><div class="v">${active.length}</div><div class="k">Élèves actifs</div></div>
+    <div class="stat-card"><div class="v">${active.reduce((s,u)=>s+u.agg.totalAnswered,0)}</div><div class="k">Réponses totales</div></div>
+  </div>`;
+
+  if(Object.keys(classByTopic).length){
+    html += `<p class="section-label">Chapitres les plus difficiles (classe)</p><div class="breakdown">`;
+    Object.entries(classByTopic).map(([k,s])=>({k,...s,r:s.c/s.a})).sort((a,b)=>a.r-b.r).forEach(({k,a,c})=>{
+      const t=TOPICS[k]; if(!t) return; const r=Math.round(c/a*100);
+      html += `<div class="brk-row"><div class="name" style="color:${t.raw}">${t.name}</div>
+        <div class="track"><i style="width:${r}%;background:${t.raw}"></i></div><div class="frac">${r}%</div></div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `<p class="section-label" style="margin-top:22px">Élèves actifs</p><div class="hist">`;
+  if(active.length){
+    active.map(u=>({...u, pct: Math.round(u.agg.totalCorrect/u.agg.totalAnswered*100)})).sort((a,b)=>b.pct-a.pct).forEach(u=>{
+      const c=u.pct>=80?'#4ade80':u.pct>=50?'#fbbf24':'#f87171';
+      html += `<div class="h-row"><span style="flex:1">${u.displayName||u.email}</span>
+        <span class="d">${u.agg.totalAnswered} rép.</span>
+        <span class="d">série ${u.agg.bestStreak||0}</span>
+        <span class="m" style="color:${c}">${u.pct}%</span></div>`;
+    });
+  } else {
+    html += `<div class="empty-state" style="padding:16px">Aucun élève n'a encore terminé de quiz.</div>`;
+  }
+  html += `</div>`;
+
+  if(inactive.length){
+    html += `<p class="section-label" style="margin-top:22px">Inscrits sans activité (${inactive.length})</p><div class="hist">`;
+    inactive.sort((a,b)=>(a.email||'').localeCompare(b.email||'')).forEach(u=>{
+      html += `<div class="h-row"><span style="flex:1">${u.displayName||u.email}</span>
+        <span class="d" style="color:var(--muted)">compte créé</span>
+        <span class="m" style="color:var(--muted)">—</span></div>`;
+    });
+    html += `</div>`;
+    html += `<p class="footer-note" style="margin-top:8px">Ces élèves ont un compte mais n'ont pas encore terminé de quiz : leurs statistiques apparaîtront ensuite.</p>`;
+  }
+
+  body.innerHTML = html;
+}
+$('#adminBtn').onclick = ()=>{
+  ['startScreen','quizScreen','resultScreen','statsScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
+  $('#adminScreen').classList.remove('hidden');
+  $('#adminBody').innerHTML = '<div class="empty-state">Chargement des données de la classe…</div>';
+  $('#adminScreen').scrollIntoView({behavior:'smooth',block:'start'});
+  renderAdmin().catch(e=>{ $('#adminBody').innerHTML = `<div class="empty-state">Erreur : ${e.message||e}</div>`; });
+};
+$('#adminBack').onclick = ()=>{
+  $('#adminScreen').classList.add('hidden');
+  $('#startScreen').classList.remove('hidden');
+  $('#startScreen').scrollIntoView({behavior:'smooth',block:'start'});
+};
+
+/* ====================== INIT ====================== */
+updateAccountUI();
+updateSrsBar();
+maybeOnboard();
+buildFamilyAccordion();
+updatePoolInfo();
+</script>
+</body>
+</html>
