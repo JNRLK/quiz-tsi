@@ -568,7 +568,7 @@ window.MathJax = {
   <div class="modal">
     <button class="modal-close" id="authClose" aria-label="Fermer">✕</button>
     <h2 id="authTitle" style="font-family:'Fraunces',serif; margin:0 0 6px">Connexion</h2>
-    <p class="auth-sub">Pour synchroniser ta progression sur tous tes appareils.</p>
+    <p class="auth-sub">Connecte-toi pour accéder à la console de révision.</p>
     <input class="ans-input" id="authEmail" type="email" autocomplete="email" placeholder="Adresse e-mail" style="margin-bottom:10px; width:100%">
     <input class="ans-input" id="authPass" type="password" autocomplete="current-password" placeholder="Mot de passe (6 caractères min.)" style="width:100%">
     <div class="auth-err hidden" id="authErr"></div>
@@ -686,6 +686,11 @@ onAuthStateChanged(auth, async (user)=>{
       const cloud = await Cloud.loadSRS();
       if(cloud && typeof SRS!=='undefined'){ SRS.mergeCloud(cloud); SRS._syncCloud(); }
     }catch(e){ console.warn('SRS cloud load', e); }
+    // Onboarding seulement après connexion
+    if(typeof maybeOnboard === 'function') maybeOnboard();
+  } else {
+    // Connexion obligatoire : ouvrir la modale, non fermable
+    if(typeof openAuth === 'function') openAuth();
   }
   if(typeof updateAccountUI === 'function') updateAccountUI();
   if(typeof updateSrsBar === 'function') updateSrsBar();
@@ -2792,7 +2797,7 @@ function updateAccountUI(){
   if(!$('#statsScreen').classList.contains('hidden')) renderStats();
 }
 let authMode = 'login';
-function openAuth(){ authMode='login'; refreshAuthModal(); $('#authModal').classList.remove('hidden'); $('#authEmail').focus(); }
+function openAuth(){ authMode='login'; refreshAuthModal(); const cb=$('#authClose'); if(cb) cb.style.display=currentUser?'':'none'; $('#authModal').classList.remove('hidden'); $('#authEmail').focus(); }
 function closeAuth(){ $('#authModal').classList.add('hidden'); $('#authErr').classList.add('hidden'); $('#authEmail').value=''; $('#authPass').value=''; }
 function refreshAuthModal(){
   $('#authTitle').textContent = authMode==='login' ? 'Connexion' : 'Créer un compte';
@@ -2818,8 +2823,8 @@ $('#accountBtn').onclick = ()=>{
     if(confirm('Te déconnecter ?')) Cloud.signOut();
   } else openAuth();
 };
-$('#authClose').onclick = closeAuth;
-$('#authModal').addEventListener('click', e=>{ if(e.target.id==='authModal') closeAuth(); });
+$('#authClose').onclick = ()=>{ if(currentUser) closeAuth(); };
+$('#authModal').addEventListener('click', e=>{ if(e.target.id==='authModal' && currentUser) closeAuth(); });
 $('#authSubmit').onclick = async ()=>{
   const email = $('#authEmail').value.trim(), pass = $('#authPass').value;
   $('#authErr').classList.add('hidden');
@@ -2910,7 +2915,6 @@ $('#adminBack').onclick = ()=>{
 updateAccountUI();
 updateSrsBar();
 updateHeaderStats();
-maybeOnboard();
 buildFamilyAccordion();
 updatePoolInfo();
 </script>
