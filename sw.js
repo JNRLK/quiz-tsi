@@ -3,7 +3,7 @@
    quand on a du réseau), "cache-first" pour MathJax/polices (gros fichiers
    externes qui ne changent jamais). Fonctionne hors ligne après 1ère visite. */
 
-const CACHE = 'quiz-tsi-v1';
+const CACHE = 'quiz-tsi-v2';
 const CORE = [
   './',
   './index.html',
@@ -37,7 +37,7 @@ self.addEventListener('fetch', (e) => {
   // Ne jamais mettre en cache Firebase (auth + Firestore en temps réel)
   if (url.hostname.includes('firebase') ||
       url.hostname.includes('googleapis') ||
-      url.hostname.includes('gstatic') === false && url.hostname.includes('google')) {
+      (!url.hostname.includes('gstatic') && url.hostname.includes('google'))) {
     return; // laisse passer vers le réseau normalement
   }
 
