@@ -444,6 +444,7 @@ window.MathJax = {
         <span id="syncIndicator" class="sync-ind hidden"></span>
         <button class="btn ghost mini" id="accountBtn">🔑 Se connecter</button>
         <button class="btn ghost mini" id="statsBtn">📊 Ma progression</button>
+        <button class="btn ghost mini" id="juryBtn">📋 Mot du jury</button>
         <button class="btn ghost mini hidden" id="adminBtn">🎓 Vue classe</button>
       </div>
     </div>
@@ -550,6 +551,17 @@ window.MathJax = {
       <button class="btn" id="statsBack">← Retour</button>
     </div>
     <p class="footer-note">Connecté, ta progression est synchronisée dans le cloud (privé). Sinon, elle reste dans ce navigateur.</p>
+  </div>
+
+  <!-- MOT DU JURY -->
+  <div class="card hidden" id="juryScreen">
+    <p class="section-label">Mot du jury — Mathématiques TSI</p>
+    <div id="juryFilters" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px"></div>
+    <div id="juryBody"></div>
+    <div class="actions" style="justify-content:flex-start">
+      <button class="btn" id="juryBack">← Retour</button>
+    </div>
+    <p class="footer-note">Citations et synthèses extraites des rapports officiels de jury (Centrale-Supélec et CCINP/CCP). Note&nbsp;: E3A-Polytech ne publie pas de filière TSI distincte.</p>
   </div>
 
   <!-- ADMIN -->
@@ -2442,9 +2454,30 @@ const MODE_LABEL = {qcm:'QCM', trou:'À trou', saisie:'Réponse libre', flash:'F
    }
    ============================================================ */
 const STATS_KEY = 'quiztsi_srs_v1';
+
+/* Paramètres de planification (façon Anki) */
+const SRS_MAX_INTERVAL = 270;   // plafond d'intervalle (jours)
+const SRS_LAPSE_MULT   = 0.4;   // échec doux : on conserve 40 % de l'intervalle
+const SRS_FUZZ         = 0.12;  // ±12 % d'aléa sur les longs intervalles (évite l'effet avalanche)
+const NEW_PER_DAY      = 20;    // nouvelles cartes introduites au maximum par jour
+function srsFuzz(ivl){
+  if(ivl < 3) return ivl;       // pas d'aléa sur les petits pas d'apprentissage
+  const delta = ivl * SRS_FUZZ;
+  return Math.max(3, Math.round(ivl + (Math.random()*2 - 1) * delta));
+}
+
 const SRS = {
   _d(){ try{ return JSON.parse(localStorage.getItem(STATS_KEY)) || {cards:{}, sessions:[]}; }catch(e){ return {cards:{},sessions:[]}; } },
   _save(d){ try{ localStorage.setItem(STATS_KEY, JSON.stringify(d)); }catch(e){} },
+
+  // ---- Helpers de date (streak + quota quotidien de nouvelles cartes) ----
+  _today(){ return new Date().toISOString().slice(0,10); },
+  _dayBefore(dayStr){ const x=new Date(dayStr+'T12:00:00'); x.setDate(x.getDate()-1); return x.toISOString().slice(0,10); },
+  // Nouvelles cartes déjà introduites aujourd'hui
+  dailyNewCount(){ const d=this._d(); const t=this._today(); return (d.daily && d.daily.day===t) ? (d.daily.newSeen||0) : 0; },
+  // Streak : jours consécutifs avec au moins une révision (0 si la chaîne est rompue)
+  streakCount(){ const d=this._d(); if(!d.streak || !d.streak.lastDay) return 0;
+    const t=this._today(); return (d.streak.lastDay===t || d.streak.lastDay===this._dayBefore(t)) ? (d.streak.count||0) : 0; },
 
   // synchro cloud (différée pour éviter les écritures multiples)
   _cloudTimer: null,
@@ -2487,12 +2520,14 @@ const SRS = {
   previewInterval(h, grade){
     const d = this._d();
     const c = d.cards[h] || {lvl:0, ef:2.5, interval:0};
-    if(grade === 0) return 1;
+    if(grade === 0) return Math.max(1, Math.round((c.interval||1) * SRS_LAPSE_MULT)); // échec doux
     const q_ef = grade===1 ? -0.14 : grade===2 ? 0 : 0.1;
     const ef = Math.max(1.3, (c.ef||2.5) + q_ef);
-    if(c.lvl === 0)      return 1;
-    else if(c.lvl === 1) return 3;
-    else                 return Math.round((c.interval||1) * ef);
+    let ivl;
+    if(c.lvl === 0)      ivl = 1;
+    else if(c.lvl === 1) ivl = 3;
+    else                 ivl = Math.round((c.interval||1) * ef);
+    return Math.min(ivl, SRS_MAX_INTERVAL); // affichage stable (l'aléa s'applique à la planification réelle)
   },
 
   // Met à jour après réponse : grade 0-3 (0=oubli, 1=difficile, 2=correct, 3=facile)
@@ -2503,23 +2538,35 @@ const SRS = {
     const dejaVue = c.reps > 0;
     c.reps++;
 
-    if(grade === 0){                         // oubli → reset
+    if(grade === 0){                         // oubli → échec DOUX (relearning) : on garde une partie de l'acquis
       c.lapses++;
-      c.lvl = 0;
-      c.interval = 1;
       c.ef = Math.max(1.3, c.ef - 0.2);
+      c.interval = Math.max(1, Math.round((c.interval||1) * SRS_LAPSE_MULT));
+      c.lvl = Math.max(0, c.lvl - 1);        // on rétrograde sans repartir de zéro
     } else {
       const q_ef = grade===1 ? -0.14 : grade===2 ? 0 : 0.1;
       c.ef = Math.max(1.3, c.ef + q_ef);
 
       if(c.lvl === 0)      c.interval = 1;
       else if(c.lvl === 1) c.interval = 3;
-      else                 c.interval = Math.round(c.interval * c.ef);
+      else                 c.interval = srsFuzz(Math.round(c.interval * c.ef)); // aléa anti-avalanche
 
+      c.interval = Math.min(c.interval, SRS_MAX_INTERVAL);
       c.lvl = Math.min(5, c.lvl + 1);
     }
     c.due = now + c.interval * 86400000;
     d.cards[h] = c;
+
+    // ---- Streak quotidien + quota de nouvelles cartes ----
+    const today = this._today();
+    const dn = d.daily || (d.daily = {day: today, newSeen: 0});
+    if(dn.day !== today){ dn.day = today; dn.newSeen = 0; }
+    if(!dejaVue) dn.newSeen++;                          // une nouvelle carte introduite aujourd'hui
+    const st = d.streak || (d.streak = {count: 0, lastDay: null});
+    if(st.lastDay !== today){
+      st.count = (st.lastDay === this._dayBefore(today)) ? (st.count||0) + 1 : 1;
+      st.lastDay = today;
+    }
 
     // Journal pour la RÉTENTION VRAIE (façon Anki) :
     // on ne compte que les révisions de cartes déjà vues (pas les découvertes).
@@ -2570,21 +2617,14 @@ const SRS = {
     };
   },
 
-  // Enregistre une session de quiz classique
+  // Enregistre une session de quiz (journal uniquement).
+  // La planification SRS de chaque carte est déjà faite par review() à la réponse,
+  // dans TOUS les modes (QCM, à trou, réponse libre, flashcard) : on ne refait donc
+  // PAS de mise à jour ici, ce qui évitait un double comptage des reps et des pénalités d'ef.
   recordSession(s){
     const d = this._d();
     d.sessions.push(s);
     if(d.sessions.length > 300) d.sessions = d.sessions.slice(-300);
-    // mise à jour SRS implicite depuis les détails
-    s.details.forEach(it=>{
-      const grade = it.correct ? 2 : 0;
-      const {d: d2, card: c} = this.card(it.h, it.q, it.topic);
-      // mise à jour légère sans recalcul complet si la carte a déjà été révisée aujourd'hui
-      c.reps++;
-      if(!it.correct){ c.lapses++; c.lvl=Math.max(0,c.lvl-1); c.ef=Math.max(1.3,c.ef-0.15); c.interval=Math.max(1,c.interval); }
-      else { if(c.lvl<5) c.lvl++; }
-      d2.cards[it.h]=c;
-    });
     this._save(d);
     this._syncCloud();
   },
@@ -2708,20 +2748,29 @@ function updateSrsBar(){
   const seg = (n)=> totalCards ? (n/totalCards*100) : 0;
   const pctMature = Math.round(seg(counts.mature));
 
+  // streak quotidien + quota de nouvelles cartes du jour
+  const streak = SRS.streakCount();
+  const newRemaining = Math.max(0, NEW_PER_DAY - SRS.dailyNewCount());
+  const newAvail = Math.min(newRemaining, counts.new);       // nouvelles cartes que la session peut introduire
+  const sessionSize = totalDue + newAvail;
+  const streakChip = streak>0
+    ? `<span class="due-chip" style="margin:0">🔥 ${streak} jour${streak>1?'s':''} d'affilée</span>` : '';
+
   bar.innerHTML = `<div class="srs-dashboard">
     <div class="srs-dash-top">
       <span class="srs-dash-title">Révision du jour</span>
+      ${streakChip}
       ${help}
     </div>
     <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap">
       <div class="srs-counters">
         <div class="srs-cnt"><span class="n" style="color:${dueColor}">${totalDue}</span><span class="l">À réviser</span></div>
-        <div class="srs-cnt"><span class="n" style="color:#60a5fa">${counts.new}</span><span class="l">Nouvelles</span></div>
+        <div class="srs-cnt"><span class="n" style="color:#60a5fa">${newAvail}</span><span class="l">Nouvelles / jour</span></div>
         <div class="srs-cnt"><span class="n" style="color:#fbbf24">${counts.learning+counts.young}</span><span class="l">En cours</span></div>
         <div class="srs-cnt"><span class="n" style="color:#4ade80">${counts.mature}</span><span class="l">Maîtrisées</span></div>
       </div>
-      ${totalDue>0
-        ? `<button class="btn" id="srsStartBtn" style="margin-left:auto">Réviser les ${totalDue} dues →</button>`
+      ${sessionSize>0
+        ? `<button class="btn" id="srsStartBtn" style="margin-left:auto">Réviser (${sessionSize}) →</button>`
         : `<span style="color:#4ade80;font-size:14px;font-weight:600;margin-left:auto">✓ Tout à jour !</span>`}
     </div>
     <div class="mat-bar" title="Répartition par maturité">
@@ -2894,15 +2943,26 @@ let srsMode = false;
 let srsQueue = [];
 function startSrsReview(){
   srsMode = true;
-  // on matche les cartes dues avec les questions disponibles
-  const due = SRS.due();
+  const d = SRS._d();
   const hMap = {};
-  QUESTIONS.forEach(q => { const h=qHash(q.q); hMap[h]=q; });
-  srsQueue = due.map(c => hMap[c.h]).filter(Boolean).slice(0,30);
+  QUESTIONS.forEach(q => { hMap[qHash(q.q)] = q; });
+  // 1) cartes DUES (déjà vues, à revoir)
+  const dueCards = SRS.due().map(c => hMap[c.h]).filter(Boolean);
+  // 2) NOUVELLES cartes, plafonnées par le quota quotidien restant
+  const remaining = Math.max(0, NEW_PER_DAY - SRS.dailyNewCount());
+  const newCards = QUESTIONS.filter(q => !d.cards[qHash(q.q)]);
+  shuffle(newCards);
+  const newPick = newCards.slice(0, remaining);
+
+  srsQueue = [...dueCards, ...newPick];
   if(!srsQueue.length){
-    alert('Les cartes dues ne correspondent pas aux questions chargées. Lance un quiz normal d\'abord !');
+    alert(dueCards.length===0 && remaining===0
+      ? 'Objectif du jour atteint : plus de nouvelles cartes et rien à réviser. Reviens demain ! 💪'
+      : 'Rien à réviser pour l\'instant. Lance un quiz pour découvrir des cartes.');
     srsMode = false; return;
   }
+  shuffle(srsQueue);            // entrelacement (interleaving) des chapitres : meilleure rétention
+  srsQueue = srsQueue.slice(0, 40);  // garde-fou de longueur de session
   // on utilise le flux quiz normal mais avec les questions de la file SRS
   pool = srsQueue.map(q=>({...q, _choices: q.mode==='qcm'? shuffle(q.choices.map((c,i)=>({...c,orig:i}))) : undefined }));
   idx=0; score=0; streak=0; bestStreak=0;
@@ -3513,7 +3573,7 @@ async function renderStats(){
   typeset(body);
 }
 function showStats(){
-  ['startScreen','quizScreen','resultScreen','adminScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
+  ['startScreen','quizScreen','resultScreen','adminScreen','juryScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
   $('#statsScreen').classList.remove('hidden');
   $('#statsBody').innerHTML = '<div class="empty-state">Chargement…</div>';
   $('#statsScreen').scrollIntoView({behavior:'smooth', block:'start'});
@@ -3522,6 +3582,167 @@ function showStats(){
 $('#statsBtn').onclick = showStats;
 $('#statsBack').onclick = ()=>{
   $('#statsScreen').classList.add('hidden');
+  $('#startScreen').classList.remove('hidden');
+  $('#startScreen').scrollIntoView({behavior:'smooth',block:'start'});
+};
+
+/* ====================== MOT DU JURY ====================== */
+const JURY_DATA = [
+  /* ——— Centrale-Supélec TSI 2024 ——— */
+  {concours:'centrale', year:2024, theme:'Rédaction', type:'citation',
+   text:"Beaucoup de candidats enchainent les calculs sans explication. La réponse à une question doit toujours être accompagnée de phrases justificatives."},
+  {concours:'centrale', year:2024, theme:'Rédaction', type:'citation',
+   text:"Le jury a relevé un nombre conséquent de copies manquant de soin avec parfois une rédaction manquant de clarté. Beaucoup de fautes d'orthographe ont été relevées. La très mauvaise qualité de certaines copies a été sanctionnée. Les feuilles de brouillon distribuées doivent être utilisées pour que la copie soit claire et les résultats doivent être soulignés ou encadrés."},
+  {concours:'centrale', year:2024, theme:'Rédaction', type:'citation',
+   text:"En ce qui concerne la logique, il faut clairement préciser si le raisonnement se fait par équivalence, double ou simple implication. Un raisonnement par équivalence ne doit pas être confondu avec une simple implication."},
+  {concours:'centrale', year:2024, theme:'Cours & théorèmes', type:'citation',
+   text:"Le jury rappelle à nouveau qu'une connaissance solide du cours de mathématiques des deux années est indispensable afin de bien figurer lors des concours. Les candidats sachant citer et reconnaître les théorèmes du cours ont pu se démarquer."},
+  {concours:'centrale', year:2024, theme:'Cours & théorèmes', type:'citation',
+   text:"Apprendre et comprendre le cours reste essentiel pour pouvoir le restituer avec précision lors d'une épreuve de concours. On doit aussi retenir des règles et des méthodes mais il faut les comprendre et savoir quand les utiliser. Travailler le cours à l'aide de nombreux exercices sur toutes les parties du programme des deux années reste incontournable."},
+  {concours:'centrale', year:2024, theme:'Cours & théorèmes', type:'citation',
+   text:"L'utilisation d'un théorème doit s'accompagner de la vérification de ses hypothèses : les lois usuelles doivent être connues (Bernoulli, binomiale, uniforme) ; le théorème de transfert doit être cité précisément en explicitant la fonction utilisée ; le calcul d'un rayon de convergence n'utilise pas systématiquement le critère de D'Alembert."},
+  {concours:'centrale', year:2024, theme:'Analyse', type:'citation',
+   text:"Les confusions entre $\\sum_{k\\geq k_0}$ et $\\sum_{k=k_0}^{+\\infty}$ ont été sanctionnées. Une série est une suite. Le symbole $\\sum_{k=k_0}^{+\\infty}$ est un nombre, désignant la limite de la suite des sommes partielles. On peut l'écrire après avoir justifié la convergence de la série."},
+  {concours:'centrale', year:2024, theme:'Analyse', type:'citation',
+   text:"Dans la partie consacrée aux intégrales généralisées, l'étude de la convergence est mal maîtrisée. L'oubli de la continuité a été sanctionné. Les critères de comparaison pour les fonctions positives doivent être connus. Dans une intégration par parties, la convergence du crochet $[u \\times v]_0^{+\\infty}$ doit être justifiée."},
+  {concours:'centrale', year:2024, theme:'Analyse', type:'citation',
+   text:"Le théorème de dérivation terme à terme pour les séries entières a été trop rarement cité, le domaine de validité de l'expression demandée, oublié. Une confusion entre développement limité et développement en série entière a été plusieurs fois relevée."},
+  {concours:'centrale', year:2024, theme:'Algèbre linéaire', type:'citation',
+   text:"Outre la linéarité, il était attendu la justification que l'image reste dans l'espace vectoriel considéré. De nombreuses confusions ont été repérées entre $\\mathbb{R}_n[X]$ (polynômes de degré au plus $n$) avec $\\mathbb{R}[X]$ ou avec l'ensemble des polynômes de degré $n$."},
+  {concours:'centrale', year:2024, theme:'Algèbre linéaire', type:'citation',
+   text:"Les axiomes définissant un produit scalaire sont connus. Mais trop souvent les candidats écrivent une inégalité stricte dans la positivité du produit scalaire. Le caractère défini (positivité qui implique la nullité) n'a jamais été bien traité."},
+  {concours:'centrale', year:2024, theme:'Algèbre linéaire', type:'synthese',
+   text:"Synthèse : les parties sur les séries, les intégrales généralisées et l'algèbre linéaire sont mal maîtrisées. Certaines notions de 1ʳᵉ année semblent oubliées : formule de Taylor pour les polynômes, théorème du rang, propriété « endomorphisme injectif sur espace de dimension finie ⟹ bijectif ». Des confusions entre bijectivité et diagonalisabilité persistent."},
+  {concours:'centrale', year:2024, theme:'Probabilités', type:'citation',
+   text:"La partie probabilités a été souvent boudée ou maltraitée. Les correcteurs ont constaté de multiples affirmations péremptoires (telle variable suit telle loi) et des confusions entre lois et variables aléatoires. Encore plus que dans les autres parties des mathématiques, la précision dans le langage est essentielle !"},
+  {concours:'centrale', year:2024, theme:'Probabilités', type:'citation',
+   text:"La plupart des candidats a cité le théorème de transfert avec son hypothèse de convergence mais souvent sans la justifier. Les lois usuelles sont insuffisamment connues. Des erreurs dans les calculs de sommes géométriques avec des oublis de cas particuliers (raison = 1) ont été relevées."},
+
+  /* ——— CCINP / CCP TSI 2024 ——— */
+  {concours:'ccinp', year:2024, theme:'Erreurs fréquentes', type:'synthese',
+   text:"Erreurs les plus fréquentes relevées par le jury : faire une récurrence pour démontrer une inégalité portant sur une variable réelle ; indiquer qu'une suite tend vers $0$ donc « est équivalente à $0$ » ; confondre suite $(u_n)$ et son terme général $u_n$ ; confondre une fonction $f$ et son évaluation $f(x)$ — non, $f(x)$ n'est pas dérivable ! ; confondre famille génératrice et base ; faire un lien entre la non-nullité du déterminant et la diagonalisabilité."},
+  {concours:'ccinp', year:2024, theme:'Rédaction', type:'citation',
+   text:"Les copies sont généralement bien présentées. Les rares candidats récalcitrants ont fait les frais du non-respect des règles élémentaires de rédaction. « En déduire » ne signifie pas qu'aucune démonstration n'est attendue. Un effort sur l'orthographe, la rédaction et la rigueur est néanmoins attendu."},
+  {concours:'ccinp', year:2024, theme:'Cours & théorèmes', type:'citation',
+   text:"Les outils usuels restent à consolider. Lors de la préparation, il est indispensable de bien maîtriser les résultats fondamentaux. Pour vérifier si une propriété est vraie pour tout entier naturel $n$, il ne suffit pas de vérifier qu'elle l'est pour $n = 0, 1, 2$."},
+  {concours:'ccinp', year:2024, theme:'Probabilités', type:'citation',
+   text:"Les lois usuelles en probabilités ne sont pas connues. La loi de Bernoulli est rarement repérée. La partie probabilités a été souvent boudée : confusions entre lois et variables aléatoires, invocation de la loi de Poisson sans justification, référence à un paramètre $p$ inexistant dans l'énoncé."},
+  {concours:'ccinp', year:2024, theme:'Algèbre linéaire', type:'citation',
+   text:"Le théorème du rang est souvent mal cité (l'espace de départ est rarement le bon). Une base est demandée, pas uniquement une famille génératrice. Ne pas faire de lien entre la non-nullité du déterminant et la diagonalisabilité d'une matrice."},
+  {concours:'ccinp', year:2024, theme:'Analyse', type:'citation',
+   text:"Ne pas penser qu'un développement limité en un point (propriété locale) entraîne un résultat global (inégalité sur tout un intervalle). Rappelons qu'un quotient d'intégrales n'est pas l'intégrale du quotient. Une suite décroissante et positive ne converge pas nécessairement vers $0$."},
+
+  /* ——— CCINP / CCP TSI 2025 ——— */
+  {concours:'ccinp', year:2025, theme:'Rédaction', type:'citation',
+   text:"Beaucoup trop de candidats se permettent de truffer leur copie de nombreuses ratures. Nous insistons sur l'importance de recourir systématiquement à un brouillon. Les correcteurs tiennent compte du soin apporté à la rigueur, à la qualité de la rédaction et à la présentation ; ces éléments ont un impact significatif sur l'appréciation de la copie."},
+  {concours:'ccinp', year:2025, theme:'Cours & théorèmes', type:'citation',
+   text:"Nous n'attendons pas des candidats une virtuosité exceptionnelle. Notre évaluation ne porte pas seulement sur les techniques mais aussi sur l'honnêteté intellectuelle et la qualité argumentative. Trop souvent, ces qualités sont pénalisées par une connaissance trop approximative des outils du cours."},
+  {concours:'ccinp', year:2025, theme:'Cours & théorèmes', type:'citation',
+   text:"Nous invitons vivement les candidats à consacrer quelques minutes à lire l'ensemble du sujet, et en particulier les exemples proposés, afin de s'en imprégner, d'en comprendre les objectifs et d'identifier les questions classiques avant de commencer la rédaction. Ce temps de lecture et d'analyse n'est pas perdu, bien au contraire."},
+  {concours:'ccinp', year:2025, theme:'Algèbre linéaire', type:'citation',
+   text:"Les concepts élémentaires d'algèbre linéaire sont dans l'ensemble compris (valeurs propres, sous-espaces propres, réduction), mais ils souffrent de certains manquements : oubli de vérifier qu'une famille génératrice constitue bien une base avant d'évoquer la dimension, omission d'hypothèses dans le théorème spectral."},
+  {concours:'ccinp', year:2025, theme:'Algèbre linéaire', type:'synthese',
+   text:"Synthèse : les candidats se précipitent sur le polynôme caractéristique pour déterminer le spectre alors qu'il suffit souvent d'étudier la dimension des sous-espaces propres. Trop peu vérifient explicitement les hypothèses des théorèmes avant de conclure, notamment que la famille obtenue constitue bien une base."},
+  {concours:'ccinp', year:2025, theme:'Analyse', type:'citation',
+   text:"En analyse, si la méthode de recherche des solutions développables en série entière est globalement connue, sa mise en œuvre rigoureuse l'est beaucoup moins : dérivabilité sur l'ouvert, théorème d'unicité des coefficients. Un nombre important éprouve de grandes difficultés dans la recherche du rayon de convergence."},
+  {concours:'ccinp', year:2025, theme:'Analyse', type:'citation',
+   text:"La justification de la convergence d'une intégrale généralisée est souvent fausse et très mal rédigée. Certains évoquent le « critère de Riemann » sans transformer le dénominateur, et ne réalisent pas où se situe le problème. Les hypothèses du théorème de changement de variables sont encore insuffisamment maîtrisées."},
+  {concours:'ccinp', year:2025, theme:'Probabilités', type:'citation',
+   text:"Les questions relatives aux probabilités se sont révélées particulièrement clivantes. Invoquer la loi de Poisson pour une variable à support fini, ou la loi normale, est redoutablement efficace pour se décrédibiliser aux yeux des correcteurs. La formule des probabilités totales est très rarement appliquée correctement : son préalable est un système complet d'événements."},
+];
+
+const JURY_THEMES = ['Tous', 'Rédaction', 'Cours & théorèmes', 'Algèbre linéaire', 'Analyse', 'Probabilités', 'Erreurs fréquentes'];
+const JURY_THEME_COLORS = {
+  'Rédaction':'#f59e0b','Cours & théorèmes':'#a78bfa','Algèbre linéaire':'#3b82f6',
+  'Analyse':'#ef4444','Probabilités':'#ec4899','Erreurs fréquentes':'#6b7280'
+};
+
+let _juryState = {concours:'all', theme:'Tous'};
+
+function renderJury(){
+  const {concours, theme} = _juryState;
+  let entries = JURY_DATA;
+  if(concours !== 'all') entries = entries.filter(e => e.concours === concours);
+  if(theme !== 'Tous') entries = entries.filter(e => e.theme === theme);
+
+  // Filters bar
+  const filtersEl = $('#juryFilters');
+  const cTabs = [
+    {k:'all', label:'Tous les concours'},
+    {k:'centrale', label:'Centrale-Supélec'},
+    {k:'ccinp', label:'CCINP / ex-CCP'},
+  ];
+  let fHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">`;
+  cTabs.forEach(t=>{
+    const active = _juryState.concours === t.k;
+    fHtml += `<button data-jc="${t.k}" style="
+      padding:6px 13px;border-radius:20px;border:1px solid ${active?'#a78bfa':'var(--line)'};
+      background:${active?'rgba(139,92,246,.18)':'transparent'};
+      color:${active?'#c4b5fd':'var(--muted)'};font-size:13px;cursor:pointer;
+      font-family:'Hanken Grotesk',sans-serif;transition:.15s">${t.label}</button>`;
+  });
+  fHtml += `</div><div style="display:flex;gap:6px;flex-wrap:wrap">`;
+  JURY_THEMES.forEach(th=>{
+    const active = _juryState.theme === th;
+    const col = JURY_THEME_COLORS[th] || '#a78bfa';
+    fHtml += `<button data-jt="${th}" style="
+      padding:5px 11px;border-radius:20px;border:1px solid ${active?col:'var(--line)'};
+      background:${active?`color-mix(in srgb,${col} 18%,transparent)`:'transparent'};
+      color:${active?col:'var(--muted)'};font-size:12px;cursor:pointer;
+      font-family:'Hanken Grotesk',sans-serif;transition:.15s">${th}</button>`;
+  });
+  fHtml += `</div>`;
+  filtersEl.innerHTML = fHtml;
+  filtersEl.querySelectorAll('[data-jc]').forEach(btn=>{
+    btn.onclick = ()=>{ _juryState.concours = btn.dataset.jc; renderJury(); };
+  });
+  filtersEl.querySelectorAll('[data-jt]').forEach(btn=>{
+    btn.onclick = ()=>{ _juryState.theme = btn.dataset.jt; renderJury(); };
+  });
+
+  // Entries
+  const body = $('#juryBody');
+  if(!entries.length){
+    body.innerHTML = '<div class="empty-state">Aucun commentaire pour cette sélection.</div>';
+    return;
+  }
+
+  const concoursLabel = {centrale:'Centrale-Supélec', ccinp:'CCINP / ex-CCP'};
+  let html = '';
+  entries.forEach(e=>{
+    const themeCol = JURY_THEME_COLORS[e.theme] || '#a78bfa';
+    const isCitation = e.type === 'citation';
+    html += `<div style="
+      background:rgba(${isCitation?'31,41,55':'17,24,39'},.5);
+      border:1px solid ${isCitation?'var(--line)':themeCol+'44'};
+      border-left:3px solid ${themeCol};
+      border-radius:14px;padding:16px 18px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+          color:${themeCol};background:color-mix(in srgb,${themeCol} 15%,transparent);
+          padding:3px 9px;border-radius:20px">${e.theme}</span>
+        <span style="font-size:11px;color:var(--muted);background:rgba(255,255,255,.05);
+          padding:3px 8px;border-radius:20px">${concoursLabel[e.concours]||e.concours} ${e.year}</span>
+        <span style="font-size:11px;color:var(--muted);margin-left:auto">${isCitation?'🗣 Citation directe':'📝 Synthèse'}</span>
+      </div>
+      <p style="margin:0;font-size:${isCitation?'14.5':'14'}px;line-height:1.65;
+        color:${isCitation?'var(--ink)':'#d1d5db'};
+        ${isCitation?'font-style:italic':''}">${e.text.replace(/\n/g,'<br>')}</p>
+    </div>`;
+  });
+  body.innerHTML = html;
+  typeset(body);
+}
+
+function showJury(){
+  ['startScreen','quizScreen','resultScreen','statsScreen','adminScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
+  $('#juryScreen').classList.remove('hidden');
+  $('#juryScreen').scrollIntoView({behavior:'smooth', block:'start'});
+  renderJury();
+}
+$('#juryBtn').onclick = showJury;
+$('#juryBack').onclick = ()=>{
+  $('#juryScreen').classList.add('hidden');
   $('#startScreen').classList.remove('hidden');
   $('#startScreen').scrollIntoView({behavior:'smooth',block:'start'});
 };
@@ -3658,7 +3879,7 @@ async function renderAdmin(){
   body.innerHTML = html;
 }
 $('#adminBtn').onclick = ()=>{
-  ['startScreen','quizScreen','resultScreen','statsScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
+  ['startScreen','quizScreen','resultScreen','statsScreen','juryScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
   $('#adminScreen').classList.remove('hidden');
   $('#adminBody').innerHTML = '<div class="empty-state">Chargement des données de la classe…</div>';
   $('#adminScreen').scrollIntoView({behavior:'smooth',block:'start'});
