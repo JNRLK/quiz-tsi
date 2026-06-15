@@ -487,6 +487,8 @@ window.MathJax = {
       <span id="poolInfo" style="color:var(--muted); font-size:13px"></span>
     </div>
 
+    <div id="juryTip"></div>
+
     <blockquote class="prof-quote">
       <span class="pq-mark">❝</span>
       <p class="pq-text">La vérité se trouve dans le schéma.</p>
@@ -3388,7 +3390,7 @@ $('#againBtn').onclick = ()=> $('#startBtn').click();
 $('#homeBtn').onclick = ()=>{
   $('#resultScreen').classList.add('hidden');
   $('#startScreen').classList.remove('hidden');
-  updateSrsBar(); updateHeaderStats(); buildFamilyAccordion(); updatePoolInfo();
+  updateSrsBar(); updateHeaderStats(); buildFamilyAccordion(); updatePoolInfo(); renderJuryTip();
   $('#startScreen').scrollIntoView({behavior:'smooth', block:'start'});
 };
 $('#resultStatsBtn').onclick = showStats;
@@ -3396,7 +3398,7 @@ $('#abandonBtn').onclick = ()=>{
   if(confirm('Abandonner ce quiz et revenir à l\'accueil ?')){
     $('#quizScreen').classList.add('hidden');
     $('#startScreen').classList.remove('hidden');
-    updateSrsBar(); updateHeaderStats(); buildFamilyAccordion(); updatePoolInfo();
+    updateSrsBar(); updateHeaderStats(); buildFamilyAccordion(); updatePoolInfo(); renderJuryTip();
     $('#startScreen').scrollIntoView({behavior:'smooth', block:'start'});
   }
 };
@@ -3649,6 +3651,34 @@ const JURY_DATA = [
    text:"La justification de la convergence d'une intégrale généralisée est souvent fausse et très mal rédigée. Certains évoquent le « critère de Riemann » sans transformer le dénominateur, et ne réalisent pas où se situe le problème. Les hypothèses du théorème de changement de variables sont encore insuffisamment maîtrisées."},
   {concours:'ccinp', year:2025, theme:'Probabilités', type:'citation',
    text:"Les questions relatives aux probabilités se sont révélées particulièrement clivantes. Invoquer la loi de Poisson pour une variable à support fini, ou la loi normale, est redoutablement efficace pour se décrédibiliser aux yeux des correcteurs. La formule des probabilités totales est très rarement appliquée correctement : son préalable est un système complet d'événements."},
+
+  /* ——— Centrale-Supélec TSI 2023 ——— */
+  {concours:'centrale', year:2023, theme:'Algèbre linéaire', type:'citation',
+   text:"Certaines réponses étaient confuses concernant le lien entre la diagonalisation et le caractère scindé du polynôme caractéristique. Rappelons que tous les polynômes non constants sont scindés sur $\\mathbb{C}$, mais que pourtant toutes les matrices complexes ne sont pas diagonalisables."},
+  {concours:'centrale', year:2023, theme:'Analyse', type:'citation',
+   text:"Il est regrettable qu'une grande partie des candidats se trompe dans des calculs de dérivées simples ou ne réussisse pas à résoudre des équations différentielles linéaires simples. Les candidats devraient savoir résoudre sans difficulté les équations différentielles linéaires du second ordre à coefficients constants, et mieux faire le lien entre dérivée nulle et fonction constante."},
+  {concours:'centrale', year:2023, theme:'Cours & théorèmes', type:'citation',
+   text:"Pour montrer qu'une intégrale converge, on remarque que la convergence absolue d'une intégrale entraîne sa convergence, après avoir écrit $|f(t)|\\,e^{-pt} = |f(t)\\,e^{-pt}|$. Beaucoup de candidats ignorent ce qu'est une intégrale convergente, et l'inégalité des accroissements finis est mal connue, notamment ses hypothèses."},
+
+  /* ——— CCINP / CCP TSI 2023 ——— */
+  {concours:'ccinp', year:2023, theme:'Algèbre linéaire', type:'citation',
+   text:"Les correcteurs ont constaté de fréquentes confusions entre diagonalisabilité, trigonalisabilité, symétrie et inversibilité ; ces propriétés ne sont pas interchangeables ! C'est le polynôme caractéristique qui est scindé, pas la matrice. Et il n'y a pas de lien direct entre diagonalisabilité et inversibilité."},
+  {concours:'ccinp', year:2023, theme:'Cours & théorèmes', type:'citation',
+   text:"Une famille libre de 3 vecteurs de $\\mathbb{R}^3$ est automatiquement une base : il est inutile de vérifier à la fois la liberté et le caractère générateur. Certains candidats semblent en revanche penser qu'une famille de trois éléments dans $\\mathbb{R}^3$ est automatiquement génératrice, ce qui est faux."},
+  {concours:'ccinp', year:2023, theme:'Probabilités', type:'citation',
+   text:"Il est impératif de justifier pourquoi une loi est géométrique : répétition d'expériences identiques de type Bernoulli, de façon indépendante, jusqu'à l'apparition d'un premier succès. Au-delà du calcul, une justification de l'existence de l'espérance par la convergence absolue de la série est attendue."},
+
+  /* ——— CCINP / CCP TSI 2022 ——— */
+  {concours:'ccinp', year:2022, theme:'Algèbre linéaire', type:'citation',
+   text:"De très nombreuses copies proposent un vecteur comme résultat d'un produit scalaire, ou un nombre pour le résultat d'un produit vectoriel. Le produit mixte est lui aussi méconnu : il s'interprète, au signe près, comme le volume du parallélépipède construit sur les trois vecteurs."},
+  {concours:'ccinp', year:2022, theme:'Cours & théorèmes', type:'citation',
+   text:"Le théorème spectral est souvent invoqué sans préciser que la matrice doit être symétrique ET réelle. De même, la formule du binôme de Newton $(A+B)^n=\\sum_{k=0}^{n}\\binom{n}{k}A^k B^{n-k}$ exige la commutativité $AB=BA$ des matrices en jeu, critère trop rarement cité."},
+
+  /* ——— CCINP / CCP TSI 2021 ——— */
+  {concours:'ccinp', year:2021, theme:'Analyse', type:'citation',
+   text:"Le rayon de convergence d'une série entière est par définition un nombre, et non un domaine ; certains confondent développement en série entière et développement limité. Le critère de d'Alembert permet de conclure à la convergence mais pas de calculer la somme, et $|u_{p+1}/u_p|<1$ ne suffit pas à affirmer la convergence de la série."},
+  {concours:'ccinp', year:2021, theme:'Rédaction', type:'synthese',
+   text:"Synthèse : il faut citer explicitement le nom des théorèmes et formules employés (intégration terme à terme, formule d'Euler, intégration par parties, croissances comparées). Les abréviations comme IPP ou FPT n'ont pas leur place dans une copie si elles n'ont pas été définies auparavant, et affirmer un résultat fourni par l'énoncé sans la moindre justification n'apporte aucun point."},
 ];
 
 const JURY_THEMES = ['Tous', 'Rédaction', 'Cours & théorèmes', 'Algèbre linéaire', 'Analyse', 'Probabilités', 'Erreurs fréquentes'];
@@ -3657,7 +3687,16 @@ const JURY_THEME_COLORS = {
   'Analyse':'#ef4444','Probabilités':'#ec4899','Erreurs fréquentes':'#6b7280'
 };
 
+// Lien thème de jury → chapitres (clés TOPICS) pour la révision ciblée.
+// Les thèmes transversaux (Rédaction, Cours & théorèmes, Erreurs fréquentes) n'ont pas de bouton.
+const JURY_THEME_TOPICS = {
+  'Algèbre linéaire': ['matrices','ev','systemes','complexes','polynomes'],
+  'Analyse': ['suites','limites','derivation','integration','dl','edl','fonctions'],
+  'Probabilités': ['proba','denombrement']
+};
+
 let _juryState = {concours:'all', theme:'Tous'};
+let _juryOpen = {};   // état d'ouverture de l'accordéon par thème
 
 function renderJury(){
   const {concours, theme} = _juryState;
@@ -3700,27 +3739,30 @@ function renderJury(){
     btn.onclick = ()=>{ _juryState.theme = btn.dataset.jt; renderJury(); };
   });
 
-  // Entries
+  // Entries — regroupées par thème (accordéon), triées par année décroissante
   const body = $('#juryBody');
   if(!entries.length){
     body.innerHTML = '<div class="empty-state">Aucun commentaire pour cette sélection.</div>';
     return;
   }
-
   const concoursLabel = {centrale:'Centrale-Supélec', ccinp:'CCINP / ex-CCP'};
-  let html = '';
-  entries.forEach(e=>{
+
+  const cardHTML = (e)=>{
     const themeCol = JURY_THEME_COLORS[e.theme] || '#a78bfa';
     const isCitation = e.type === 'citation';
-    html += `<div style="
+    const revTopics = JURY_THEME_TOPICS[e.theme] || [];
+    const revBtn = revTopics.length
+      ? `<button class="jury-rev" data-topics="${revTopics.join(',')}" style="margin-top:12px;
+          background:color-mix(in srgb,${themeCol} 16%,#0d1320);border:1px solid ${themeCol}66;
+          color:#e5e7eb;border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:700;
+          font-family:inherit;cursor:pointer">📚 S'entraîner sur ce thème →</button>`
+      : '';
+    return `<div style="
       background:rgba(${isCitation?'31,41,55':'17,24,39'},.5);
       border:1px solid ${isCitation?'var(--line)':themeCol+'44'};
       border-left:3px solid ${themeCol};
       border-radius:14px;padding:16px 18px;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-        <span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
-          color:${themeCol};background:color-mix(in srgb,${themeCol} 15%,transparent);
-          padding:3px 9px;border-radius:20px">${e.theme}</span>
         <span style="font-size:11px;color:var(--muted);background:rgba(255,255,255,.05);
           padding:3px 8px;border-radius:20px">${concoursLabel[e.concours]||e.concours} ${e.year}</span>
         <span style="font-size:11px;color:var(--muted);margin-left:auto">${isCitation?'🗣 Citation directe':'📝 Synthèse'}</span>
@@ -3728,9 +3770,49 @@ function renderJury(){
       <p style="margin:0;font-size:${isCitation?'14.5':'14'}px;line-height:1.65;
         color:${isCitation?'var(--ink)':'#d1d5db'};
         ${isCitation?'font-style:italic':''}">${e.text.replace(/\n/g,'<br>')}</p>
+      ${revBtn}
+    </div>`;
+  };
+
+  const themeOrder = JURY_THEMES.filter(t=>t!=='Tous');
+  const byTheme = {};
+  entries.forEach(e=>{ (byTheme[e.theme] ||= []).push(e); });
+  const singleTheme = (theme !== 'Tous');
+
+  let html = '';
+  themeOrder.forEach(th=>{
+    const list = byTheme[th]; if(!list || !list.length) return;
+    list.sort((a,b)=> b.year - a.year);
+    const col = JURY_THEME_COLORS[th] || '#a78bfa';
+    const open = singleTheme ? true : (_juryOpen[th] === true);
+    html += `<div class="fam-block">
+      <div class="fam-hdr" data-jtheme="${th}">
+        <span class="fdot" style="background:${col}"></span>
+        <span class="fname">${th}</span>
+        <span class="f-pct">${list.length}</span>
+        <span class="fam-toggle">${open?'▾':'▸'}</span>
+      </div>
+      <div class="fam-body" style="padding:14px 14px 2px;${open?'':'display:none'}">
+        ${list.map(cardHTML).join('')}
+      </div>
     </div>`;
   });
   body.innerHTML = html;
+
+  // toggles accordéon par thème
+  body.querySelectorAll('.fam-hdr[data-jtheme]').forEach(h=>{
+    h.onclick = ()=>{
+      const th = h.dataset.jtheme;
+      _juryOpen[th] = !(_juryOpen[th] === true);
+      const bd = h.nextElementSibling, tg = h.querySelector('.fam-toggle');
+      bd.style.display = _juryOpen[th] ? '' : 'none';
+      tg.textContent = _juryOpen[th] ? '▾' : '▸';
+    };
+  });
+  // boutons « s'entraîner sur ce thème » → révision SRS des chapitres liés
+  body.querySelectorAll('.jury-rev').forEach(b=>{
+    b.onclick = ()=> startReviewForTopics(b.dataset.topics.split(','));
+  });
   typeset(body);
 }
 
@@ -3746,6 +3828,49 @@ $('#juryBack').onclick = ()=>{
   $('#startScreen').classList.remove('hidden');
   $('#startScreen').scrollIntoView({behavior:'smooth',block:'start'});
 };
+
+/* Lance une révision ciblée sur un ensemble de chapitres (depuis le Mot du jury).
+   Reprend la logique SRS : cartes dues + nouvelles (plafonnées/jour) ; à défaut,
+   entraînement libre sur ces chapitres. */
+function startReviewForTopics(keys){
+  const set = new Set(keys);
+  const d = SRS._d();
+  const hMap = {}; QUESTIONS.forEach(q=>{ hMap[qHash(q.q)] = q; });
+  const due = SRS.due().map(c=>hMap[c.h]).filter(q=>q && set.has(q.topic));
+  const remaining = Math.max(0, NEW_PER_DAY - SRS.dailyNewCount());
+  const fresh = QUESTIONS.filter(q=>set.has(q.topic) && !d.cards[qHash(q.q)]);
+  shuffle(fresh);
+  let queue = [...due, ...fresh.slice(0, remaining)];
+  if(!queue.length){ queue = QUESTIONS.filter(q=>set.has(q.topic)); shuffle(queue); } // repli : entraînement libre
+  if(!queue.length){ alert('Aucune carte disponible pour ce thème.'); return; }
+  shuffle(queue); queue = queue.slice(0, 40);
+  pool = queue.map(q=>({...q, _choices: q.mode==='qcm'? shuffle(q.choices.map((c,i)=>({...c,orig:i}))) : undefined }));
+  idx=0; score=0; streak=0; bestStreak=0;
+  updateHeaderStats();
+  ['startScreen','resultScreen','statsScreen','adminScreen','juryScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
+  $('#quizScreen').classList.remove('hidden');
+  renderQuestion();
+}
+
+/* Conseil du jury du jour : citation tirée au sort, stable sur la journée. */
+function renderJuryTip(){
+  const host = $('#juryTip'); if(!host) return;
+  if(!Array.isArray(JURY_DATA) || !JURY_DATA.length){ host.innerHTML=''; return; }
+  const e = JURY_DATA[Math.floor(Date.now()/86400000) % JURY_DATA.length];
+  const col = JURY_THEME_COLORS[e.theme] || '#a78bfa';
+  const lbl = {centrale:'Centrale-Supélec', ccinp:'CCINP'}[e.concours] || e.concours;
+  host.innerHTML = `<div style="margin-top:24px;border:1px solid ${col}44;border-left:3px solid ${col};
+    background:color-mix(in srgb,${col} 6%,transparent);border-radius:14px;padding:16px 18px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:${col}">📋 Conseil du jury du jour</span>
+      <a id="juryTipMore" style="margin-left:auto;font-size:12px;color:#a78bfa;cursor:pointer;text-decoration:underline">Tout voir →</a>
+    </div>
+    <p style="margin:0;font-size:14px;line-height:1.6;color:var(--ink);${e.type==='citation'?'font-style:italic':''}">${e.text.replace(/\n/g,'<br>')}</p>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">${e.theme} · ${lbl} ${e.year}</div>
+  </div>`;
+  const m=$('#juryTipMore'); if(m) m.onclick=showJury;
+  typeset(host);
+}
 
 /* ====================== INDICATEUR CLOUD ====================== */
 let _cloudStatusTimer = null;
@@ -3897,6 +4022,7 @@ updateSrsBar();
 updateHeaderStats();
 buildFamilyAccordion();
 updatePoolInfo();
+renderJuryTip();
 </script>
 
 <!-- PWA : enregistrement du service worker (hors module pour rester robuste) -->
