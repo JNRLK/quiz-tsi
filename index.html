@@ -516,6 +516,11 @@ window.MathJax = {
   .adm-btn{border:1.5px solid var(--line); background:#0d1320; color:var(--ink); border-radius:11px; padding:9px 15px; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; transition:.15s}
   .adm-btn:hover{border-color:var(--accent); transform:translateY(-1px)}
   .adm-btn.primary{background:color-mix(in srgb,var(--accent) 16%,#0d1320); border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+  .adm-btn.danger{color:#fca5a5; border-color:color-mix(in srgb,#ef4444 45%,transparent); background:color-mix(in srgb,#ef4444 12%,#0d1320)}
+  .adm-btn.danger:hover{border-color:#ef4444; background:color-mix(in srgb,#ef4444 20%,#0d1320)}
+  .adm-rowact{padding:0 13px 13px; display:flex; justify-content:flex-end}
+  .adm-del{border:1.5px solid color-mix(in srgb,#ef4444 40%,var(--line)); background:#0d1320; color:#fca5a5; border-radius:10px; padding:7px 12px; font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer; transition:.15s}
+  .adm-del:hover{border-color:#ef4444; background:color-mix(in srgb,#ef4444 16%,#0d1320)}
   .adm-sec{margin-bottom:12px; border:1px solid var(--line); border-radius:16px; background:rgba(13,19,32,.5); overflow:hidden}
   .adm-sec-h{list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; padding:14px 16px; user-select:none; font-weight:600}
   .adm-sec-h::-webkit-details-marker{display:none}
@@ -868,7 +873,7 @@ window.MathJax = {
 /* ====================== FIREBASE ====================== */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
 import { getAuth, setPersistence, browserLocalPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, sendEmailVerification } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp, runTransaction, deleteDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBOs7FU54O37WkA9cvugGJmaWjHB6Zjg4o",
@@ -893,11 +898,23 @@ const db = getFirestore(fbApp);
 let currentUser = null;
 let isAdmin = false;
 
+// Clé de réservation d'un pseudo (unicité insensible à la casse, ID Firestore valide)
+function normUsername(s){
+  let k = (s||'').trim().toLowerCase().replace(/\s+/g,' ').replace(/\//g,'_');
+  if(k==='.'||k==='..') k = '_'+k;
+  return k.slice(0,120);
+}
+
 const Cloud = {
   async signUp(email, pass, profile){
+    const pseudo = (profile && profile.pseudo) ? profile.pseudo : email.split('@')[0];
+    // 0) Unicité du pseudo — pré-vérification (lecture publique de la collection usernames)
+    if(await this.usernameTaken(pseudo)){ const e=new Error('username-taken'); e.code='app/username-taken'; throw e; }
     const c = await createUserWithEmailAndPassword(auth, email, pass);
     const uid = c.user.uid;
-    const pseudo = (profile && profile.pseudo) ? profile.pseudo : email.split('@')[0];
+    // 0bis) Réservation atomique ; en cas de collision (course), on annule le compte tout juste créé
+    try{ await this.reserveUsername(pseudo, uid, c.user.email); }
+    catch(err){ try{ await c.user.delete(); }catch(_){ } const e=new Error('username-taken'); e.code='app/username-taken'; throw e; }
     // 1) doc de base (clés déjà autorisées par les règles Firestore)
     await setDoc(doc(db,'users',uid), {email:c.user.email, displayName:pseudo, createdAt:serverTimestamp()}, {merge:true});
     // E-mail de vérification (lien Firebase) — best-effort
@@ -937,6 +954,27 @@ const Cloud = {
   async myAggregate(){ if(!currentUser) return null; const snap = await getDoc(doc(db,'users',currentUser.uid)); return snap.exists()? (snap.data().agg||null) : null; },
   async myDoc(){ if(!currentUser) return null; const snap = await getDoc(doc(db,'users',currentUser.uid)); return snap.exists()? snap.data() : null; },
   async saveProfile(p){ if(!currentUser) return; await setDoc(doc(db,'users',currentUser.uid), {profile:p}, {merge:true}); },
+  // --- Unicité des pseudos (collection 'usernames') ---
+  async usernameTaken(pseudo){
+    const key = normUsername(pseudo); if(!key) return false;
+    try{ const s = await getDoc(doc(db,'usernames',key)); return s.exists() && s.data().uid !== (currentUser && currentUser.uid); }
+    catch(e){ console.warn('usernameTaken (règles usernames ?)', e); return false; } // lecture impossible → best-effort, ne bloque pas
+  },
+  async reserveUsername(pseudo, uid, email){
+    const key = normUsername(pseudo); if(!key) return;
+    await runTransaction(db, async (tx)=>{
+      const ref = doc(db,'usernames',key);
+      const s = await tx.get(ref);
+      if(s.exists() && s.data().uid !== uid){ const e=new Error('username-taken'); e.code='app/username-taken'; throw e; }
+      tx.set(ref, {uid, pseudo, email: email||null, createdAt: serverTimestamp()});
+    });
+  },
+  // Réservation par le prof (backfill des comptes existants) — nécessite la règle admin sur 'usernames'
+  async reserveUsernameAdmin(pseudo, uid, email){
+    const key = normUsername(pseudo); if(!key) return;
+    await setDoc(doc(db,'usernames',key), {uid, pseudo, email: email||null, createdAt: serverTimestamp()}, {merge:true});
+  },
+  async deleteUserDoc(uid){ await deleteDoc(doc(db,'users',uid)); },
   async mySessions(n=20){ if(!currentUser) return [];
     const qs = await getDocs(query(collection(db,'users',currentUser.uid,'sessions'), orderBy('date','desc'), limit(n)));
     return qs.docs.map(d=>d.data()); },
@@ -4570,6 +4608,7 @@ wireSeg('authAnnee');
 function authError(msg){ const e=$('#authErr'); e.textContent=msg; e.classList.remove('hidden'); e.style.color=''; }
 function authNote(msg){ const e=$('#authErr'); e.textContent=msg; e.classList.remove('hidden'); e.style.color='#4ade80'; }
 const AUTH_MSG = {
+  'app/username-taken':"Ce pseudo est déjà pris, choisis-en un autre.",
   'auth/invalid-email':"Adresse e-mail invalide.",
   'auth/missing-password':"Entre un mot de passe.",
   'auth/weak-password':"Mot de passe trop court (6 caractères minimum).",
@@ -4773,9 +4812,13 @@ async function renderAdmin(){
   let reports = [];
   try{ reports = await Cloud.getReports(50); }
   catch(e){ reports = null; console.warn('reports read', e); }
-  const rawCount = users.length;
-  users = admDedupe(users);
-  ADM.users = users; ADM.reports = reports; ADM.dupCount = rawCount - users.length;
+  const split = admDedupeSplit(users);
+  users = split.kept;
+  ADM.users = users; ADM.reports = reports; ADM.discarded = split.discarded; ADM.dupCount = split.discarded.length;
+  // Réservation/backfill des pseudos existants (idempotent) + détection des pseudos en double sur comptes distincts
+  admBackfillUsernames(users);
+  const pseudoMap = {}; users.forEach(u=>{ const k=normUsername(u.displayName); if(!k) return; (pseudoMap[k] ||= []).push(u); });
+  ADM.pseudoDupes = Object.values(pseudoMap).filter(arr=>arr.length>1);
 
   // --- KPIs globaux (jamais filtrés, après dédup par e-mail) ---
   const active = users.filter(u=>u.agg && u.agg.totalAnswered);
@@ -4804,6 +4847,7 @@ async function renderAdmin(){
     <div class="adm-tools">
       <button class="adm-btn" id="admReset" type="button">Réinitialiser</button>
       <button class="adm-btn primary" id="admCsv" type="button">⬇ Export CSV</button>
+      ${ADM.dupCount>0 ? `<button class="adm-btn danger" id="admDelDup" type="button">🗑 Supprimer les doublons (${ADM.dupCount})</button>` : ''}
     </div>
   </div>`;
 
@@ -4814,6 +4858,7 @@ async function renderAdmin(){
   const sb = $('#admSearch'); if(sb){ sb.oninput = ()=>{ ADM.filters.q = sb.value; paintAdmin(); }; }
   const rb = $('#admReset'); if(rb){ rb.onclick = ()=>{ ADM.filters = {statut:'',filiere:'',annee:'',classe:'',lycee:'',q:'',sort:ADM.filters.sort}; renderAdmin(); }; }
   const cb = $('#admCsv'); if(cb){ cb.onclick = ()=> admExportCSV(admFiltered()); }
+  const dd = $('#admDelDup'); if(dd){ dd.onclick = admDeleteDuplicates; }
 
   paintAdmin();
 }
@@ -4830,7 +4875,7 @@ function admPickBetter(a,b){
   const la=admTms(a.lastActive)||admTms(a.createdAt), lb=admTms(b.lastActive)||admTms(b.createdAt);
   return lb>la ? b : a;
 }
-function admDedupe(users){
+function admDedupeSplit(users){
   const byEmail=new Map(); const noEmail=[];
   for(const u of users){
     const key=(u.email||'').trim().toLowerCase();
@@ -4838,7 +4883,38 @@ function admDedupe(users){
     const prev=byEmail.get(key);
     byEmail.set(key, prev ? admPickBetter(prev,u) : u);
   }
-  return [...byEmail.values(), ...noEmail];
+  const kept=[...byEmail.values(), ...noEmail];
+  const keptSet=new Set(kept);
+  const discarded=users.filter(u=>!keptSet.has(u));
+  return {kept, discarded};
+}
+function admDedupe(users){ return admDedupeSplit(users).kept; }
+let admBackfillDone = false;
+async function admBackfillUsernames(users){
+  if(!isAdmin || admBackfillDone) return;
+  admBackfillDone = true;   // une fois par session : réserve les pseudos des comptes déjà existants
+  for(const u of users){
+    if(!u.displayName) continue;
+    try{ await Cloud.reserveUsernameAdmin(u.displayName, u.uid, u.email); }
+    catch(e){ /* best-effort : nécessite la règle admin sur 'usernames' */ }
+  }
+}
+async function admDeleteDuplicates(){
+  const dups = ADM.discarded || [];
+  if(!dups.length) return;
+  if(!confirm(`Supprimer définitivement ${dups.length} compte(s) en double (même e-mail) ?\n\nCette action est irréversible.`)) return;
+  const btn=$('#admDelDup'); if(btn){ btn.disabled=true; btn.textContent='Suppression…'; }
+  let okN=0, errN=0;
+  for(const u of dups){ try{ await Cloud.deleteUserDoc(u.uid); okN++; }catch(e){ errN++; console.warn('delete', u.uid, e); } }
+  if(errN) alert(`${okN} compte(s) supprimé(s), ${errN} échec(s).\nVérifie la règle Firestore « allow delete: if isAdmin() » sur la collection users.`);
+  renderAdmin();
+}
+async function admDeleteOne(uid, label){
+  if(!uid) return;
+  if(!confirm(`Supprimer définitivement le compte « ${label||uid} » ?\n\nCette action est irréversible.`)) return;
+  try{ await Cloud.deleteUserDoc(uid); }
+  catch(e){ alert('Suppression impossible — vérifie la règle « allow delete: if isAdmin() ».\n'+(e.code||e.message)); return; }
+  renderAdmin();
 }
 
 function admFiltered(){
@@ -4893,7 +4969,8 @@ function admStudentRow(u){
     ${field('Réussite', pct==null?'—':pct+' %')}
     ${field('Meilleure série', a.bestStreak||0)}
     ${field('Note', admEsc(p.note||'—'))}
-  </div>${weakHtml}`;
+  </div>${weakHtml}
+    <div class="adm-rowact"><button class="adm-del" type="button" data-del-uid="${admEsc(u.uid)}" data-del-label="${admEsc(name)}">🗑 Supprimer ce compte</button></div>`;
   return `<details class="adm-row${incomplete?' incomplete':''}">
     <summary>
       <span class="adm-dot ${admEsc(st||'none')}"></span>
@@ -4914,7 +4991,8 @@ function paintAdmin(){
 
   // 1) Trombinoscope (liste repliable)
   html += `<details class="adm-sec" open><summary class="adm-sec-h"><span class="cq-ic">👥</span><span class="cq-title">Trombinoscope — comptes (${list.length}/${total})</span><span class="cq-chev">▸</span></summary><div class="adm-sec-b">`;
-  if(ADM.dupCount>0){ html += `<p class="footer-note" style="text-align:left;margin:0 0 12px;color:#fbbf24">⚠ ${ADM.dupCount} doublon(s) de compte (même e-mail) masqué(s). Pour nettoyer : Firebase → Firestore → collection <code>users</code>, supprime les docs orphelins.</p>`; }
+  if(ADM.dupCount>0){ html += `<p class="footer-note" style="text-align:left;margin:0 0 12px;color:#fbbf24">⚠ ${ADM.dupCount} doublon(s) de compte (même e-mail) masqué(s). Clique « 🗑 Supprimer les doublons » en haut pour les retirer définitivement.</p>`; }
+  if(ADM.pseudoDupes && ADM.pseudoDupes.length){ const names=ADM.pseudoDupes.map(g=>`« ${admEsc(g[0].displayName)} » (${g.length})`).join(', '); html += `<p class="footer-note" style="text-align:left;margin:0 0 12px;color:#fbbf24">⚠ Pseudo(s) en double sur des comptes distincts : ${names}. Déplie le compte concerné et supprime/renomme pour garantir l'unicité.</p>`; }
   html += list.length ? (`<div class="adm-list">` + list.map(admStudentRow).join('') + `</div>`)
                       : `<div class="empty-state" style="padding:18px">Aucun compte ne correspond aux filtres.</div>`;
   html += `</div></details>`;
@@ -4962,6 +5040,7 @@ function paintAdmin(){
   html += `</div></details>`;
 
   box.innerHTML = html;
+  box.querySelectorAll('[data-del-uid]').forEach(b=>{ b.onclick=(e)=>{ e.preventDefault(); e.stopPropagation(); admDeleteOne(b.dataset.delUid, b.dataset.delLabel); }; });
   typeset(box);
 }
 
