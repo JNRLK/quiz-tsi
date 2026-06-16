@@ -3155,10 +3155,6 @@ $('#onboardStart').onclick = closeOnboarding;
 $('#onboardModal').addEventListener('click', e=>{ if(e.target.id==='onboardModal') closeOnboarding(); });
 function maybeOnboard(){ try{ if(!localStorage.getItem(ONBOARD_KEY)) openOnboarding(); }catch(e){} }
 
-function humanDue(ms){
-  const m=Math.round(ms/60000), h=Math.round(ms/3600000), d=Math.round(ms/86400000);
-  if(m<60) return m+'min'; if(h<24) return h+'h'; return d+' jour'+(d>1?'s':'');
-}
 
 /* Lance une session de révision espacée */
 let srsMode = false;
@@ -3196,7 +3192,6 @@ function startSrsReview(){
 
 /* ====================== START SCREEN ====================== */
 function poolFilter(q){ return selected.has(q.topic) && (selectedMode==='all' || q.mode===selectedMode); }
-function topicCount(key){ return QUESTIONS.filter(q=>q.topic===key && (selectedMode==='all'||q.mode===selectedMode)).length; }
 
 function poolSize(){ return QUESTIONS.filter(poolFilter).length; }
 function updatePoolInfo(){
