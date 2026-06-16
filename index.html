@@ -806,23 +806,36 @@ const Cloud = {
   }
 };
 
+const SRS_OWNER_KEY = 'quiztsi_srs_owner';
 onAuthStateChanged(auth, async (user)=>{
   currentUser = user;
   isAdmin = !!(user && ADMIN_EMAILS.map(e=>e.toLowerCase()).includes((user.email||'').toLowerCase()));
   if(user){
     try{
+      // Isolation par compte : si la progression locale appartient à un AUTRE
+      // utilisateur (ou à personne), on la purge AVANT de charger le cloud de ce
+      // compte — sinon la progression de l'ancien compte « fuite » sur le nouveau.
+      let localOwner=null; try{ localOwner=localStorage.getItem(SRS_OWNER_KEY); }catch(e){}
+      if(localOwner !== user.uid){
+        if(typeof SRS!=='undefined') SRS.clear();
+        try{ localStorage.setItem(SRS_OWNER_KEY, user.uid); }catch(e){}
+      }
       const cloud = await Cloud.loadSRS();
       if(cloud && typeof SRS!=='undefined'){ SRS.mergeCloud(cloud); SRS.gc(); SRS._syncCloud(); }
     }catch(e){ console.warn('SRS cloud load', e); }
     // Onboarding seulement après connexion
     if(typeof maybeOnboard === 'function') maybeOnboard();
   } else {
+    // Déconnexion : purge de la progression locale pour empêcher toute fuite entre comptes
+    if(typeof SRS!=='undefined') SRS.clear();
+    try{ localStorage.removeItem(SRS_OWNER_KEY); }catch(e){}
     // Connexion obligatoire : ouvrir la modale, non fermable
     if(typeof openAuth === 'function') openAuth();
   }
   if(typeof updateAccountUI === 'function') updateAccountUI();
   if(typeof updateSrsBar === 'function') updateSrsBar();
   if(typeof updateHeaderStats === 'function') updateHeaderStats();
+  if(typeof buildFamilyAccordion === 'function') buildFamilyAccordion();
 });
 
 /* ====================== DONNÉES ====================== */
