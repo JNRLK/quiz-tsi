@@ -913,25 +913,35 @@ const TOPICS = {
 //  - chap / page : référence dans le manuel Ellipses (page IMPRIMÉE du livre).
 //    (Le livre n'est pas hébergé — droits d'auteur — donc référence textuelle, pas de lien.)
 const COURSE_LINKS = {
-  suites:      {fiche:'cours-suites.pdf',      chap:12, page:281},
-  limites:     {fiche:'cours-limites.pdf',     chap:13, page:311},
-  derivation:  {fiche:'cours-derivation.pdf',  chap:14, page:341},
-  integration: {fiche:'cours-integration.pdf', chap:15, page:367},
-  dl:          {fiche:'cours-dl.pdf',          chap:16, page:395},
-  fonctions:   {fiche:'cours-fonctions.pdf',   chap:6,  page:133},
-  sommes:      {fiche:'cours-sommes.pdf',      chap:4,  page:81},
-  edl:         {fiche:'cours-edl.pdf',         chap:9,  page:207},
-  complexes:   {fiche:'cours-complexes.pdf',   chap:3,  page:55},
-  trigo:       {fiche:'cours-trigo.pdf',       chap:3,  page:55},
-  ev:          {fiche:'cours-ev.pdf',          chap:19, page:463},
-  matrices:    {fiche:'cours-matrices.pdf',    chap:18, page:443},
-  polynomes:   {fiche:'cours-polynomes.pdf',   chap:17, page:417},
-  systemes:    {fiche:'cours-systemes.pdf',    chap:11, page:251},
-  proba:       {fiche:'',                       chap:22, page:537},
-  denombrement:{fiche:'cours-denombrement.pdf',chap:10, page:231},
-  ensembles:   {fiche:'cours-ensembles.pdf',   chap:2,  page:35},
-  geoplan:     {fiche:'cours-geoplan.pdf',     chap:7,  page:157},
-  geoespace:   {fiche:'cours-geoespace.pdf',   chap:8,  page:183}
+  suites:      {fiche:'cours-suites.pdf',      chap:12, page:275},
+  limites:     {fiche:'cours-limites.pdf',     chap:13, page:305},
+  derivation:  {fiche:'cours-derivation.pdf',  chap:14, page:335},
+  integration: {fiche:'cours-integration.pdf', chap:15, page:361},
+  dl:          {fiche:'cours-dl.pdf',          chap:16, page:389},
+  fonctions:   {fiche:'cours-fonctions.pdf',   chap:6,  page:127},
+  sommes:      {fiche:'cours-sommes.pdf',      chap:4,  page:75},
+  edl:         {fiche:'cours-edl.pdf',         chap:9,  page:201},
+  complexes:   {fiche:'cours-complexes.pdf',   chap:3,  page:49},
+  trigo:       {fiche:'cours-trigo.pdf',       chap:3,  page:49},
+  ev:          {fiche:'cours-ev.pdf',          chap:19, page:457},
+  matrices:    {fiche:'cours-matrices.pdf',    chap:18, page:437},
+  polynomes:   {fiche:'cours-polynomes.pdf',   chap:17, page:411},
+  systemes:    {fiche:'cours-systemes.pdf',    chap:11, page:245},
+  proba:       {fiche:'',                       chap:22, page:531},
+  denombrement:{fiche:'cours-denombrement.pdf',chap:10, page:225},
+  ensembles:   {fiche:'cours-ensembles.pdf',   chap:2,  page:29},
+  geoplan:     {fiche:'cours-geoplan.pdf',     chap:7,  page:151},
+  geoespace:   {fiche:'cours-geoespace.pdf',   chap:8,  page:177}
+};
+// Page PRÉCISE de la notion dans le manuel Ellipses, par carte (clé = qHash de l'énoncé).
+// Renseigné chapitre par chapitre ; si une carte n'y est pas, on retombe sur la page de début de chapitre.
+const CARD_PAGE = {
+  // --- Suites numériques (chap. 12) ---
+  "q1s5x8cv":278,"qo39vzv":279,"qx14a10":278,"q1n6vrrw":279,"qfxqtuu":278,
+  "qjjad5x":279,"q19b49ed":279,"qidlxq2":278,"qm2isgu":279,"qqh5mtn":278,
+  "qrwdyor":278,"qksxohb":279,"q9lii2y":279,"q1cyp3er":278,"q7ab0r1":280,
+  "q138rptz":280,"q1253omr":278,"qqb045u":278,"q1sorg22":279,"q119qzra":278,
+  "q2wlmfz":278,"q8ta18a":278,"q1sbgv6l":279,"qvt1u41":279,"qbk59zs":280
 };
 function courseLink(q){
   const c = (typeof COURSE_LINKS!=='undefined') ? COURSE_LINKS[q.topic] : null;
@@ -939,7 +949,9 @@ function courseLink(q){
   const t = TOPICS[q.topic];
   const parts = [];
   if(c.fiche) parts.push(`<a class="course-link" href="${c.fiche}" target="_blank" rel="noopener">📖 Fiche${t?` — ${t.name}`:''} ↗</a>`);
-  if(c.chap)  parts.push(`<span class="course-ref" title="Manuel Ellipses">📘 Ellipses · chap.&nbsp;${c.chap} · p.&nbsp;${c.page}</span>`);
+  const cardPage = (typeof CARD_PAGE!=='undefined') ? CARD_PAGE[qHash(q.q)] : null;
+  const page = cardPage || c.page;
+  if(c.chap)  parts.push(`<span class="course-ref" title="Manuel Ellipses${cardPage?' — page de la notion':''}">📘 Ellipses · chap.&nbsp;${c.chap} · p.&nbsp;${page}</span>`);
   return parts.length ? `<div class="course-links">${parts.join('')}</div>` : '';
 }
 
