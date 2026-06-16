@@ -731,7 +731,7 @@ onAuthStateChanged(auth, async (user)=>{
   if(user){
     try{
       const cloud = await Cloud.loadSRS();
-      if(cloud && typeof SRS!=='undefined'){ SRS.mergeCloud(cloud); SRS._syncCloud(); }
+      if(cloud && typeof SRS!=='undefined'){ SRS.mergeCloud(cloud); SRS.gc(); SRS._syncCloud(); }
     }catch(e){ console.warn('SRS cloud load', e); }
     // Onboarding seulement après connexion
     if(typeof maybeOnboard === 'function') maybeOnboard();
@@ -2696,12 +2696,28 @@ const SRS = {
   },
 
   // Cartes dues aujourd'hui (tri : plus en retard en premier)
+  // On ne compte que les cartes correspondant à une question ACTUELLE : une carte
+  // orpheline (question dont le texte a changé → hash obsolète) n'est pas révisable,
+  // donc elle ne doit pas gonfler le compteur « À réviser » (sinon le bouton propose
+  // un nombre que le lancement ne peut pas honorer).
   due(){
     const d = this._d(), now = Date.now();
+    const valid = new Set(allQuestionHashes());
     return Object.entries(d.cards)
-      .filter(([,c]) => c.due <= now)
+      .filter(([h,c]) => valid.has(h) && c.due <= now)
       .sort(([,a],[,b]) => a.due - b.due)
       .map(([h,c]) => ({h,...c}));
+  },
+
+  // Supprime les cartes orphelines (hash ne correspondant plus à aucune question).
+  // Renvoie le nombre de cartes nettoyées.
+  gc(){
+    const d = this._d();
+    const valid = new Set(allQuestionHashes());
+    let removed = 0;
+    for(const h in d.cards){ if(!valid.has(h)){ delete d.cards[h]; removed++; } }
+    if(removed){ this._save(d); }
+    return removed;
   },
 
   // Cartes apprises (lvl ≥ 1)
@@ -4088,6 +4104,7 @@ $('#adminBack').onclick = ()=>{
 };
 
 /* ====================== INIT ====================== */
+try{ SRS.gc(); }catch(e){}   // purge des cartes orphelines (questions dont le texte a changé)
 updateAccountUI();
 updateSrsBar();
 updateHeaderStats();
