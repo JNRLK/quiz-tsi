@@ -105,10 +105,13 @@ window.MathJax = {
   .sync-when{font-size:12px; color:var(--muted)}
 
   /* ---- Renvoi au cours ---- */
-  .course-link{display:inline-flex; align-items:center; gap:6px; margin-top:12px; font-size:13.5px;
+  .course-links{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px}
+  .course-link{display:inline-flex; align-items:center; gap:6px; font-size:13.5px;
     color:#a78bfa; text-decoration:none; border:1px solid color-mix(in srgb,#a78bfa 40%,transparent);
     background:color-mix(in srgb,#a78bfa 10%,#0d1320); border-radius:10px; padding:8px 12px}
   .course-link:hover{background:color-mix(in srgb,#a78bfa 18%,#0d1320)}
+  .course-ref{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--muted);
+    border:1px solid var(--line); background:rgba(17,24,39,.5); border-radius:10px; padding:8px 12px}
 
   /* ---- Indice de swipe (notation mobile) ---- */
   .swipe-hint{display:none; justify-content:space-between; color:var(--muted); font-size:12px; margin:10px 2px 0}
@@ -905,34 +908,39 @@ const TOPICS = {
 // Un lien cliquable par CHAPITRE (clé = topic). Colle ici l'URL de la fiche/chapitre
 // correspondant (PDF, Drive, etc.). Laisse '' pour ne pas afficher de lien.
 // Le lien « 📖 Revoir le cours » apparaît automatiquement sous la correction de chaque carte.
+// Renvoi au cours, par chapitre :
+//  - fiche : PDF de la fiche hébergée dans le dépôt (cliquable). '' si pas de fiche.
+//  - chap / page : référence dans le manuel Ellipses (page IMPRIMÉE du livre).
+//    (Le livre n'est pas hébergé — droits d'auteur — donc référence textuelle, pas de lien.)
 const COURSE_LINKS = {
-  // Renvoi vers les fiches de cours hébergées dans le dépôt (dossier racine, fichiers cours-*.pdf).
-  // Une fiche par chapitre. Laisse '' pour masquer le lien d'un chapitre (ex : pas de fiche dispo).
-  suites:'cours-suites.pdf',
-  limites:'cours-limites.pdf',
-  derivation:'cours-derivation.pdf',
-  integration:'cours-integration.pdf',
-  dl:'cours-dl.pdf',
-  fonctions:'cours-fonctions.pdf',
-  sommes:'cours-sommes.pdf',
-  edl:'cours-edl.pdf',
-  complexes:'cours-complexes.pdf',
-  trigo:'cours-trigo.pdf',
-  ev:'cours-ev.pdf',
-  matrices:'cours-matrices.pdf',
-  polynomes:'cours-polynomes.pdf',
-  systemes:'cours-systemes.pdf',
-  proba:'',                       // pas de fiche Probabilités dans le dossier
-  denombrement:'cours-denombrement.pdf',
-  ensembles:'cours-ensembles.pdf',
-  geoplan:'cours-geoplan.pdf',
-  geoespace:'cours-geoespace.pdf'
+  suites:      {fiche:'cours-suites.pdf',      chap:12, page:281},
+  limites:     {fiche:'cours-limites.pdf',     chap:13, page:311},
+  derivation:  {fiche:'cours-derivation.pdf',  chap:14, page:341},
+  integration: {fiche:'cours-integration.pdf', chap:15, page:367},
+  dl:          {fiche:'cours-dl.pdf',          chap:16, page:395},
+  fonctions:   {fiche:'cours-fonctions.pdf',   chap:6,  page:133},
+  sommes:      {fiche:'cours-sommes.pdf',      chap:4,  page:81},
+  edl:         {fiche:'cours-edl.pdf',         chap:9,  page:207},
+  complexes:   {fiche:'cours-complexes.pdf',   chap:3,  page:55},
+  trigo:       {fiche:'cours-trigo.pdf',       chap:3,  page:55},
+  ev:          {fiche:'cours-ev.pdf',          chap:19, page:463},
+  matrices:    {fiche:'cours-matrices.pdf',    chap:18, page:443},
+  polynomes:   {fiche:'cours-polynomes.pdf',   chap:17, page:417},
+  systemes:    {fiche:'cours-systemes.pdf',    chap:11, page:251},
+  proba:       {fiche:'',                       chap:22, page:537},
+  denombrement:{fiche:'cours-denombrement.pdf',chap:10, page:231},
+  ensembles:   {fiche:'cours-ensembles.pdf',   chap:2,  page:35},
+  geoplan:     {fiche:'cours-geoplan.pdf',     chap:7,  page:157},
+  geoespace:   {fiche:'cours-geoespace.pdf',   chap:8,  page:183}
 };
 function courseLink(q){
-  const url = (typeof COURSE_LINKS!=='undefined') ? COURSE_LINKS[q.topic] : '';
-  if(!url) return '';
+  const c = (typeof COURSE_LINKS!=='undefined') ? COURSE_LINKS[q.topic] : null;
+  if(!c) return '';
   const t = TOPICS[q.topic];
-  return `<a class="course-link" href="${url}" target="_blank" rel="noopener">📖 Revoir le cours${t?` — ${t.name}`:''} ↗</a>`;
+  const parts = [];
+  if(c.fiche) parts.push(`<a class="course-link" href="${c.fiche}" target="_blank" rel="noopener">📖 Fiche${t?` — ${t.name}`:''} ↗</a>`);
+  if(c.chap)  parts.push(`<span class="course-ref" title="Manuel Ellipses">📘 Ellipses · chap.&nbsp;${c.chap} · p.&nbsp;${c.page}</span>`);
+  return parts.length ? `<div class="course-links">${parts.join('')}</div>` : '';
 }
 
 // mode: 'qcm' (choices), 'trou'/'saisie' (answer + accept[]), 'flash' (answer)
