@@ -2462,6 +2462,10 @@ const SRS_MAX_INTERVAL = 270;   // plafond d'intervalle (jours)
 const SRS_LAPSE_MULT   = 0.4;   // échec doux : on conserve 40 % de l'intervalle
 const SRS_FUZZ         = 0.12;  // ±12 % d'aléa sur les longs intervalles (évite l'effet avalanche)
 const NEW_PER_DAY      = 20;    // nouvelles cartes introduites au maximum par jour
+// Première vue d'une carte : l'intervalle dépend de la note choisie (façon Anki).
+const SRS_NEW_INTERVALS = {0:1, 1:2, 2:4, 3:7}; // Oubli / Difficile / Correct / Facile (jours)
+const SRS_HARD_MULT    = 1.2;   // multiplicateur « Difficile » sur une carte déjà vue
+const SRS_EASY_BONUS   = 1.3;   // bonus « Facile » par rapport à « Correct »
 function srsFuzz(ivl){
   if(ivl < 3) return ivl;       // pas d'aléa sur les petits pas d'apprentissage
   const delta = ivl * SRS_FUZZ;
@@ -2521,14 +2525,16 @@ const SRS = {
   // Reproduit exactement la logique de review() ci-dessous.
   previewInterval(h, grade){
     const d = this._d();
-    const c = d.cards[h] || {lvl:0, ef:2.5, interval:0};
-    if(grade === 0) return Math.max(1, Math.round((c.interval||1) * SRS_LAPSE_MULT)); // échec doux
-    const q_ef = grade===1 ? -0.14 : grade===2 ? 0 : 0.1;
-    const ef = Math.max(1.3, (c.ef||2.5) + q_ef);
+    const c = d.cards[h] || {lvl:0, ef:2.5, interval:0, reps:0};
+    const I = c.interval || 0;
+    // Première vue (jamais révisée ou intervalle nul) : barème par note, façon Anki.
+    if((c.reps||0) === 0 || I === 0) return SRS_NEW_INTERVALS[grade];
+    const ef = c.ef || 2.5;
     let ivl;
-    if(c.lvl === 0)      ivl = 1;
-    else if(c.lvl === 1) ivl = 3;
-    else                 ivl = Math.round((c.interval||1) * ef);
+    if(grade === 0)      ivl = Math.max(1, Math.round(I * SRS_LAPSE_MULT));     // échec doux : intervalle réduit
+    else if(grade === 1) ivl = Math.max(I + 1, Math.round(I * SRS_HARD_MULT));  // difficile
+    else if(grade === 2) ivl = Math.max(I + 1, Math.round(I * ef));             // correct
+    else                 ivl = Math.max(I + 1, Math.round(I * ef * SRS_EASY_BONUS)); // facile
     return Math.min(ivl, SRS_MAX_INTERVAL); // affichage stable (l'aléa s'applique à la planification réelle)
   },
 
@@ -2538,22 +2544,27 @@ const SRS = {
     const now = Date.now();
     const ivlAvant = c.interval || 0;   // intervalle AVANT cette révision (pour rétention vraie)
     const dejaVue = c.reps > 0;
+    const premiereVue = !dejaVue || (c.interval || 0) === 0;
     c.reps++;
 
-    if(grade === 0){                         // oubli → échec DOUX (relearning) : on garde une partie de l'acquis
+    if(premiereVue){
+      // Première vue : barème par note (1/2/4/7 j selon Oubli/Difficile/Correct/Facile).
+      c.interval = SRS_NEW_INTERVALS[grade];
+      if(grade === 0){ c.lapses++; c.ef = Math.max(1.3, c.ef - 0.2); c.lvl = 0; }
+      else { c.lvl = Math.min(5, grade >= 3 ? 2 : 1); }
+    } else if(grade === 0){                   // oubli → échec DOUX (relearning) : on garde une partie de l'acquis
       c.lapses++;
       c.ef = Math.max(1.3, c.ef - 0.2);
-      c.interval = Math.max(1, Math.round((c.interval||1) * SRS_LAPSE_MULT));
-      c.lvl = Math.max(0, c.lvl - 1);        // on rétrograde sans repartir de zéro
+      c.interval = Math.max(1, Math.round(c.interval * SRS_LAPSE_MULT));
+      c.lvl = Math.max(0, c.lvl - 1);
     } else {
-      const q_ef = grade===1 ? -0.14 : grade===2 ? 0 : 0.1;
+      const q_ef = grade===1 ? -0.15 : grade===2 ? 0 : 0.1; // « difficile » baisse l'aisance
       c.ef = Math.max(1.3, c.ef + q_ef);
-
-      if(c.lvl === 0)      c.interval = 1;
-      else if(c.lvl === 1) c.interval = 3;
-      else                 c.interval = srsFuzz(Math.round(c.interval * c.ef)); // aléa anti-avalanche
-
-      c.interval = Math.min(c.interval, SRS_MAX_INTERVAL);
+      let ivl;
+      if(grade === 1)      ivl = Math.max(c.interval + 1, Math.round(c.interval * SRS_HARD_MULT));
+      else if(grade === 2) ivl = Math.max(c.interval + 1, srsFuzz(Math.round(c.interval * c.ef)));
+      else                 ivl = Math.max(c.interval + 1, srsFuzz(Math.round(c.interval * c.ef * SRS_EASY_BONUS)));
+      c.interval = Math.min(ivl, SRS_MAX_INTERVAL);
       c.lvl = Math.min(5, c.lvl + 1);
     }
     c.due = now + c.interval * 86400000;
@@ -3218,8 +3229,8 @@ function srsGradeButtons(q, container){
       else { streak=0; q._missed=true; }
       updateHeaderStats();
       div.querySelectorAll('.sg2').forEach(x=>{x.disabled=true; x.style.opacity=x===b?'1':'.3';});
-      $('#nextBtn').classList.remove('hidden');
-      $('#nextBtn').focus();
+      // la note EST l'action finale : on enchaîne directement sur la carte suivante
+      setTimeout(()=>{ if(idx < pool.length-1){ idx++; renderQuestion(); } else showResults(); }, 160);
     };
     div.appendChild(b);
   });
