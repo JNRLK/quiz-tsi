@@ -906,27 +906,27 @@ const TOPICS = {
 // correspondant (PDF, Drive, etc.). Laisse '' pour ne pas afficher de lien.
 // Le lien « 📖 Revoir le cours » apparaît automatiquement sous la correction de chaque carte.
 const COURSE_LINKS = {
-  // Fiches de cours de référence (Wikipédia FR, articles vérifiés). Remplace une URL par
-  // ta propre ressource (PDF/Drive) quand tu veux — laisse '' pour masquer le lien d'un chapitre.
-  suites:'https://fr.wikipedia.org/wiki/Suite_(mathématiques)',
-  limites:'https://fr.wikipedia.org/wiki/Limite_(mathématiques)',
-  derivation:'https://fr.wikipedia.org/wiki/Dérivée',
-  integration:'https://fr.wikipedia.org/wiki/Intégration_(mathématiques)',
-  dl:'https://fr.wikipedia.org/wiki/Développement_limité',
-  fonctions:'https://fr.wikipedia.org/wiki/Fonction_(mathématiques)',
-  sommes:'https://fr.wikipedia.org/wiki/Somme_(arithmétique)',
-  edl:'https://fr.wikipedia.org/wiki/Équation_différentielle',
-  complexes:'https://fr.wikipedia.org/wiki/Nombre_complexe',
-  trigo:'https://fr.wikipedia.org/wiki/Trigonométrie',
-  ev:'https://fr.wikipedia.org/wiki/Espace_vectoriel',
-  matrices:'https://fr.wikipedia.org/wiki/Matrice_(mathématiques)',
-  polynomes:'https://fr.wikipedia.org/wiki/Polynôme',
-  systemes:'https://fr.wikipedia.org/wiki/Système_d%27équations_linéaires',
-  proba:'https://fr.wikipedia.org/wiki/Probabilité',
-  denombrement:'https://fr.wikipedia.org/wiki/Dénombrement',
-  ensembles:'https://fr.wikipedia.org/wiki/Théorie_des_ensembles',
-  geoplan:'https://fr.wikipedia.org/wiki/Géométrie_euclidienne',
-  geoespace:'https://fr.wikipedia.org/wiki/Géométrie_dans_l%27espace'
+  // Renvoi vers les fiches de cours hébergées dans le dépôt (dossier racine, fichiers cours-*.pdf).
+  // Une fiche par chapitre. Laisse '' pour masquer le lien d'un chapitre (ex : pas de fiche dispo).
+  suites:'cours-suites.pdf',
+  limites:'cours-limites.pdf',
+  derivation:'cours-derivation.pdf',
+  integration:'cours-integration.pdf',
+  dl:'cours-dl.pdf',
+  fonctions:'cours-fonctions.pdf',
+  sommes:'cours-sommes.pdf',
+  edl:'cours-edl.pdf',
+  complexes:'cours-complexes.pdf',
+  trigo:'cours-trigo.pdf',
+  ev:'cours-ev.pdf',
+  matrices:'cours-matrices.pdf',
+  polynomes:'cours-polynomes.pdf',
+  systemes:'cours-systemes.pdf',
+  proba:'',                       // pas de fiche Probabilités dans le dossier
+  denombrement:'cours-denombrement.pdf',
+  ensembles:'cours-ensembles.pdf',
+  geoplan:'cours-geoplan.pdf',
+  geoespace:'cours-geoespace.pdf'
 };
 function courseLink(q){
   const url = (typeof COURSE_LINKS!=='undefined') ? COURSE_LINKS[q.topic] : '';
