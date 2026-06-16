@@ -107,8 +107,12 @@ window.MathJax = {
   /* ---- Visionneuse de cours (overlay) ---- */
   .course-viewer{position:fixed; inset:0; z-index:1000; background:#0d1320; display:flex; flex-direction:column}
   .course-viewer.hidden{display:none}
-  .cv-bar{display:flex; align-items:center; gap:12px; padding:10px 14px; border-bottom:1px solid var(--line); background:#111827}
-  .cv-title{flex:1; font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .cv-bar{display:flex; align-items:center; gap:10px; background:#111827; border-bottom:1px solid var(--line);
+    padding:10px 14px; padding-top:calc(env(safe-area-inset-top, 0px) + 10px);
+    padding-left:calc(env(safe-area-inset-left, 0px) + 14px); padding-right:calc(env(safe-area-inset-right, 0px) + 14px)}
+  .cv-title{flex:1; font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:center}
+  .cv-scroll{flex:1; overflow:auto; -webkit-overflow-scrolling:touch; background:#fff; padding-bottom:env(safe-area-inset-bottom, 0px)}
+  .cv-img{display:block; width:100%; height:auto}
   .cv-frame{flex:1; width:100%; border:0; background:#fff}
 
   /* ---- Renvoi au cours ---- */
@@ -701,9 +705,9 @@ window.MathJax = {
   <div class="cv-bar">
     <button class="btn ghost mini" id="courseBack">← Retour</button>
     <span class="cv-title" id="courseTitle">📖 Cours</span>
-    <a class="btn ghost mini" id="courseOpenTab" href="#" target="_blank" rel="noopener">Ouvrir ↗</a>
+    <a class="btn ghost mini" id="courseOpenTab" href="#" target="_blank" rel="noopener">PDF ↗</a>
   </div>
-  <iframe id="courseFrame" class="cv-frame" title="Fiche de cours" src="about:blank"></iframe>
+  <div class="cv-scroll" id="courseScroll"><img id="courseImg" class="cv-img" alt="Fiche de cours"></div>
 </div>
 
 <script type="module">
@@ -939,10 +943,11 @@ function openCourse(v){
   const m=document.getElementById('courseModal'); if(!m) return true; // repli: laisser le lien s'ouvrir
   const base=v.replace(/-p\d+$/,'');
   const lbl=(typeof FICHE_LABEL!=='undefined' && FICHE_LABEL[base]) ? FICHE_LABEL[base] : 'Cours';
-  const url='cours-'+v+'.pdf';
   document.getElementById('courseTitle').textContent='📖 '+lbl;
-  const tab=document.getElementById('courseOpenTab'); if(tab) tab.href=url;
-  document.getElementById('courseFrame').src=url;
+  const tab=document.getElementById('courseOpenTab'); if(tab) tab.href='cours-'+v+'.pdf';
+  const img=document.getElementById('courseImg');
+  if(img){ img.src='cours-'+v+'.jpg'; }   // rendu image : s'adapte parfaitement à la largeur mobile
+  const sc=document.getElementById('courseScroll'); if(sc) sc.scrollTop=0;
   m.classList.remove('hidden');
   try{ history.pushState({cv:1},''); }catch(e){}   // pour que le « retour » du téléphone ferme la fiche
   return false; // empêche la navigation du lien
@@ -950,7 +955,7 @@ function openCourse(v){
 function closeCourse(){
   const m=document.getElementById('courseModal'); if(!m) return;
   m.classList.add('hidden');
-  const f=document.getElementById('courseFrame'); if(f) f.src='about:blank'; // libère le PDF
+  const img=document.getElementById('courseImg'); if(img) img.removeAttribute('src');
 }
 function backFromCourse(){ if(history.state && history.state.cv){ history.back(); } else closeCourse(); }
 window.openCourse=openCourse; window.closeCourse=closeCourse;
