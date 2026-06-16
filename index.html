@@ -289,7 +289,7 @@ window.MathJax = {
   .mathkb-key:active{transform:translateY(0)}
   /* ---------- Indicateur cloud ---------- */
   .cloud-status{
-    position:fixed; bottom:18px; right:18px; z-index:100;
+    position:fixed; bottom:calc(env(safe-area-inset-bottom, 0px) + 84px); right:14px; z-index:100;
     display:flex; align-items:center; gap:8px;
     background:rgba(13,19,32,.92); border:1px solid var(--line);
     border-radius:999px; padding:8px 14px; font-size:13px; font-weight:600;
@@ -3374,10 +3374,11 @@ function renderTyped(zone, q){
 
 /* ---- Clavier mathématique ---- */
 const KB_TABS = [
-  {name:'Grec',      keys:['π','α','β','γ','δ','ε','θ','λ','μ','σ','φ','ω','Δ','Σ','Ω']},
-  {name:'Opér.',     keys:['+','−','×','÷','±','√','^','_','/','(',')','∫','∑','∏','∂','∞','!']},
-  {name:'Relations', keys:['=','≠','<','>','≤','≥','≈','→','⇒','⇔','↦']},
+  // P2 : « Opér. » par défaut (signes absents du clavier d'abord) ; lettres grecques reléguées en dernier.
+  {name:'Opér.',     keys:['×','÷','√','±','^','/','∞','∫','∑','∏','∂','!','+','−','(',')','_']},
+  {name:'Relations', keys:['=','≠','≤','≥','<','>','≈','→','⇒','⇔','↦']},
   {name:'Ensembles', keys:['ℝ','ℂ','ℕ','ℤ','ℚ','∈','∉','⊂','∀','∃','∅']},
+  {name:'Grec',      keys:['π','α','β','γ','δ','ε','θ','λ','μ','σ','φ','ω','Δ','Σ','Ω']},
 ];
 // touches qui insèrent une paire avec curseur à l'intérieur
 const KB_PAIRS = {'√':'√()','(':'()'};
@@ -3528,6 +3529,8 @@ const WRONG_QUIPS = [
 ];
 function wrongQuip(){ return WRONG_QUIPS[Math.floor(Math.random()*WRONG_QUIPS.length)]; }
 
+/* P2 — défilement auto vers la zone d'action (feedback/validation) pour éviter le scroll manuel */
+function scrollToAction(el){ if(el) setTimeout(()=>{ try{ el.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){} }, 80); }
 function finalize(q, ok){
   if(ok){ score++; streak++; bestStreak=Math.max(bestStreak,streak); }
   else { streak=0; q._missed=true; }
@@ -3545,8 +3548,10 @@ function finalize(q, ok){
     updateHeaderStats();
     $('#nextBtn').classList.remove('hidden');
     $('#nextBtn').focus();
+    scrollToAction($('#nextBtn'));
   } else {
     $('#nextBtn').classList.remove('hidden');
+    scrollToAction($('#nextBtn'));
   }
 }
 
@@ -3571,6 +3576,7 @@ function finalizeSelf(q, ok){
   hint.textContent = ok===null ? 'Tu savais ? Évalue ta maîtrise :' : 'Affine si besoin :';
   fb.appendChild(hint);
   srsGradeButtons(q, fb);
+  scrollToAction(fb.lastElementChild);
 }
 
 $('#nextBtn').onclick = ()=>{
@@ -4225,12 +4231,13 @@ let _cloudStatusTimer = null;
 function cloudToast(type, msg){
   const el = $('#cloudStatus');
   if(!el) return;
+  // P2 : on n'affiche le bandeau QUE pour les erreurs ; succès/sync restent discrets
+  // (le statique « Dernière synchro » suffit). Repositionné pour ne plus couvrir Suivant/Abandonner.
+  if(type !== 'err'){ el.classList.remove('show'); return; }
   el.className = 'cloud-status show ' + type;
   el.textContent = msg;
   clearTimeout(_cloudStatusTimer);
-  if(type !== 'sync'){
-    _cloudStatusTimer = setTimeout(()=>{ el.classList.remove('show'); }, 3000);
-  }
+  _cloudStatusTimer = setTimeout(()=>{ el.classList.remove('show'); }, 4000);
 }
 // Horodatage de la dernière synchro réussie (persisté pour survivre aux rechargements)
 let lastSyncTs = parseInt(localStorage.getItem('quiztsi_lastsync')||'0') || 0;
