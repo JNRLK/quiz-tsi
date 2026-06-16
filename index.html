@@ -701,6 +701,7 @@ window.MathJax = {
       <div id="authAnneeRow">
         <p class="section-label" style="margin:14px 0 6px">Année <span style="text-transform:none;letter-spacing:0">(optionnel)</span></p>
         <div class="mode-opts" id="authAnnee">
+          <button type="button" class="mode" data-v="0">Année 0</button>
           <button type="button" class="mode" data-v="1">1re année</button>
           <button type="button" class="mode" data-v="2">2e année</button>
         </div>
@@ -763,7 +764,7 @@ window.MathJax = {
 <script type="module">
 /* ====================== FIREBASE ====================== */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-import { getAuth, setPersistence, browserLocalPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+import { getAuth, setPersistence, browserLocalPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, sendEmailVerification } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -795,6 +796,8 @@ const Cloud = {
     const pseudo = (profile && profile.pseudo) ? profile.pseudo : email.split('@')[0];
     // 1) doc de base (clés déjà autorisées par les règles Firestore)
     await setDoc(doc(db,'users',uid), {email:c.user.email, displayName:pseudo, createdAt:serverTimestamp()}, {merge:true});
+    // E-mail de vérification (lien Firebase) — best-effort
+    try{ await sendEmailVerification(c.user); }catch(e){ console.warn('sendEmailVerification', e); }
     // 2) profil détaillé — best-effort : nécessite d'ajouter la clé 'profile' aux règles Firestore.
     //    Toujours conservé en local pour ne rien perdre si les règles ne sont pas encore à jour.
     if(profile){
@@ -4400,9 +4403,11 @@ function updateAccountUI(){
   if(!$('#statsScreen').classList.contains('hidden')) renderStats();
 }
 let authMode = 'login';
-function openAuth(){ authMode='login'; refreshAuthModal(); const cb=$('#authClose'); if(cb) cb.style.display=currentUser?'':'none'; $('#authModal').classList.remove('hidden'); $('#authEmail').focus(); }
-function closeAuth(){ $('#authModal').classList.add('hidden'); $('#authErr').classList.add('hidden'); $('#authEmail').value=''; $('#authPass').value=''; const p=$('#authPseudo'); if(p) p.value=''; }
+let pendingVerify = false;
+function openAuth(){ authMode='login'; pendingVerify=false; refreshAuthModal(); const cb=$('#authClose'); if(cb) cb.style.display=currentUser?'':'none'; $('#authModal').classList.remove('hidden'); $('#authEmail').focus(); }
+function closeAuth(){ pendingVerify=false; $('#authModal').classList.add('hidden'); $('#authErr').classList.add('hidden'); $('#authEmail').value=''; $('#authPass').value=''; const p=$('#authPseudo'); if(p) p.value=''; }
 function refreshAuthModal(){
+  pendingVerify=false;
   const signup = authMode==='signup';
   $('#authTitle').textContent = signup ? 'Créer un compte' : 'Connexion';
   const sub=$('#authSub'); if(sub) sub.textContent = signup ? 'Crée ton compte pour suivre ta progression.' : 'Connecte-toi pour accéder à la console de révision.';
@@ -4457,6 +4462,7 @@ $('#accountBtn').onclick = ()=>{
 $('#authClose').onclick = ()=>{ if(currentUser) closeAuth(); };
 $('#authModal').addEventListener('click', e=>{ if(e.target.id==='authModal' && currentUser) closeAuth(); });
 $('#authSubmit').onclick = async ()=>{
+  if(pendingVerify){ pendingVerify=false; closeAuth(); return; }
   const email = $('#authEmail').value.trim(), pass = $('#authPass').value;
   $('#authErr').classList.add('hidden');
   if(authMode==='signup'){
@@ -4469,15 +4475,19 @@ $('#authSubmit').onclick = async ()=>{
   }
   $('#authSubmit').disabled = true;
   try{
-    if(authMode==='login') await Cloud.signIn(email, pass);
-    else await Cloud.signUp(email, pass, {
-      pseudo: $('#authPseudo').value.trim(),
-      statut: segValue('authStatut'),
-      lycee: $('#authLycee').value.trim() || null,
-      filiere: segValue('authFiliere') || null,
-      annee: segValue('authAnnee') || null
-    });
-    closeAuth();
+    if(authMode==='login'){ await Cloud.signIn(email, pass); closeAuth(); }
+    else {
+      await Cloud.signUp(email, pass, {
+        pseudo: $('#authPseudo').value.trim(),
+        statut: segValue('authStatut'),
+        lycee: $('#authLycee').value.trim() || null,
+        filiere: segValue('authFiliere') || null,
+        annee: segValue('authAnnee') || null
+      });
+      pendingVerify = true;
+      authNote('✅ Compte créé ! Un e-mail de vérification a été envoyé à '+email+'. Clique le lien dans l\'e-mail (regarde aussi les spams), puis reviens.');
+      $('#authSubmit').textContent = 'Continuer →';
+    }
   }catch(err){ authError(AUTH_MSG[err.code] || ('Erreur : '+(err.code||err.message))); }
   finally{ $('#authSubmit').disabled = false; }
 };
