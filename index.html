@@ -681,7 +681,8 @@ const Cloud = {
   // ⚠️ Règles Firestore requises (à coller dans Firebase console) :
   // allow create, update: if signedIn() && request.auth.uid == uid
   //   && request.resource.data.keys().hasOnly(['email','displayName','createdAt','lastActive','agg','srs','srsUpdated']);
-  async saveSRS(cards){ if(!currentUser) return; await setDoc(doc(db,'users',currentUser.uid), {srs:cards, srsUpdated:serverTimestamp()}, {merge:true}); },
+  // `bundle` = {cards, streak, daily} (tout est imbriqué sous la clé `srs` autorisée par les règles).
+  async saveSRS(bundle){ if(!currentUser) return; await setDoc(doc(db,'users',currentUser.uid), {srs:bundle, srsUpdated:serverTimestamp()}, {merge:true}); },
   async sendReport(r){
     await addDoc(collection(db,'reports'), {
       ...r,
@@ -2493,7 +2494,8 @@ const SRS = {
     this._cloudTimer = setTimeout(async ()=>{
       try{
         cloudSync('↑ Synchronisation…');
-        await Cloud.saveSRS(this._d().cards);
+        const dd = this._d();
+        await Cloud.saveSRS({ cards: dd.cards, streak: dd.streak || null, daily: dd.daily || null });
         cloudOk('☁️ SRS sauvegardé');
       }catch(e){
         console.warn('SRS cloud sync', e);
@@ -2501,14 +2503,33 @@ const SRS = {
       }
     }, 1500);
   },
-  // fusionne les cartes du cloud avec le local (on garde la plus avancée)
-  mergeCloud(cloudCards){
-    if(!cloudCards) return;
+  // fusionne l'état cloud avec le local. Accepte le NOUVEAU format {cards, streak, daily}
+  // comme l'ANCIEN (map de cartes brute). Cartes : on garde la plus avancée.
+  mergeCloud(cloud){
+    if(!cloud) return;
     const d = this._d();
+    const cloudCards = (cloud.cards && typeof cloud.cards === 'object') ? cloud.cards : cloud;
     for(const h in cloudCards){
-      const cc = cloudCards[h], lc = d.cards[h];
+      const cc = cloudCards[h];
+      if(!cc || typeof cc !== 'object' || !('reps' in cc)) continue; // ignore streak/daily si format ancien
+      const lc = d.cards[h];
       if(!lc || (cc.reps||0) > (lc.reps||0) || ((cc.reps||0)===(lc.reps||0) && (cc.due||0) > (lc.due||0))){
         d.cards[h] = cc;
+      }
+    }
+    // streak : on garde celui dont le dernier jour d'activité est le plus récent (à égalité, le plus grand compteur)
+    if(cloud.streak && cloud.streak.lastDay){
+      const ls = d.streak;
+      if(!ls || !ls.lastDay || cloud.streak.lastDay > ls.lastDay ||
+         (cloud.streak.lastDay === ls.lastDay && (cloud.streak.count||0) > (ls.count||0))){
+        d.streak = cloud.streak;
+      }
+    }
+    // daily : si le cloud concerne aujourd'hui, on garde le plus grand nombre de nouvelles introduites
+    if(cloud.daily && cloud.daily.day){
+      const t = this._today(), ld = d.daily;
+      if(cloud.daily.day === t && (!ld || ld.day !== t || (cloud.daily.newSeen||0) > (ld.newSeen||0))){
+        d.daily = cloud.daily;
       }
     }
     this._save(d);
@@ -4034,6 +4055,22 @@ updateHeaderStats();
 buildFamilyAccordion();
 updatePoolInfo();
 renderJuryTip();
+
+// Re-synchronisation cloud au retour sur l'application (utile en passant d'un appareil à l'autre) :
+// on récupère l'état du cloud, on le fusionne au local, et on rafraîchit le tableau de bord.
+let _lastPull = 0;
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState !== 'visible') return;
+  if(typeof currentUser === 'undefined' || !currentUser) return;
+  if(Date.now() - _lastPull < 4000) return;   // throttle léger
+  _lastPull = Date.now();
+  Cloud.loadSRS().then(cloud=>{
+    if(!cloud) return;
+    SRS.mergeCloud(cloud);
+    SRS._syncCloud();                          // re-pousse l'union fusionnée (anti-écrasement)
+    updateSrsBar(); updateHeaderStats(); buildFamilyAccordion();
+  }).catch(()=>{});
+});
 </script>
 
 <!-- PWA : enregistrement du service worker (hors module pour rester robuste) -->
