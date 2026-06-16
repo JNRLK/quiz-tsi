@@ -104,6 +104,25 @@ window.MathJax = {
   .sync-row{display:flex; align-items:center; gap:12px; margin:0 0 16px; flex-wrap:wrap}
   .sync-when{font-size:12px; color:var(--muted)}
 
+  /* ---- Renvoi au cours ---- */
+  .course-link{display:inline-flex; align-items:center; gap:6px; margin-top:12px; font-size:13.5px;
+    color:#a78bfa; text-decoration:none; border:1px solid color-mix(in srgb,#a78bfa 40%,transparent);
+    background:color-mix(in srgb,#a78bfa 10%,#0d1320); border-radius:10px; padding:8px 12px}
+  .course-link:hover{background:color-mix(in srgb,#a78bfa 18%,#0d1320)}
+
+  /* ---- Indice de swipe (notation mobile) ---- */
+  .swipe-hint{display:none; justify-content:space-between; color:var(--muted); font-size:12px; margin:10px 2px 0}
+  @media (hover:none){ .swipe-hint{display:flex} }
+
+  /* ---- Heatmap d'activité + objectif hebdo ---- */
+  .heatmap{display:flex; gap:3px; overflow-x:auto; padding-bottom:4px}
+  .hm-col{display:flex; flex-direction:column; gap:3px}
+  .hm-cell{width:13px; height:13px; border-radius:3px; flex:none}
+  .goal-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:12px 0 6px}
+  .goal-lbl{font-size:13px; color:var(--muted)}
+  .goal-bar{flex:1; min-width:140px; height:8px; border-radius:99px; background:#1f2937; overflow:hidden}
+  .goal-bar>i{display:block; height:100%; transition:width .6s}
+
   /* ---- SRS barre ---- */
   .srs-dashboard{background:linear-gradient(135deg,color-mix(in srgb,#a78bfa 14%,#0d1320),color-mix(in srgb,#60a5fa 8%,#0d1320));
     border:1px solid color-mix(in srgb,#a78bfa 35%,transparent); border-radius:18px; padding:16px 18px; margin-bottom:22px}
@@ -881,6 +900,40 @@ const TOPICS = {
     "raw": "#84cc16"
   }
 };
+
+// ====================== RENVOI AU COURS (Ellipses) ======================
+// Un lien cliquable par CHAPITRE (clé = topic). Colle ici l'URL de la fiche/chapitre
+// correspondant (PDF, Drive, etc.). Laisse '' pour ne pas afficher de lien.
+// Le lien « 📖 Revoir le cours » apparaît automatiquement sous la correction de chaque carte.
+const COURSE_LINKS = {
+  // Fiches de cours de référence (Wikipédia FR, articles vérifiés). Remplace une URL par
+  // ta propre ressource (PDF/Drive) quand tu veux — laisse '' pour masquer le lien d'un chapitre.
+  suites:'https://fr.wikipedia.org/wiki/Suite_(mathématiques)',
+  limites:'https://fr.wikipedia.org/wiki/Limite_(mathématiques)',
+  derivation:'https://fr.wikipedia.org/wiki/Dérivée',
+  integration:'https://fr.wikipedia.org/wiki/Intégration_(mathématiques)',
+  dl:'https://fr.wikipedia.org/wiki/Développement_limité',
+  fonctions:'https://fr.wikipedia.org/wiki/Fonction_(mathématiques)',
+  sommes:'https://fr.wikipedia.org/wiki/Somme_(arithmétique)',
+  edl:'https://fr.wikipedia.org/wiki/Équation_différentielle',
+  complexes:'https://fr.wikipedia.org/wiki/Nombre_complexe',
+  trigo:'https://fr.wikipedia.org/wiki/Trigonométrie',
+  ev:'https://fr.wikipedia.org/wiki/Espace_vectoriel',
+  matrices:'https://fr.wikipedia.org/wiki/Matrice_(mathématiques)',
+  polynomes:'https://fr.wikipedia.org/wiki/Polynôme',
+  systemes:'https://fr.wikipedia.org/wiki/Système_d%27équations_linéaires',
+  proba:'https://fr.wikipedia.org/wiki/Probabilité',
+  denombrement:'https://fr.wikipedia.org/wiki/Dénombrement',
+  ensembles:'https://fr.wikipedia.org/wiki/Théorie_des_ensembles',
+  geoplan:'https://fr.wikipedia.org/wiki/Géométrie_euclidienne',
+  geoespace:'https://fr.wikipedia.org/wiki/Géométrie_dans_l%27espace'
+};
+function courseLink(q){
+  const url = (typeof COURSE_LINKS!=='undefined') ? COURSE_LINKS[q.topic] : '';
+  if(!url) return '';
+  const t = TOPICS[q.topic];
+  return `<a class="course-link" href="${url}" target="_blank" rel="noopener">📖 Revoir le cours${t?` — ${t.name}`:''} ↗</a>`;
+}
 
 // mode: 'qcm' (choices), 'trou'/'saisie' (answer + accept[]), 'flash' (answer)
 const QUESTIONS = [
@@ -3261,6 +3314,7 @@ function revealTyped(q, typed, auto){
   html += `<div class="reveal-ans"><span class="rl">Réponse attendue</span>${q.answer}</div>`;
   if(q.exp) html += `<div class="exp" style="margin-top:10px">${q.exp}</div>`;
   if(q.vig) html += `<div class="vig"><span class="ic">⚠️</span><span><b>Vigilance.</b> ${q.vig}</span></div>`;
+  html += courseLink(q);
   fb.innerHTML = html; fb.className='feedback';
   if(auto===true){
     // bonne réponse détectée automatiquement → on compte "Correct" et on enchaîne,
@@ -3283,6 +3337,7 @@ function renderFlash(zone, q){
     let html = `<div class="reveal-ans"><span class="rl">Réponse</span>${q.answer}</div>`;
     if(q.exp) html += `<div class="exp" style="margin-top:10px">${q.exp}</div>`;
     if(q.vig) html += `<div class="vig"><span class="ic">⚠️</span><span><b>Vigilance.</b> ${q.vig}</span></div>`;
+    html += courseLink(q);
     fb.innerHTML = html; fb.className='feedback';
     zone.querySelector('#revealBtn').disabled = true;
     // évaluation directe en 4 niveaux (plus d'étape intermédiaire)
@@ -3301,6 +3356,28 @@ function fmtDelay(days){
   if(days < 60) return Math.round(days/7) + " sem";
   if(days < 365) return Math.round(days/30) + " mois";
   return (days/365).toFixed(1).replace('.0','') + " an";
+}
+// Swipe mobile pour noter : glisser à gauche = Oubli (g0), à droite = Facile (g3).
+let _gradeSwipeCleanup = null;
+function setupGradeSwipe(gradeDiv){
+  const zone = $('#quizScreen');
+  if(_gradeSwipeCleanup){ _gradeSwipeCleanup(); _gradeSwipeCleanup = null; }
+  let x0=null, y0=null;
+  const onStart = e=>{ const t=e.changedTouches[0]; x0=t.clientX; y0=t.clientY; };
+  const onEnd = e=>{
+    if(x0===null) return; const t=e.changedTouches[0];
+    const dx=t.clientX-x0, dy=t.clientY-y0; x0=null;
+    if(Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy)*1.4) return; // swipe horizontal franc requis
+    const g = dx<0 ? 0 : 3;                       // gauche=Oubli, droite=Facile
+    const btn = gradeDiv.querySelector('.sg2.g'+g);
+    if(btn && !btn.disabled){
+      gradeDiv.classList.add(dx<0 ? 'swiped-left' : 'swiped-right');
+      btn.click();
+    }
+  };
+  zone.addEventListener('touchstart', onStart, {passive:true});
+  zone.addEventListener('touchend', onEnd, {passive:true});
+  _gradeSwipeCleanup = ()=>{ zone.removeEventListener('touchstart', onStart); zone.removeEventListener('touchend', onEnd); };
 }
 function srsGradeButtons(q, container){
   const h = qHash(q.q);
@@ -3328,6 +3405,10 @@ function srsGradeButtons(q, container){
     div.appendChild(b);
   });
   container.appendChild(div);
+  const hint=document.createElement('p'); hint.className='swipe-hint';
+  hint.innerHTML='<span>← Oubli</span><span>glisse pour noter</span><span>Facile →</span>';
+  container.appendChild(hint);
+  setupGradeSwipe(div);
 }
 
 const WRONG_QUIPS = [
@@ -3348,6 +3429,7 @@ function finalize(q, ok){
     if(!ok) html += `<div class="wrong-quip">${wrongQuip()}</div>`;
     html += `<div class="exp">${q.exp}</div>`;
     if(q.vig) html += `<div class="vig"><span class="ic">⚠️</span><span><b>Vigilance.</b> ${q.vig}</span></div>`;
+    html += courseLink(q);
     fb.innerHTML = html; fb.className='feedback'; typeset(fb);
     // QCM : le clic sur la réponse EST la validation. SRS direct, pas de double étape.
     SRS.review(qHash(q.q), q.q, q.topic, ok ? 2 : 0);
@@ -3555,6 +3637,54 @@ $('#reportSubmit').onclick = async ()=>{
   }
 };
 
+/* ====================== HEATMAP D'ACTIVITÉ ====================== */
+// Grille type « contributions GitHub » + objectif hebdomadaire, à partir de l'activité locale
+// (journal de révisions + sessions de cet appareil).
+const WEEKLY_GOAL = 5; // jours actifs visés par semaine
+function activityHeatmap(){
+  const dd = SRS._d();
+  const days = {};
+  const add = (t,n)=>{ if(!t) return; const d=new Date(t); d.setHours(12,0,0,0); const k=d.toISOString().slice(0,10); days[k]=(days[k]||0)+n; };
+  (dd.reviewLog||[]).forEach(r=> add(r.t, 1));
+  (dd.sessions||[]).forEach(s=> add(typeof s.date==='number'? s.date : null, s.total||1));
+
+  const WEEKS = 18;
+  const today = new Date(); today.setHours(12,0,0,0);
+  const dow = (today.getDay()+6)%7;                 // 0 = lundi
+  const start = new Date(today); start.setDate(today.getDate()-dow-(WEEKS-1)*7);
+  const palette = ['#1b2230','#0e4429','#006d32','#26a641','#39d353'];
+
+  let cols='';
+  for(let w=0; w<WEEKS; w++){
+    let col='';
+    for(let d=0; d<7; d++){
+      const dt=new Date(start); dt.setDate(start.getDate()+w*7+d);
+      const future = dt>today;
+      const key=dt.toISOString().slice(0,10);
+      const c = days[key]||0;
+      const lvl = c===0?0 : c<3?1 : c<8?2 : c<15?3 : 4;
+      const bg = future ? 'transparent' : palette[lvl];
+      col += `<div class="hm-cell" title="${key} · ${c} action${c!==1?'s':''}" style="background:${bg}"></div>`;
+    }
+    cols += `<div class="hm-col">${col}</div>`;
+  }
+
+  // objectif hebdo : jours actifs depuis lundi
+  let activeThisWeek=0;
+  for(let d=0; d<=dow; d++){ const dt=new Date(today); dt.setDate(today.getDate()-dow+d);
+    if((days[dt.toISOString().slice(0,10)]||0)>0) activeThisWeek++; }
+  const pct=Math.min(100, Math.round(activeThisWeek/WEEKLY_GOAL*100));
+  const reached = activeThisWeek>=WEEKLY_GOAL;
+
+  let html = `<p class="section-label" style="margin-top:22px">Activité (4 derniers mois)</p>`;
+  html += `<div class="heatmap">${cols}</div>`;
+  html += `<div class="goal-row">
+    <span class="goal-lbl">Objectif hebdo : <b style="color:${reached?'#4ade80':'var(--ink)'}">${activeThisWeek}/${WEEKLY_GOAL}</b> jours actifs ${reached?'✓':''}</span>
+    <div class="goal-bar"><i style="width:${pct}%;background:${reached?'#22c55e':'#a78bfa'}"></i></div>
+  </div>`;
+  return html;
+}
+
 /* ====================== TABLEAU DE BORD ====================== */
 async function renderStats(){
   const body = $('#statsBody');
@@ -3643,6 +3773,8 @@ async function renderStats(){
      <div class="stat-card"><div class="v">${best}</div><div class="k">Meilleure série</div></div>
      <div class="stat-card"><div class="v">${nSessions}</div><div class="k">Sessions</div></div>
    </div>`;
+
+  html += activityHeatmap();
 
   if(sparkVals.length){
     html += `<p class="section-label">Progression (derniers quiz)</p><div class="spark">`;
