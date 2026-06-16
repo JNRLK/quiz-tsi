@@ -104,6 +104,13 @@ window.MathJax = {
   .sync-row{display:flex; align-items:center; gap:12px; margin:0 0 16px; flex-wrap:wrap}
   .sync-when{font-size:12px; color:var(--muted)}
 
+  /* ---- Visionneuse de cours (overlay) ---- */
+  .course-viewer{position:fixed; inset:0; z-index:1000; background:#0d1320; display:flex; flex-direction:column}
+  .course-viewer.hidden{display:none}
+  .cv-bar{display:flex; align-items:center; gap:12px; padding:10px 14px; border-bottom:1px solid var(--line); background:#111827}
+  .cv-title{flex:1; font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .cv-frame{flex:1; width:100%; border:0; background:#fff}
+
   /* ---- Renvoi au cours ---- */
   .course-links{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px}
   .course-link{display:inline-flex; align-items:center; gap:6px; font-size:13.5px;
@@ -689,6 +696,16 @@ window.MathJax = {
   </div>
 </div>
 
+<!-- VISIONNEUSE DE COURS (overlay interne avec bouton Retour) -->
+<div class="course-viewer hidden" id="courseModal">
+  <div class="cv-bar">
+    <button class="btn ghost mini" id="courseBack">← Retour</button>
+    <span class="cv-title" id="courseTitle">📖 Cours</span>
+    <a class="btn ghost mini" id="courseOpenTab" href="#" target="_blank" rel="noopener">Ouvrir ↗</a>
+  </div>
+  <iframe id="courseFrame" class="cv-frame" title="Fiche de cours" src="about:blank"></iframe>
+</div>
+
 <script type="module">
 /* ====================== FIREBASE ====================== */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
@@ -915,8 +932,33 @@ function courseLink(q){
   if(!v) return '';
   const base = v.replace(/-p\d+$/,'');
   const lbl = (FICHE_LABEL && FICHE_LABEL[base]) ? FICHE_LABEL[base] : 'Revoir le cours';
-  return `<div class="course-links"><a class="course-link" href="cours-${v}.pdf" target="_blank" rel="noopener">📖 ${lbl} ↗</a></div>`;
+  return `<div class="course-links"><a class="course-link" href="cours-${v}.pdf" target="_blank" rel="noopener" onclick="return openCourse('${v}')">📖 ${lbl} ↗</a></div>`;
 }
+// Ouvre la fiche dans un overlay interne (avec bouton Retour) au lieu de quitter le quiz.
+function openCourse(v){
+  const m=document.getElementById('courseModal'); if(!m) return true; // repli: laisser le lien s'ouvrir
+  const base=v.replace(/-p\d+$/,'');
+  const lbl=(typeof FICHE_LABEL!=='undefined' && FICHE_LABEL[base]) ? FICHE_LABEL[base] : 'Cours';
+  const url='cours-'+v+'.pdf';
+  document.getElementById('courseTitle').textContent='📖 '+lbl;
+  const tab=document.getElementById('courseOpenTab'); if(tab) tab.href=url;
+  document.getElementById('courseFrame').src=url;
+  m.classList.remove('hidden');
+  try{ history.pushState({cv:1},''); }catch(e){}   // pour que le « retour » du téléphone ferme la fiche
+  return false; // empêche la navigation du lien
+}
+function closeCourse(){
+  const m=document.getElementById('courseModal'); if(!m) return;
+  m.classList.add('hidden');
+  const f=document.getElementById('courseFrame'); if(f) f.src='about:blank'; // libère le PDF
+}
+function backFromCourse(){ if(history.state && history.state.cv){ history.back(); } else closeCourse(); }
+window.openCourse=openCourse; window.closeCourse=closeCourse;
+(function(){
+  const back=document.getElementById('courseBack'); if(back) back.onclick=backFromCourse;
+  window.addEventListener('popstate',()=>{ const m=document.getElementById('courseModal'); if(m && !m.classList.contains('hidden')) closeCourse(); });
+  document.addEventListener('keydown',e=>{ const m=document.getElementById('courseModal'); if(e.key==='Escape' && m && !m.classList.contains('hidden')) backFromCourse(); });
+})();
 
 // mode: 'qcm' (choices), 'trou'/'saisie' (answer + accept[]), 'flash' (answer)
 const QUESTIONS = [
