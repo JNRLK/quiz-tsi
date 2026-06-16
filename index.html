@@ -788,6 +788,7 @@ const ADMIN_EMAILS = ["arthur.lesage05@gmail.com"];
 
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
+auth.languageCode = 'fr';   // e-mails (vérification, reset) ET pages d'action Firebase en français
 // Persistance locale : la session reste active entre les rechargements et les fermetures
 // d'onglet (évite de devoir se reconnecter à chaque visite).
 setPersistence(auth, browserLocalPersistence).catch(e=>console.warn('auth persistence', e));
