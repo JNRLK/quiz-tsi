@@ -549,9 +549,14 @@ window.MathJax = {
         <button class="mode" data-mode="saisie">Réponse libre</button>
         <button class="mode" data-mode="flash">Flashcard</button>
       </div>
+      <p id="modeDesc" style="color:var(--muted); font-size:12.5px; margin:-12px 0 20px"></p>
 
       <!-- Familles accordéon -->
       <p class="section-label">Chapitres &amp; progression</p>
+      <div class="chap-help-row" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px">
+        <span style="color:var(--muted); font-size:12.5px; flex:1; min-width:170px">Touche un thème pour voir et choisir les chapitres.</span>
+        <button class="sel-all-btn" id="selectAllBtn" type="button">Tout sélectionner</button>
+      </div>
       <div id="famAccordion" style="margin-bottom:18px"></div>
 
       <!-- Longueur + options -->
@@ -2555,7 +2560,7 @@ const QUESTIONS = [
 ];
 
 /* ====================== ÉTAT ====================== */
-let selected = new Set(Object.keys(TOPICS));
+let selected = new Set(); // P1 : opt-in — aucun chapitre coché par défaut
 let selectedMode = 'all';
 let chosenLen = 10;
 let pool = [];
@@ -3054,7 +3059,7 @@ function buildFamilyAccordion(){
     selBtn.textContent=allOn?'Tout désélectionner':'Tout sélectionner';
     selBtn.onclick=()=>{
       const nowAllOn=famTopics.every(([k])=>selected.has(k));
-      famTopics.forEach(([k])=>{ if(nowAllOn){ if(selected.size>1) selected.delete(k); } else selected.add(k); });
+      famTopics.forEach(([k])=>{ if(nowAllOn){ selected.delete(k); } else selected.add(k); });
       buildFamilyAccordion(); updatePoolInfo();
     };
     selRow.appendChild(selBtn); body.appendChild(selRow);
@@ -3076,7 +3081,7 @@ function buildFamilyAccordion(){
       selBt.setAttribute('aria-label',(on?'Désélectionner ':'Sélectionner ')+t.name);
       selBt.innerHTML=`<span class="ts-dot" style="background:${t.raw}"></span>`;
       selBt.onclick=e=>{ e.stopPropagation();
-        if(selected.has(key)){ if(selected.size>1) selected.delete(key); }
+        if(selected.has(key)){ selected.delete(key); }
         else selected.add(key);
         buildFamilyAccordion(); updatePoolInfo();
       };
@@ -3195,9 +3200,12 @@ function poolFilter(q){ return selected.has(q.topic) && (selectedMode==='all' ||
 
 function poolSize(){ return QUESTIONS.filter(poolFilter).length; }
 function updatePoolInfo(){
+  const pi=$('#poolInfo'); if(pi) pi.style.color='var(--muted)';
+  updateSelectAllBtn();
+  if(selected.size===0){ if(pi) pi.textContent='Aucun chapitre sélectionné — touche un thème ci-dessus.'; return; }
   const tot = poolSize();
   const n = chosenLen===0 ? tot : Math.min(chosenLen, tot);
-  $('#poolInfo').textContent = tot===0
+  if(pi) pi.textContent = tot===0
     ? 'Aucune question pour ce filtre — change de mode ou de chapitre.'
     : `${n} question${n>1?'s':''} sur ${tot} disponibles`;
 }
@@ -3220,11 +3228,41 @@ $('#modeOpts').addEventListener('click', e=>{
   const b = e.target.closest('.mode'); if(!b) return;
   document.querySelectorAll('.mode').forEach(x=>x.classList.remove('on'));
   b.classList.add('on'); selectedMode = b.dataset.mode;
-  updatePoolInfo();
+  updateModeDesc(); updatePoolInfo();
 });
+
+/* P1 — description courte du mode sélectionné */
+const MODE_DESC = {
+  all:'Formes mélangées : QCM, à trou, réponse libre et flashcard.',
+  qcm:'Choix multiple : 4 propositions, une seule bonne réponse.',
+  trou:'Compléter le blanc (□) dans la formule ou la phrase.',
+  saisie:'Taper la réponse au clavier (clavier maths intégré).',
+  flash:'Retourner la carte, puis auto-évaluation de ta mémoire.'
+};
+function updateModeDesc(){ const el=$('#modeDesc'); if(el) el.textContent = MODE_DESC[selectedMode]||''; }
+
+/* P1 — bouton global « Tout sélectionner / désélectionner » */
+function updateSelectAllBtn(){
+  const b=$('#selectAllBtn'); if(!b) return;
+  const allOn=Object.keys(TOPICS).every(k=>selected.has(k));
+  b.textContent = allOn ? 'Tout désélectionner' : 'Tout sélectionner';
+}
+const _selectAllBtn=$('#selectAllBtn');
+if(_selectAllBtn) _selectAllBtn.onclick=()=>{
+  const allKeys=Object.keys(TOPICS);
+  const allOn=allKeys.every(k=>selected.has(k));
+  if(allOn) selected.clear(); else allKeys.forEach(k=>selected.add(k));
+  buildFamilyAccordion(); updatePoolInfo();
+};
+updateModeDesc();
 
 /* ====================== QUIZ FLOW ====================== */
 $('#startBtn').onclick = ()=>{
+  if(selected.size===0){
+    const pi=$('#poolInfo'); if(pi){ pi.textContent='Sélectionne au moins un chapitre pour commencer.'; pi.style.color='#f87171'; }
+    $('#famAccordion').scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
   let qs = QUESTIONS.filter(poolFilter).map(q=>({...q}));
   if(qs.length===0){ updatePoolInfo(); return; }
   if($('#shuffleToggle').checked) shuffle(qs);
