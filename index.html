@@ -685,21 +685,21 @@ window.MathJax = {
       <input class="ans-input" id="authPseudo" type="text" autocomplete="nickname" placeholder="Pseudo ou prénom (affiché au prof)" style="margin-top:10px; width:100%">
       <p class="section-label" style="margin:14px 0 6px">Je suis…</p>
       <div class="mode-opts" id="authStatut">
-        <button type="button" class="mode on" data-v="eleve">Élève</button>
+        <button type="button" class="mode" data-v="eleve">Élève</button>
         <button type="button" class="mode" data-v="prof">Professeur</button>
         <button type="button" class="mode" data-v="visiteur">Visiteur</button>
       </div>
       <input class="ans-input" id="authLycee" type="text" value="Lycée Chaptal" placeholder="Établissement (lycée)" style="margin-top:12px; width:100%">
       <div id="authFiliereRow">
-        <p class="section-label" style="margin:14px 0 6px">Filière <span style="text-transform:none;letter-spacing:0">(optionnel)</span></p>
+        <p class="section-label" style="margin:14px 0 6px">Filière</p>
         <div class="mode-opts" id="authFiliere">
-          <button type="button" class="mode on" data-v="TSI">TSI</button>
+          <button type="button" class="mode" data-v="TSI">TSI</button>
           <button type="button" class="mode" data-v="autre-prepa">Autre prépa</button>
           <button type="button" class="mode" data-v="autre">Autre</button>
         </div>
       </div>
       <div id="authAnneeRow">
-        <p class="section-label" style="margin:14px 0 6px">Année <span style="text-transform:none;letter-spacing:0">(optionnel)</span></p>
+        <p class="section-label" style="margin:14px 0 6px">Année</p>
         <div class="mode-opts" id="authAnnee">
           <button type="button" class="mode" data-v="0">Année 0</button>
           <button type="button" class="mode" data-v="1">1re année</button>
@@ -712,6 +712,12 @@ window.MathJax = {
     <button class="btn" id="authSubmit" style="width:100%; margin-top:14px">Se connecter</button>
     <a id="authForgot" style="display:block; text-align:center; margin-top:10px; font-size:13px; color:#a78bfa; cursor:pointer; text-decoration:underline">Mot de passe oublié ?</a>
     <p class="auth-switch" id="authSwitchLine">Pas encore de compte ? <a id="authSwitch">En créer un</a></p>
+    <!-- Blocage vérification e-mail -->
+    <div id="authVerify" style="display:none">
+      <button class="btn" id="verifyDoneBtn" style="width:100%; margin-top:14px">J'ai vérifié →</button>
+      <button class="btn ghost" id="verifyResendBtn" type="button" style="width:100%; margin-top:10px">Renvoyer l'e-mail</button>
+      <p class="auth-switch"><a id="verifyLogout">Se déconnecter</a></p>
+    </div>
   </div>
 </div>
 
@@ -868,8 +874,13 @@ onAuthStateChanged(auth, async (user)=>{
       const cloud = await Cloud.loadSRS();
       if(cloud && typeof SRS!=='undefined'){ SRS.mergeCloud(cloud); SRS.gc(); SRS._syncCloud(); }
     }catch(e){ console.warn('SRS cloud load', e); }
-    // Onboarding seulement après connexion
-    if(typeof maybeOnboard === 'function') maybeOnboard();
+    // Blocage tant que l'e-mail n'est pas vérifié (les comptes prof/admin déclarés passent outre)
+    if(!user.emailVerified && !isAdmin){
+      if(typeof showVerifyGate === 'function') showVerifyGate(user);
+    } else {
+      // Onboarding seulement après connexion vérifiée
+      if(typeof maybeOnboard === 'function') maybeOnboard();
+    }
   } else {
     // Déconnexion : purge de la progression locale pour empêcher toute fuite entre comptes
     if(typeof SRS!=='undefined') SRS.clear();
@@ -4404,10 +4415,14 @@ function updateAccountUI(){
 }
 let authMode = 'login';
 let pendingVerify = false;
+let verifyGateActive = false;
 function openAuth(){ authMode='login'; pendingVerify=false; refreshAuthModal(); const cb=$('#authClose'); if(cb) cb.style.display=currentUser?'':'none'; $('#authModal').classList.remove('hidden'); $('#authEmail').focus(); }
 function closeAuth(){ pendingVerify=false; $('#authModal').classList.add('hidden'); $('#authErr').classList.add('hidden'); $('#authEmail').value=''; $('#authPass').value=''; const p=$('#authPseudo'); if(p) p.value=''; }
 function refreshAuthModal(){
-  pendingVerify=false;
+  pendingVerify=false; verifyGateActive=false;
+  ['authEmail','authPass','authSubmit','authSwitchLine'].forEach(id=>{ const e=$('#'+id); if(e) e.style.display=''; });
+  const _av=$('#authVerify'); if(_av) _av.style.display='none';
+  const cb=$('#authClose'); if(cb) cb.style.display = currentUser ? '' : 'none';
   const signup = authMode==='signup';
   $('#authTitle').textContent = signup ? 'Créer un compte' : 'Connexion';
   const sub=$('#authSub'); if(sub) sub.textContent = signup ? 'Crée ton compte pour suivre ta progression.' : 'Connecte-toi pour accéder à la console de révision.';
@@ -4459,8 +4474,8 @@ $('#accountBtn').onclick = ()=>{
     if(confirm('Te déconnecter ?')) Cloud.signOut();
   } else openAuth();
 };
-$('#authClose').onclick = ()=>{ if(currentUser) closeAuth(); };
-$('#authModal').addEventListener('click', e=>{ if(e.target.id==='authModal' && currentUser) closeAuth(); });
+$('#authClose').onclick = ()=>{ if(currentUser && !verifyGateActive) closeAuth(); };
+$('#authModal').addEventListener('click', e=>{ if(e.target.id==='authModal' && currentUser && !verifyGateActive) closeAuth(); });
 $('#authSubmit').onclick = async ()=>{
   if(pendingVerify){ pendingVerify=false; closeAuth(); return; }
   const email = $('#authEmail').value.trim(), pass = $('#authPass').value;
@@ -4469,9 +4484,13 @@ $('#authSubmit').onclick = async ()=>{
     const pseudo=$('#authPseudo').value.trim();
     const statut=segValue('authStatut');
     const lycee=$('#authLycee').value.trim();
+    const filiere=segValue('authFiliere');
+    const annee=segValue('authAnnee');
     if(!pseudo) return authError('Choisis un pseudo ou prénom.');
     if(!statut) return authError('Indique si tu es élève, professeur ou visiteur.');
-    if(statut!=='visiteur' && !lycee) return authError('Indique ton établissement (lycée).');
+    if(!lycee) return authError('Indique ton établissement (lycée).');
+    if(statut!=='visiteur' && !filiere) return authError('Choisis ta filière.');
+    if(statut==='eleve' && !annee) return authError('Indique ton année (0, 1re ou 2e).');
   }
   $('#authSubmit').disabled = true;
   try{
@@ -4484,9 +4503,7 @@ $('#authSubmit').onclick = async ()=>{
         filiere: segValue('authFiliere') || null,
         annee: segValue('authAnnee') || null
       });
-      pendingVerify = true;
-      authNote('✅ Compte créé ! Un e-mail de vérification a été envoyé à '+email+'. Clique le lien dans l\'e-mail (regarde aussi les spams), puis reviens.');
-      $('#authSubmit').textContent = 'Continuer →';
+      // Compte créé mais non vérifié → la « verify gate » prend le relais (onAuthStateChanged).
     }
   }catch(err){ authError(AUTH_MSG[err.code] || ('Erreur : '+(err.code||err.message))); }
   finally{ $('#authSubmit').disabled = false; }
@@ -4502,6 +4519,35 @@ $('#authForgot').onclick = async ()=>{
   }catch(err){ authError(AUTH_MSG[err.code] || ('Erreur : '+(err.code||err.message))); }
   finally{ setTimeout(()=>{ const f=$('#authForgot'); if(f) f.style.pointerEvents=''; }, 4000); }
 };
+/* ---- Blocage vérification e-mail ---- */
+function showVerifyGate(user){
+  verifyGateActive = true;
+  $('#authTitle').textContent = 'Vérifie ton adresse e-mail';
+  const sub=$('#authSub'); if(sub) sub.textContent = "Un lien de vérification a été envoyé à "+user.email+". Ouvre-le (pense aux spams), puis reviens et clique « J'ai vérifié ».";
+  ['authEmail','authPass','authProfile','authSubmit','authForgot','authSwitchLine'].forEach(id=>{ const e=$('#'+id); if(e) e.style.display='none'; });
+  const v=$('#authVerify'); if(v) v.style.display='';
+  const cb=$('#authClose'); if(cb) cb.style.display='none';
+  const err=$('#authErr'); if(err){ err.classList.add('hidden'); err.style.color=''; }
+  $('#authModal').classList.remove('hidden');
+}
+$('#verifyResendBtn').onclick = async ()=>{
+  const u=auth.currentUser; if(!u) return;
+  $('#verifyResendBtn').disabled = true;
+  try{ await sendEmailVerification(u); authNote('E-mail de vérification renvoyé à '+u.email+'.'); }
+  catch(err){ authError(AUTH_MSG[err.code] || ('Erreur : '+(err.code||err.message))); }
+  finally{ setTimeout(()=>{ const b=$('#verifyResendBtn'); if(b) b.disabled=false; }, 5000); }
+};
+$('#verifyDoneBtn').onclick = async ()=>{
+  const u=auth.currentUser; if(!u) return;
+  $('#verifyDoneBtn').disabled = true;
+  try{
+    await u.reload();
+    if(auth.currentUser && auth.currentUser.emailVerified){ verifyGateActive=false; location.reload(); }
+    else authError("Pas encore vérifié — clique le lien dans l'e-mail, puis réessaie.");
+  }catch(err){ authError('Erreur : '+(err.code||err.message)); }
+  finally{ const b=$('#verifyDoneBtn'); if(b) b.disabled=false; }
+};
+$('#verifyLogout').onclick = ()=>{ verifyGateActive=false; Cloud.signOut(); };
 $('#authPass').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#authSubmit').click(); });
 
 /* ====================== TABLEAU DE BORD PROF ====================== */
