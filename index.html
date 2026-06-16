@@ -503,6 +503,56 @@ window.MathJax = {
   .lvl-seg{height:22px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#000; min-width:24px}
   .due-chip{display:inline-flex; align-items:center; gap:6px; background:color-mix(in srgb,#a78bfa 16%,#0d1320);
     border:1px solid color-mix(in srgb,#a78bfa 45%,transparent); border-radius:999px; padding:5px 12px; font-size:13px; font-weight:600; color:#c4b5fd; margin-bottom:14px}
+
+  /* ====================== CONSOLE ADMIN (vue prof) ====================== */
+  .stat-card .v-sub{font-size:15px; font-weight:600; color:var(--muted); font-family:'JetBrains Mono',monospace; margin-left:2px}
+  .adm-toolbar{display:flex; flex-direction:column; gap:10px; margin:0 0 18px}
+  .adm-search{width:100%; background:#0d1320; border:1.5px solid var(--line); border-radius:12px; color:var(--ink); font-family:inherit; font-size:14px; padding:10px 13px}
+  .adm-search:focus{outline:none; border-color:var(--accent); box-shadow:0 0 16px -8px var(--accent)}
+  .adm-sels{display:flex; gap:8px; flex-wrap:wrap}
+  .adm-sel{flex:1 1 auto; min-width:132px; background:#0d1320; border:1.5px solid var(--line); border-radius:11px; color:var(--ink); font-family:inherit; font-size:13px; padding:9px 11px; cursor:pointer}
+  .adm-sel:focus{outline:none; border-color:var(--accent)}
+  .adm-tools{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end}
+  .adm-btn{border:1.5px solid var(--line); background:#0d1320; color:var(--ink); border-radius:11px; padding:9px 15px; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; transition:.15s}
+  .adm-btn:hover{border-color:var(--accent); transform:translateY(-1px)}
+  .adm-btn.primary{background:color-mix(in srgb,var(--accent) 16%,#0d1320); border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+  .adm-sec{margin-bottom:12px; border:1px solid var(--line); border-radius:16px; background:rgba(13,19,32,.5); overflow:hidden}
+  .adm-sec-h{list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; padding:14px 16px; user-select:none; font-weight:600}
+  .adm-sec-h::-webkit-details-marker{display:none}
+  .adm-sec-h .cq-title{font-family:'Hanken Grotesk',sans-serif; font-size:15px}
+  .adm-sec-h .cq-chev{margin-left:auto; color:var(--muted); transition:transform .2s}
+  .adm-sec[open]>.adm-sec-h .cq-chev{transform:rotate(90deg)}
+  .adm-sec[open]>.adm-sec-h{border-bottom:1px solid var(--line)}
+  .adm-sec-b{padding:14px 16px}
+  .adm-list{display:flex; flex-direction:column; gap:7px}
+  .adm-row{border:1px solid var(--line); border-radius:12px; background:#0d1320; overflow:hidden}
+  .adm-row.incomplete{border-color:color-mix(in srgb,#fbbf24 40%,var(--line))}
+  .adm-row>summary{list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; padding:11px 13px; user-select:none}
+  .adm-row>summary::-webkit-details-marker{display:none}
+  .adm-row[open]>summary{border-bottom:1px solid var(--line)}
+  .adm-row[open]>summary .cq-chev{transform:rotate(90deg)}
+  .adm-row .cq-chev{color:var(--muted); transition:transform .2s; flex:none}
+  .adm-dot{width:9px; height:9px; border-radius:50%; flex:none; background:var(--muted)}
+  .adm-dot.eleve{background:#60a5fa} .adm-dot.prof{background:#a78bfa} .adm-dot.visiteur{background:#6b7280}
+  .adm-name{font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:42%}
+  .adm-flag{color:#fbbf24}
+  .adm-sub{flex:1; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .adm-stat{display:flex; align-items:center; gap:10px; flex:none}
+  .adm-stat .d{font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--muted)}
+  .adm-stat .m{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:13px}
+  .adm-badge{display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; border:1px solid var(--line); color:var(--muted)}
+  .adm-badge.eleve{color:#93c5fd; border-color:#60a5fa55} .adm-badge.prof{color:#c4b5fd; border-color:#a78bfa55} .adm-badge.visiteur{color:#9ca3af}
+  .adm-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px 16px; padding:13px}
+  .adm-field{display:flex; flex-direction:column; gap:2px; min-width:0}
+  .adm-field .fl{font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted)}
+  .adm-field .fv{font-size:13.5px; color:var(--ink); word-break:break-word}
+  .adm-weak{display:flex; flex-wrap:wrap; gap:6px; padding:0 13px 13px}
+  .adm-chip{font-size:11.5px; font-weight:600; border:1px solid var(--line); border-radius:999px; padding:3px 9px; font-family:'JetBrains Mono',monospace}
+  @media(max-width:560px){
+    .adm-name{max-width:50%}
+    .adm-stat .d{display:none}
+    .adm-tools{justify-content:stretch} .adm-tools .adm-btn{flex:1}
+  }
   .hidden{display:none}
 </style>
 </head>
@@ -685,7 +735,8 @@ window.MathJax = {
 
     <!-- Profil — création de compte uniquement -->
     <div id="authProfile" style="display:none">
-      <input class="ans-input" id="authPseudo" type="text" autocomplete="nickname" placeholder="Pseudo ou prénom (affiché au prof)" style="margin-top:10px; width:100%">
+      <input class="ans-input" id="authPseudo" type="text" autocomplete="nickname" placeholder="Pseudo ou prénom (affiché dans le quiz)" style="margin-top:10px; width:100%">
+      <input class="ans-input" id="authNom" type="text" autocomplete="name" placeholder="Nom et prénom (réservé au prof)" style="margin-top:10px; width:100%">
       <p class="section-label" style="margin:14px 0 6px">Je suis…</p>
       <div class="mode-opts" id="authStatut">
         <button type="button" class="mode" data-v="eleve">Élève</button>
@@ -709,6 +760,10 @@ window.MathJax = {
           <button type="button" class="mode" data-v="2">2e année</button>
         </div>
       </div>
+      <div id="authClasseRow">
+        <input class="ans-input" id="authClasse" type="text" autocomplete="off" placeholder="Classe / groupe (ex. TSI-1)" style="margin-top:12px; width:100%">
+      </div>
+      <input class="ans-input" id="authNote" type="text" autocomplete="off" placeholder="N° étudiant ou remarque (optionnel)" style="margin-top:12px; width:100%">
     </div>
 
     <div class="auth-err hidden" id="authErr"></div>
@@ -721,6 +776,45 @@ window.MathJax = {
       <button class="btn ghost" id="verifyResendBtn" type="button" style="width:100%; margin-top:10px">Renvoyer l'e-mail</button>
       <p class="auth-switch"><a id="verifyLogout">Se déconnecter</a></p>
     </div>
+  </div>
+</div>
+
+<!-- COMPLÉTION DE PROFIL (obligatoire — comptes créés avant la mise à jour) -->
+<div class="modal-overlay hidden" id="profileModal">
+  <div class="modal">
+    <h2 style="font-family:'Fraunces',serif; margin:0 0 6px">Complète ton profil</h2>
+    <p class="auth-sub">Suite à une mise à jour, ces informations sont désormais nécessaires pour continuer.</p>
+    <input class="ans-input" id="pgNom" type="text" autocomplete="name" placeholder="Nom et prénom" style="width:100%">
+    <p class="section-label" style="margin:14px 0 6px">Je suis…</p>
+    <div class="mode-opts" id="pgStatut">
+      <button type="button" class="mode" data-v="eleve">Élève</button>
+      <button type="button" class="mode" data-v="prof">Professeur</button>
+      <button type="button" class="mode" data-v="visiteur">Visiteur</button>
+    </div>
+    <input class="ans-input" id="pgLycee" type="text" value="Lycée Chaptal" placeholder="Établissement (lycée)" style="margin-top:12px; width:100%">
+    <div id="pgFiliereRow">
+      <p class="section-label" style="margin:14px 0 6px">Filière</p>
+      <div class="mode-opts" id="pgFiliere">
+        <button type="button" class="mode" data-v="TSI">TSI</button>
+        <button type="button" class="mode" data-v="autre-prepa">Autre prépa</button>
+        <button type="button" class="mode" data-v="autre">Autre</button>
+      </div>
+    </div>
+    <div id="pgAnneeRow">
+      <p class="section-label" style="margin:14px 0 6px">Année</p>
+      <div class="mode-opts" id="pgAnnee">
+        <button type="button" class="mode" data-v="0">Année 0</button>
+        <button type="button" class="mode" data-v="1">1re année</button>
+        <button type="button" class="mode" data-v="2">2e année</button>
+      </div>
+    </div>
+    <div id="pgClasseRow">
+      <input class="ans-input" id="pgClasse" type="text" autocomplete="off" placeholder="Classe / groupe (ex. TSI-1)" style="margin-top:12px; width:100%">
+    </div>
+    <input class="ans-input" id="pgNote" type="text" autocomplete="off" placeholder="N° étudiant ou remarque (optionnel)" style="margin-top:12px; width:100%">
+    <div class="auth-err hidden" id="pgErr"></div>
+    <button class="btn" id="pgSubmit" style="width:100%; margin-top:16px">Enregistrer et continuer</button>
+    <p class="auth-switch"><a id="pgLogout">Se déconnecter</a></p>
   </div>
 </div>
 
@@ -812,8 +906,10 @@ const Cloud = {
     //    Toujours conservé en local pour ne rien perdre si les règles ne sont pas encore à jour.
     if(profile){
       try{ localStorage.setItem('quiztsi_profile', JSON.stringify(profile)); }catch(e){}
-      try{ await setDoc(doc(db,'users',uid), {profile:{statut:profile.statut||null, lycee:profile.lycee||null, filiere:profile.filiere||null, annee:profile.annee||null}}, {merge:true}); }
+      try{ await setDoc(doc(db,'users',uid), {profile:{statut:profile.statut||null, lycee:profile.lycee||null, filiere:profile.filiere||null, annee:profile.annee||null, nom:profile.nom||null, classe:profile.classe||null, note:profile.note||null}}, {merge:true}); }
       catch(e){ console.warn("Profil non synchronisé : ajoute 'profile' aux règles Firestore (hasOnly).", e); }
+      // Profil renseigné à l'inscription → ne jamais redéclencher l'écran de complétion sur cet appareil.
+      try{ localStorage.setItem('quiztsi_profile_done', uid); }catch(e){}
     }
     return c.user; },
   async signIn(email, pass){ return (await signInWithEmailAndPassword(auth, email, pass)).user; },
@@ -839,6 +935,8 @@ const Cloud = {
     await setDoc(uref, {email:currentUser.email, displayName: cur.displayName || currentUser.email.split('@')[0], lastActive:serverTimestamp(), agg}, {merge:true});
   },
   async myAggregate(){ if(!currentUser) return null; const snap = await getDoc(doc(db,'users',currentUser.uid)); return snap.exists()? (snap.data().agg||null) : null; },
+  async myDoc(){ if(!currentUser) return null; const snap = await getDoc(doc(db,'users',currentUser.uid)); return snap.exists()? snap.data() : null; },
+  async saveProfile(p){ if(!currentUser) return; await setDoc(doc(db,'users',currentUser.uid), {profile:p}, {merge:true}); },
   async mySessions(n=20){ if(!currentUser) return [];
     const qs = await getDocs(query(collection(db,'users',currentUser.uid,'sessions'), orderBy('date','desc'), limit(n)));
     return qs.docs.map(d=>d.data()); },
@@ -882,8 +980,17 @@ onAuthStateChanged(auth, async (user)=>{
     if(!user.emailVerified && !isAdmin){
       if(typeof showVerifyGate === 'function') showVerifyGate(user);
     } else {
-      // Onboarding seulement après connexion vérifiée
-      if(typeof maybeOnboard === 'function') maybeOnboard();
+      // Profil complet requis (mise à jour) — sinon écran de complétion bloquant.
+      // En cas d'échec de lecture cloud, on ne bloque pas.
+      let needs=false, udoc=null;
+      try{ udoc = await Cloud.myDoc(); needs = (typeof needsProfile==='function') && needsProfile(udoc, user); }
+      catch(e){ console.warn('profile check', e); }
+      if(needs && typeof showProfileGate === 'function'){
+        showProfileGate(udoc, user);
+      } else if(typeof maybeOnboard === 'function'){
+        // Onboarding seulement après connexion vérifiée et profil complet
+        maybeOnboard();
+      }
     }
   } else {
     // Déconnexion : purge de la progression locale pour empêcher toute fuite entre comptes
@@ -4446,6 +4553,7 @@ function updateProfileVisibility(){
   const st = segValue('authStatut');
   const ar=$('#authAnneeRow'); if(ar) ar.style.display = st==='eleve' ? '' : 'none';
   const fr=$('#authFiliereRow'); if(fr) fr.style.display = st==='visiteur' ? 'none' : '';
+  const cr=$('#authClasseRow'); if(cr) cr.style.display = st==='eleve' ? '' : 'none';
 }
 /* Boutons segmentés (réutilise le style .mode) */
 function segValue(groupId){ const on=document.querySelector('#'+groupId+' .mode.on'); return on ? on.dataset.v : ''; }
@@ -4486,15 +4594,19 @@ $('#authSubmit').onclick = async ()=>{
   $('#authErr').classList.add('hidden');
   if(authMode==='signup'){
     const pseudo=$('#authPseudo').value.trim();
+    const nom=$('#authNom').value.trim();
     const statut=segValue('authStatut');
     const lycee=$('#authLycee').value.trim();
     const filiere=segValue('authFiliere');
     const annee=segValue('authAnnee');
+    const classe=$('#authClasse').value.trim();
     if(!pseudo) return authError('Choisis un pseudo ou prénom.');
     if(!statut) return authError('Indique si tu es élève, professeur ou visiteur.');
+    if(statut!=='visiteur' && !nom) return authError('Indique ton nom et prénom.');
     if(!lycee) return authError('Indique ton établissement (lycée).');
     if(statut!=='visiteur' && !filiere) return authError('Choisis ta filière.');
     if(statut==='eleve' && !annee) return authError('Indique ton année (0, 1re ou 2e).');
+    if(statut==='eleve' && !classe) return authError('Indique ta classe / groupe (ex. TSI-1).');
   }
   $('#authSubmit').disabled = true;
   try{
@@ -4502,10 +4614,13 @@ $('#authSubmit').onclick = async ()=>{
     else {
       await Cloud.signUp(email, pass, {
         pseudo: $('#authPseudo').value.trim(),
+        nom: $('#authNom').value.trim() || null,
         statut: segValue('authStatut'),
         lycee: $('#authLycee').value.trim() || null,
         filiere: segValue('authFiliere') || null,
-        annee: segValue('authAnnee') || null
+        annee: segValue('authAnnee') || null,
+        classe: $('#authClasse').value.trim() || null,
+        note: $('#authNote').value.trim() || null
       });
       // Compte créé mais non vérifié → la « verify gate » prend le relais (onAuthStateChanged).
     }
@@ -4554,102 +4669,286 @@ $('#verifyDoneBtn').onclick = async ()=>{
 $('#verifyLogout').onclick = ()=>{ verifyGateActive=false; Cloud.signOut(); };
 $('#authPass').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#authSubmit').click(); });
 
+/* ---- Complétion de profil obligatoire (comptes créés avant la mise à jour) ---- */
+const PROFILE_DONE_KEY = 'quiztsi_profile_done';
+function profileIsComplete(p){
+  if(!p || !p.statut) return false;
+  if(p.statut==='visiteur') return true;                 // visiteur : le statut suffit
+  if(!p.nom || !p.lycee || !p.filiere) return false;
+  if(p.statut==='eleve' && (!p.annee || !p.classe)) return false;
+  return true;
+}
+function needsProfile(udoc, user){
+  const p = udoc ? udoc.profile : null;
+  if(profileIsComplete(p)) return false;
+  // Garde-fou : si l'écriture cloud du profil est refusée (règles Firestore), un
+  // drapeau local évite de bloquer indéfiniment l'élève sur cet appareil.
+  try{ if(user && localStorage.getItem(PROFILE_DONE_KEY)===user.uid) return false; }catch(e){}
+  return true;
+}
+function segSet(groupId, val){
+  const g=document.getElementById(groupId); if(!g) return;
+  g.querySelectorAll('.mode').forEach(b=>b.classList.toggle('on', b.dataset.v===String(val)));
+}
+function pgUpdateVisibility(){
+  const st = segValue('pgStatut');
+  const nr=$('#pgNom'); if(nr) nr.style.display = st==='visiteur' ? 'none' : '';
+  const fr=$('#pgFiliereRow'); if(fr) fr.style.display = (st && st!=='visiteur') ? '' : 'none';
+  const ar=$('#pgAnneeRow'); if(ar) ar.style.display = st==='eleve' ? '' : 'none';
+  const cr=$('#pgClasseRow'); if(cr) cr.style.display = st==='eleve' ? '' : 'none';
+}
+wireSeg('pgStatut', pgUpdateVisibility);
+wireSeg('pgFiliere');
+wireSeg('pgAnnee');
+function pgError(msg){ const e=$('#pgErr'); if(!e) return; e.textContent=msg; e.classList.remove('hidden'); e.style.color=''; }
+function showProfileGate(udoc, user){
+  verifyGateActive = true;   // verrou partagé : empêche la fermeture des autres modales
+  const p = (udoc && udoc.profile) || {};
+  if(p.nom) $('#pgNom').value = p.nom;
+  if(p.lycee) $('#pgLycee').value = p.lycee;
+  if(p.note) $('#pgNote').value = p.note;
+  if(p.classe) $('#pgClasse').value = p.classe;
+  if(p.statut) segSet('pgStatut', p.statut);
+  if(p.filiere) segSet('pgFiliere', p.filiere);
+  if(p.annee!=null && p.annee!=='') segSet('pgAnnee', p.annee);
+  pgUpdateVisibility();
+  const e=$('#pgErr'); if(e) e.classList.add('hidden');
+  const am=$('#authModal'); if(am) am.classList.add('hidden');   // s'assurer que l'auth est fermée
+  $('#profileModal').classList.remove('hidden');
+}
+$('#pgSubmit').onclick = async ()=>{
+  const u = auth.currentUser; if(!u) return;
+  const statut = segValue('pgStatut');
+  const nom = $('#pgNom').value.trim();
+  const lycee = $('#pgLycee').value.trim();
+  const filiere = segValue('pgFiliere');
+  const annee = segValue('pgAnnee');
+  const classe = $('#pgClasse').value.trim();
+  const note = $('#pgNote').value.trim();
+  if(!statut) return pgError('Indique si tu es élève, professeur ou visiteur.');
+  if(statut!=='visiteur'){
+    if(!nom) return pgError('Indique ton nom et prénom.');
+    if(!lycee) return pgError('Indique ton établissement (lycée).');
+    if(!filiere) return pgError('Choisis ta filière.');
+  }
+  if(statut==='eleve'){
+    if(!annee) return pgError('Indique ton année (0, 1re ou 2e).');
+    if(!classe) return pgError('Indique ta classe / groupe (ex. TSI-1).');
+  }
+  const profile = {
+    statut,
+    nom: (statut!=='visiteur' ? nom : null) || null,
+    lycee: lycee || null,
+    filiere: (statut!=='visiteur' ? filiere : null) || null,
+    annee: (statut==='eleve' ? annee : null),
+    classe: (statut==='eleve' ? classe : null) || null,
+    note: note || null
+  };
+  $('#pgSubmit').disabled = true;
+  try{ await Cloud.saveProfile(profile); }
+  catch(e){ console.warn('saveProfile', e); }   // règles Firestore : profil non synchro, mais on ne bloque pas
+  try{ localStorage.setItem(PROFILE_DONE_KEY, u.uid); }catch(e){}
+  try{ localStorage.setItem('quiztsi_profile', JSON.stringify(profile)); }catch(e){}
+  verifyGateActive = false;
+  $('#profileModal').classList.add('hidden');
+  location.reload();
+};
+$('#pgLogout').onclick = ()=>{ verifyGateActive=false; try{ $('#profileModal').classList.add('hidden'); }catch(e){} Cloud.signOut(); };
+
 /* ====================== TABLEAU DE BORD PROF ====================== */
+/* État de la console : données chargées une fois, filtres conservés en mémoire (pas de localStorage). */
+const ADM = { users:null, reports:null, filters:{statut:'',filiere:'',annee:'',classe:'',lycee:'',q:'',sort:'name'} };
+const admEsc = s => (s==null?'':String(s)).replace(/[<>&"]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+function admFmtDate(ts){ try{ const d = ts && ts.toDate ? ts.toDate() : (ts instanceof Date ? ts : null); return d ? d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—'; }catch(e){ return '—'; } }
+const STATUT_LABEL = {eleve:'Élève', prof:'Professeur', visiteur:'Visiteur'};
+const ANNEE_LABEL  = {'0':'Année 0','1':'1re année','2':'2e année'};
+
 async function renderAdmin(){
   const body = $('#adminBody');
   body.innerHTML = '<div class="empty-state">Chargement des données de la classe…</div>';
   let users;
   try{ users = await Cloud.allUsers(); }
-  catch(err){ body.innerHTML = `<div class="empty-state">Lecture impossible (règles Firestore ?).<br><span style="font-size:13px">${err.code||err.message}</span></div>`; return; }
-
+  catch(err){ body.innerHTML = `<div class="empty-state">Lecture impossible (règles Firestore ?).<br><span style="font-size:13px">${admEsc(err.code||err.message)}</span></div>`; return; }
   if(!users.length){ body.innerHTML = '<div class="empty-state">Aucun compte pour l\'instant.<br>Les élèves apparaîtront dès qu\'ils auront créé un compte.</div>'; return; }
-
-  const active = users.filter(u=>u.agg && u.agg.totalAnswered);
-  const inactive = users.filter(u=>!(u.agg && u.agg.totalAnswered));
-
-  // agrégat classe par chapitre (élèves actifs)
-  const classByTopic = {};
-  active.forEach(u=>{ const bt=u.agg.byTopic||{}; for(const k in bt){ (classByTopic[k] ||= {a:0,c:0}); classByTopic[k].a+=bt[k].a; classByTopic[k].c+=bt[k].c; } });
-
-  let html = `<div class="stat-cards">
-    <div class="stat-card"><div class="v">${users.length}</div><div class="k">Comptes inscrits</div></div>
-    <div class="stat-card"><div class="v">${active.length}</div><div class="k">Élèves actifs</div></div>
-    <div class="stat-card"><div class="v">${active.reduce((s,u)=>s+u.agg.totalAnswered,0)}</div><div class="k">Réponses totales</div></div>
-  </div>`;
-
-  if(Object.keys(classByTopic).length){
-    html += `<p class="section-label">Chapitres les plus difficiles (classe)</p><div class="breakdown">`;
-    Object.entries(classByTopic).map(([k,s])=>({k,...s,r:s.c/s.a})).sort((a,b)=>a.r-b.r).forEach(({k,a,c})=>{
-      const t=TOPICS[k]; if(!t) return; const r=Math.round(c/a*100);
-      html += `<div class="brk-row"><div class="name" style="color:${t.raw}">${t.name}</div>
-        <div class="track"><i style="width:${r}%;background:${t.raw}"></i></div><div class="frac">${r}%</div></div>`;
-    });
-    html += `</div>`;
-  }
-
-  html += `<p class="section-label" style="margin-top:22px">Élèves actifs</p><div class="hist">`;
-  if(active.length){
-    active.map(u=>({...u, pct: Math.round(u.agg.totalCorrect/u.agg.totalAnswered*100)})).sort((a,b)=>b.pct-a.pct).forEach(u=>{
-      const c=u.pct>=80?'#4ade80':u.pct>=50?'#fbbf24':'#f87171';
-      html += `<div class="h-row"><span style="flex:1">${u.displayName||u.email}</span>
-        <span class="d">${u.agg.totalAnswered} rép.</span>
-        <span class="d">série ${u.agg.bestStreak||0}</span>
-        <span class="m" style="color:${c}">${u.pct}%</span></div>`;
-    });
-  } else {
-    html += `<div class="empty-state" style="padding:16px">Aucun élève n'a encore terminé de quiz.</div>`;
-  }
-  html += `</div>`;
-
-  if(inactive.length){
-    html += `<p class="section-label" style="margin-top:22px">Inscrits sans activité (${inactive.length})</p><div class="hist">`;
-    inactive.sort((a,b)=>(a.email||'').localeCompare(b.email||'')).forEach(u=>{
-      html += `<div class="h-row"><span style="flex:1">${u.displayName||u.email}</span>
-        <span class="d" style="color:var(--muted)">compte créé</span>
-        <span class="m" style="color:var(--muted)">—</span></div>`;
-    });
-    html += `</div>`;
-    html += `<p class="footer-note" style="margin-top:8px">Ces élèves ont un compte mais n'ont pas encore terminé de quiz : leurs statistiques apparaîtront ensuite.</p>`;
-  }
-
-  // --- Top des cartes les plus ratées par la classe (agrégat par CARTE) ---
-  const classByCard = {};
-  active.forEach(u=>{ const bc=u.agg.byCard||{}; for(const h in bc){ const e=bc[h];
-    (classByCard[h] ||= {a:0,c:0,topic:e.topic}); classByCard[h].a+=e.a||0; classByCard[h].c+=e.c||0; } });
-  const qByHash = {}; QUESTIONS.forEach(q=>{ qByHash[qHash(q.q)] = q; });
-  const missCards = Object.entries(classByCard)
-    .map(([h,e])=>({h, ...e, miss:(e.a-e.c), rate:e.a?(e.a-e.c)/e.a:0, q:qByHash[h]}))
-    .filter(e=>e.a>=3 && e.miss>0)        // au moins 3 tentatives au niveau classe
-    .sort((a,b)=> b.rate-a.rate || b.miss-a.miss)
-    .slice(0,12);
-  if(missCards.length){
-    html += `<p class="section-label" style="margin-top:22px">Cartes les plus ratées (classe) — cibles colles / DS</p><div class="review">`;
-    missCards.forEach(e=>{ const t=TOPICS[e.topic]; const rate=Math.round(e.rate*100);
-      const qtxt = e.q ? e.q.q : '(question modifiée ou retirée)';
-      html += `<div class="miss">${qtxt}<div class="ans">Raté ${e.miss}/${e.a} fois · ${rate}% d'échec${t?` · <span style="color:${t.raw}">${t.name}</span>`:''}</div></div>`; });
-    html += `</div>`;
-  }
-
-  // --- Boîte de réception des signalements (collection reports) ---
-  const esc = s => (s||'').replace(/[<>&]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
   let reports = [];
   try{ reports = await Cloud.getReports(50); }
   catch(e){ reports = null; console.warn('reports read', e); }
-  if(reports === null){
-    html += `<p class="section-label" style="margin-top:22px">Signalements</p><div class="empty-state" style="padding:16px">Lecture des signalements impossible — autorise la lecture de la collection <code>reports</code> dans les règles Firestore.</div>`;
-  } else if(reports.length){
-    html += `<p class="section-label" style="margin-top:22px">Signalements (${reports.length})</p><div class="review">`;
-    reports.forEach(r=>{ const t=TOPICS[r.topic];
-      const dt = r.date && r.date.toDate ? r.date.toDate() : null;
-      const ds = dt ? dt.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})+' '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '';
-      html += `<div class="miss">${r.question||'(carte)'}<div class="ans"><b style="color:#f87171">${esc(r.type)||'Signalement'}</b>${r.comment?` — ${esc(r.comment)}`:''}<br><span style="opacity:.7">${esc(r.email)||'anonyme'}${t?` · <span style="color:${t.raw}">${t.name}</span>`:''}${ds?` · ${ds}`:''}</span></div></div>`; });
-    html += `</div>`;
-  } else {
-    html += `<p class="section-label" style="margin-top:22px">Signalements</p><div class="empty-state" style="padding:16px">Aucun signalement pour l'instant.</div>`;
-  }
+  ADM.users = users; ADM.reports = reports;
 
-  body.innerHTML = html;
-  typeset(body);
+  // --- KPIs globaux (jamais filtrés) ---
+  const active = users.filter(u=>u.agg && u.agg.totalAnswered);
+  const complete = users.filter(u=>profileIsComplete(u.profile));
+  const totalAns = active.reduce((s,u)=>s+(u.agg.totalAnswered||0),0);
+  const kpis = `<div class="stat-cards">
+    <div class="stat-card"><div class="v">${users.length}</div><div class="k">Comptes inscrits</div></div>
+    <div class="stat-card"><div class="v">${active.length}</div><div class="k">Élèves actifs</div></div>
+    <div class="stat-card"><div class="v">${totalAns}</div><div class="k">Réponses totales</div></div>
+    <div class="stat-card"><div class="v">${complete.length}<span class="v-sub">/${users.length}</span></div><div class="k">Profils complets</div></div>
+  </div>`;
+
+  // --- Barre de filtres (déroulants) + recherche + export ---
+  const distinct = key => [...new Set(users.map(u=>(u.profile||{})[key]).filter(v=>v!=null && v!==''))].map(String).sort((a,b)=>a.localeCompare(b));
+  const opt = (v,label,cur)=>`<option value="${admEsc(v)}"${String(v)===String(cur)?' selected':''}>${admEsc(label)}</option>`;
+  const f = ADM.filters;
+  const selStatut  = `<select class="adm-sel" data-f="statut" aria-label="Filtrer par statut">${opt('','Statut : tous',f.statut)}${['eleve','prof','visiteur'].map(s=>opt(s,STATUT_LABEL[s],f.statut)).join('')}</select>`;
+  const selFiliere = `<select class="adm-sel" data-f="filiere" aria-label="Filtrer par filière">${opt('','Filière : toutes',f.filiere)}${distinct('filiere').map(v=>opt(v,v,f.filiere)).join('')}</select>`;
+  const selAnnee   = `<select class="adm-sel" data-f="annee" aria-label="Filtrer par année">${opt('','Année : toutes',f.annee)}${distinct('annee').map(v=>opt(v,ANNEE_LABEL[v]||('Année '+v),f.annee)).join('')}</select>`;
+  const selClasse  = `<select class="adm-sel" data-f="classe" aria-label="Filtrer par classe">${opt('','Classe : toutes',f.classe)}${distinct('classe').map(v=>opt(v,v,f.classe)).join('')}</select>`;
+  const selLycee   = `<select class="adm-sel" data-f="lycee" aria-label="Filtrer par lycée">${opt('','Lycée : tous',f.lycee)}${distinct('lycee').map(v=>opt(v,v,f.lycee)).join('')}</select>`;
+  const selSort    = `<select class="adm-sel" data-f="sort" aria-label="Trier"><option value="name"${f.sort==='name'?' selected':''}>Tri : nom (A→Z)</option><option value="activity"${f.sort==='activity'?' selected':''}>Tri : activité</option><option value="success"${f.sort==='success'?' selected':''}>Tri : réussite</option><option value="recent"${f.sort==='recent'?' selected':''}>Tri : inscription récente</option></select>`;
+  const toolbar = `<div class="adm-toolbar">
+    <input class="adm-search" id="admSearch" type="search" placeholder="🔎 Rechercher (nom, e-mail, classe, lycée)" value="${admEsc(f.q)}" autocomplete="off">
+    <div class="adm-sels">${selStatut}${selFiliere}${selAnnee}${selClasse}${selLycee}${selSort}</div>
+    <div class="adm-tools">
+      <button class="adm-btn" id="admReset" type="button">Réinitialiser</button>
+      <button class="adm-btn primary" id="admCsv" type="button">⬇ Export CSV</button>
+    </div>
+  </div>`;
+
+  body.innerHTML = kpis + toolbar + '<div id="admResults"></div>';
+
+  // Câblage (une seule fois ; seul #admResults est re-rendu ensuite → le champ de recherche garde le focus)
+  body.querySelectorAll('.adm-sel').forEach(sel=>{ sel.onchange = ()=>{ ADM.filters[sel.dataset.f] = sel.value; paintAdmin(); }; });
+  const sb = $('#admSearch'); if(sb){ sb.oninput = ()=>{ ADM.filters.q = sb.value; paintAdmin(); }; }
+  const rb = $('#admReset'); if(rb){ rb.onclick = ()=>{ ADM.filters = {statut:'',filiere:'',annee:'',classe:'',lycee:'',q:'',sort:ADM.filters.sort}; renderAdmin(); }; }
+  const cb = $('#admCsv'); if(cb){ cb.onclick = ()=> admExportCSV(admFiltered()); }
+
+  paintAdmin();
+}
+
+function admFiltered(){
+  const f = ADM.filters; const users = ADM.users || [];
+  const list = users.filter(u=>{
+    const p = u.profile||{};
+    if(f.statut && (p.statut||'')!==f.statut) return false;
+    if(f.filiere && (p.filiere||'')!==f.filiere) return false;
+    if(f.annee && String(p.annee==null?'':p.annee)!==f.annee) return false;
+    if(f.classe && (p.classe||'')!==f.classe) return false;
+    if(f.lycee && (p.lycee||'')!==f.lycee) return false;
+    if(f.q){ const hay=((p.nom||'')+' '+(u.displayName||'')+' '+(u.email||'')+' '+(p.classe||'')+' '+(p.lycee||'')).toLowerCase(); if(!hay.includes(f.q.trim().toLowerCase())) return false; }
+    return true;
+  });
+  const sort = f.sort||'name';
+  list.sort((a,b)=>{
+    const pa=a.profile||{}, pb=b.profile||{};
+    const na=(pa.nom||a.displayName||a.email||'').toLowerCase(), nb=(pb.nom||b.displayName||b.email||'').toLowerCase();
+    const ansA=(a.agg&&a.agg.totalAnswered)||0, ansB=(b.agg&&b.agg.totalAnswered)||0;
+    const pctA=ansA?a.agg.totalCorrect/ansA:-1, pctB=ansB?b.agg.totalCorrect/ansB:-1;
+    const cA=a.createdAt&&a.createdAt.toDate?a.createdAt.toDate().getTime():0, cB=b.createdAt&&b.createdAt.toDate?b.createdAt.toDate().getTime():0;
+    if(sort==='activity') return ansB-ansA || na.localeCompare(nb);
+    if(sort==='success')  return pctB-pctA || na.localeCompare(nb);
+    if(sort==='recent')   return cB-cA || na.localeCompare(nb);
+    return na.localeCompare(nb);
+  });
+  return list;
+}
+
+function admStudentRow(u){
+  const p = u.profile||{}; const a = u.agg||{};
+  const ans = a.totalAnswered||0; const pct = ans ? Math.round(a.totalCorrect/ans*100) : null;
+  const pctColor = pct==null ? 'var(--muted)' : (pct>=80?'#4ade80':pct>=50?'#fbbf24':'#f87171');
+  const st = p.statut||''; const name = p.nom || u.displayName || u.email || '—';
+  const incomplete = !profileIsComplete(p);
+  const sub = [ st?`<span class="adm-badge ${admEsc(st)}">${STATUT_LABEL[st]||st}</span>`:'',
+               p.classe?admEsc(p.classe):'', (p.annee!=null&&p.annee!=='')?(ANNEE_LABEL[p.annee]||('Année '+admEsc(p.annee))):'' ].filter(Boolean).join(' · ');
+  let weakHtml='';
+  const weak = Object.entries(a.byTopic||{}).map(([k,s])=>({k,a:s.a,c:s.c,r:s.a?s.c/s.a:1})).filter(x=>x.a>=2).sort((x,y)=>x.r-y.r).slice(0,3);
+  if(weak.length){ weakHtml = `<div class="adm-weak">`+weak.map(w=>{const t=TOPICS[w.k]; if(!t)return''; return `<span class="adm-chip" style="border-color:${t.raw}55;color:${t.raw}">${admEsc(t.name)} · ${Math.round(w.r*100)}%</span>`;}).join('')+`</div>`; }
+  const field = (label,val)=>`<div class="adm-field"><span class="fl">${label}</span><span class="fv">${val}</span></div>`;
+  const details = `<div class="adm-grid">
+    ${field('Pseudo', admEsc(u.displayName||'—'))}
+    ${field('E-mail', admEsc(u.email||'—'))}
+    ${field('Lycée', admEsc(p.lycee||'—'))}
+    ${field('Filière', admEsc(p.filiere||'—'))}
+    ${field('Classe', admEsc(p.classe||'—'))}
+    ${field('Année', admEsc((p.annee!=null&&p.annee!=='')?(ANNEE_LABEL[p.annee]||p.annee):'—'))}
+    ${field('Inscrit le', admFmtDate(u.createdAt))}
+    ${field('Dernière activité', admFmtDate(u.lastActive))}
+    ${field('Réponses', ans)}
+    ${field('Réussite', pct==null?'—':pct+' %')}
+    ${field('Meilleure série', a.bestStreak||0)}
+    ${field('Note', admEsc(p.note||'—'))}
+  </div>${weakHtml}`;
+  return `<details class="adm-row${incomplete?' incomplete':''}">
+    <summary>
+      <span class="adm-dot ${admEsc(st||'none')}"></span>
+      <span class="adm-name">${admEsc(name)}${incomplete?' <span class="adm-flag" title="Profil incomplet">⚠</span>':''}</span>
+      <span class="adm-sub">${sub||'<span style="color:var(--muted)">profil à compléter</span>'}</span>
+      <span class="adm-stat"><span class="d">${ans} rép.</span><span class="m" style="color:${pctColor}">${pct==null?'—':pct+'%'}</span></span>
+      <span class="cq-chev">▸</span>
+    </summary>
+    ${details}
+  </details>`;
+}
+
+function paintAdmin(){
+  const box = $('#admResults'); if(!box) return;
+  const list = admFiltered();
+  const total = (ADM.users||[]).length;
+  let html = '';
+
+  // 1) Trombinoscope (liste repliable)
+  html += `<details class="adm-sec" open><summary class="adm-sec-h"><span class="cq-ic">👥</span><span class="cq-title">Trombinoscope — comptes (${list.length}/${total})</span><span class="cq-chev">▸</span></summary><div class="adm-sec-b">`;
+  html += list.length ? (`<div class="adm-list">` + list.map(admStudentRow).join('') + `</div>`)
+                      : `<div class="empty-state" style="padding:18px">Aucun compte ne correspond aux filtres.</div>`;
+  html += `</div></details>`;
+
+  // 2) Analyse par chapitre (sur la sélection active)
+  const activeSel = list.filter(u=>u.agg && u.agg.totalAnswered);
+  const classByTopic = {};
+  activeSel.forEach(u=>{ const bt=u.agg.byTopic||{}; for(const k in bt){ (classByTopic[k] ||= {a:0,c:0}); classByTopic[k].a+=bt[k].a; classByTopic[k].c+=bt[k].c; } });
+  html += `<details class="adm-sec"${Object.keys(classByTopic).length?' open':''}><summary class="adm-sec-h"><span class="cq-ic">📊</span><span class="cq-title">Analyse par chapitre</span><span class="cq-chev">▸</span></summary><div class="adm-sec-b">`;
+  if(Object.keys(classByTopic).length){
+    html += `<p class="footer-note" style="text-align:left;margin:0 0 12px">Classés du plus difficile au plus maîtrisé (sélection active).</p><div class="breakdown">`;
+    Object.entries(classByTopic).map(([k,s])=>({k,...s,r:s.c/s.a})).sort((a,b)=>a.r-b.r).forEach(({k,a,c})=>{
+      const t=TOPICS[k]; if(!t) return; const r=Math.round(c/a*100);
+      html += `<div class="brk-row"><div class="name" style="color:${t.raw}">${t.name}</div><div class="track"><i style="width:${r}%;background:${t.raw}"></i></div><div class="frac">${r}%</div></div>`;
+    });
+    html += `</div>`;
+  } else { html += `<div class="empty-state" style="padding:18px">Aucune activité dans cette sélection.</div>`; }
+  html += `</div></details>`;
+
+  // 3) Cartes les plus ratées (sélection active)
+  const classByCard = {};
+  activeSel.forEach(u=>{ const bc=u.agg.byCard||{}; for(const h in bc){ const e=bc[h]; (classByCard[h] ||= {a:0,c:0,topic:e.topic}); classByCard[h].a+=e.a||0; classByCard[h].c+=e.c||0; } });
+  const qByHash = {}; QUESTIONS.forEach(q=>{ qByHash[qHash(q.q)] = q; });
+  const missCards = Object.entries(classByCard).map(([h,e])=>({h,...e,miss:(e.a-e.c),rate:e.a?(e.a-e.c)/e.a:0,q:qByHash[h]})).filter(e=>e.a>=3 && e.miss>0).sort((a,b)=>b.rate-a.rate||b.miss-a.miss).slice(0,12);
+  html += `<details class="adm-sec"><summary class="adm-sec-h"><span class="cq-ic">🎯</span><span class="cq-title">Cartes les plus ratées — cibles colles / DS${missCards.length?` (${missCards.length})`:''}</span><span class="cq-chev">▸</span></summary><div class="adm-sec-b">`;
+  if(missCards.length){
+    html += `<div class="review">`;
+    missCards.forEach(e=>{ const t=TOPICS[e.topic]; const rate=Math.round(e.rate*100); const qtxt = e.q ? e.q.q : '(question modifiée ou retirée)';
+      html += `<div class="miss">${qtxt}<div class="ans">Raté ${e.miss}/${e.a} fois · ${rate}% d'échec${t?` · <span style="color:${t.raw}">${t.name}</span>`:''}</div></div>`; });
+    html += `</div>`;
+  } else { html += `<div class="empty-state" style="padding:18px">Pas encore assez de données dans cette sélection.</div>`; }
+  html += `</div></details>`;
+
+  // 4) Signalements (globaux, non filtrés)
+  const reports = ADM.reports;
+  html += `<details class="adm-sec"><summary class="adm-sec-h"><span class="cq-ic">⚐</span><span class="cq-title">Signalements${reports&&reports.length?` (${reports.length})`:''}</span><span class="cq-chev">▸</span></summary><div class="adm-sec-b">`;
+  if(reports === null){ html += `<div class="empty-state" style="padding:18px">Lecture des signalements impossible — autorise la lecture de la collection <code>reports</code> dans les règles Firestore.</div>`; }
+  else if(reports.length){
+    html += `<div class="review">`;
+    reports.forEach(r=>{ const t=TOPICS[r.topic]; const dt = r.date && r.date.toDate ? r.date.toDate() : null;
+      const ds = dt ? dt.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})+' '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '';
+      html += `<div class="miss">${r.question||'(carte)'}<div class="ans"><b style="color:#f87171">${admEsc(r.type)||'Signalement'}</b>${r.comment?` — ${admEsc(r.comment)}`:''}<br><span style="opacity:.7">${admEsc(r.email)||'anonyme'}${t?` · <span style="color:${t.raw}">${t.name}</span>`:''}${ds?` · ${ds}`:''}</span></div></div>`; });
+    html += `</div>`;
+  } else { html += `<div class="empty-state" style="padding:18px">Aucun signalement pour l'instant.</div>`; }
+  html += `</div></details>`;
+
+  box.innerHTML = html;
+  typeset(box);
+}
+
+function admExportCSV(list){
+  const cols=['Nom','Pseudo','E-mail','Statut','Lycée','Filière','Année','Classe','Inscrit le','Dernière activité','Réponses','Réussite %','Meilleure série','Note'];
+  const lines=list.map(u=>{ const p=u.profile||{}; const a=u.agg||{}; const ans=a.totalAnswered||0;
+    return [p.nom||'', u.displayName||'', u.email||'', STATUT_LABEL[p.statut]||p.statut||'', p.lycee||'', p.filiere||'', (p.annee==null?'':p.annee), p.classe||'', admFmtDate(u.createdAt), admFmtDate(u.lastActive), ans, ans?Math.round(a.totalCorrect/ans*100):'', a.bestStreak||0, p.note||'']; });
+  const cell=v=>{ const s=String(v==null?'':v); return /[",;\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
+  const csv=[cols].concat(lines).map(r=>r.map(cell).join(';')).join('\r\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob); const link=document.createElement('a');
+  link.href=url; link.download='comptes-quiz-tsi-'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(link); link.click(); link.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 $('#adminBtn').onclick = ()=>{
   ['startScreen','quizScreen','resultScreen','statsScreen','juryScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
