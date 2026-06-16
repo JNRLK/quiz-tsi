@@ -87,6 +87,19 @@ window.MathJax = {
   .lead{color:var(--muted); margin:0 0 22px; font-size:16px}
   .section-label{font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); margin:0 0 12px}
 
+  /* ---- Volet « Quiz personnalisé » (replié par défaut) ---- */
+  .cq{margin-top:18px; border:1px solid var(--line); border-radius:16px; background:rgba(13,19,32,.5)}
+  .cq>.cq-sum{list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; padding:14px 18px; user-select:none}
+  .cq>.cq-sum::-webkit-details-marker{display:none}
+  .cq-ic{font-size:16px}
+  .cq-title{font-family:'Fraunces',serif; font-weight:700; font-size:16px}
+  .cq-hint{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+  .cq-chev{margin-left:auto; color:var(--muted); transition:transform .2s}
+  .cq[open]>.cq-sum .cq-chev{transform:rotate(90deg)}
+  .cq[open]>.cq-sum{border-bottom:1px solid var(--line)}
+  .cq>*:not(.cq-sum){margin-left:18px; margin-right:18px}
+  .cq>.actions{margin-bottom:18px}
+
   /* ---- SRS barre ---- */
   .srs-dashboard{background:linear-gradient(135deg,color-mix(in srgb,#a78bfa 14%,#0d1320),color-mix(in srgb,#60a5fa 8%,#0d1320));
     border:1px solid color-mix(in srgb,#a78bfa 35%,transparent); border-radius:18px; padding:16px 18px; margin-bottom:22px}
@@ -263,6 +276,12 @@ window.MathJax = {
     .srs-bar{flex-direction:column; align-items:flex-start; gap:10px}
     .srs-bar .due-n{font-size:26px}
     .srs-bar .btn{width:100%}
+    /* carte « Révision du jour » compactée sur mobile */
+    .srs-dashboard{padding:16px}
+    .srs-counters{gap:10px}
+    .srs-cnt{min-width:46px}
+    .srs-cnt .n{font-size:17px}
+    #srsStartBtn{margin-left:0 !important; width:100%}
 
     /* quiz */
     .question{font-size:clamp(17px,4.5vw,22px)}
@@ -459,36 +478,46 @@ window.MathJax = {
     <!-- SRS dashboard -->
     <div id="srsBar" style="margin-bottom:0"></div>
 
-    <!-- Sélecteur de mode -->
-    <p class="section-label" style="margin-top:20px">Mode</p>
-    <div class="mode-opts" id="modeOpts" style="margin-bottom:20px">
-      <button class="mode on" data-mode="all">Tous</button>
-      <button class="mode" data-mode="qcm">QCM</button>
-      <button class="mode" data-mode="trou">À trou</button>
-      <button class="mode" data-mode="saisie">Réponse libre</button>
-      <button class="mode" data-mode="flash">Flashcard</button>
-    </div>
+    <!-- Constructeur de quiz personnalisé (replié par défaut pour alléger l'accueil) -->
+    <details class="cq">
+      <summary class="cq-sum">
+        <span class="cq-ic">⚙️</span>
+        <span class="cq-title">Quiz personnalisé</span>
+        <span class="cq-hint">mode · chapitres · nombre</span>
+        <span class="cq-chev">▸</span>
+      </summary>
 
-    <!-- Familles accordéon -->
-    <p class="section-label">Chapitres &amp; progression</p>
-    <div id="famAccordion" style="margin-bottom:18px"></div>
-
-    <!-- Longueur + options -->
-    <div class="row" style="margin-top:4px">
-      <p class="section-label" style="margin:0">Questions</p>
-      <div class="len-opts" id="lenOpts">
-        <button class="len on" data-len="10">10</button>
-        <button class="len" data-len="20">20</button>
-        <button class="len" data-len="0">Tout</button>
-        <input type="number" id="lenCustom" class="len-custom" min="1" max="999" placeholder="Autre…" aria-label="Nombre de questions personnalisé">
+      <!-- Sélecteur de mode -->
+      <p class="section-label" style="margin-top:18px">Mode</p>
+      <div class="mode-opts" id="modeOpts" style="margin-bottom:20px">
+        <button class="mode on" data-mode="all">Tous</button>
+        <button class="mode" data-mode="qcm">QCM</button>
+        <button class="mode" data-mode="trou">À trou</button>
+        <button class="mode" data-mode="saisie">Réponse libre</button>
+        <button class="mode" data-mode="flash">Flashcard</button>
       </div>
-      <label class="toggle" style="margin-left:auto"><input type="checkbox" id="shuffleToggle" checked> Mélanger</label>
-    </div>
 
-    <div class="actions" style="margin-top:18px">
-      <button class="btn" id="startBtn">Commencer →</button>
-      <span id="poolInfo" style="color:var(--muted); font-size:13px"></span>
-    </div>
+      <!-- Familles accordéon -->
+      <p class="section-label">Chapitres &amp; progression</p>
+      <div id="famAccordion" style="margin-bottom:18px"></div>
+
+      <!-- Longueur + options -->
+      <div class="row" style="margin-top:4px">
+        <p class="section-label" style="margin:0">Questions</p>
+        <div class="len-opts" id="lenOpts">
+          <button class="len on" data-len="10">10</button>
+          <button class="len" data-len="20">20</button>
+          <button class="len" data-len="0">Tout</button>
+          <input type="number" id="lenCustom" class="len-custom" min="1" max="999" placeholder="Autre…" aria-label="Nombre de questions personnalisé">
+        </div>
+        <label class="toggle" style="margin-left:auto"><input type="checkbox" id="shuffleToggle" checked> Mélanger</label>
+      </div>
+
+      <div class="actions" style="margin-top:18px">
+        <button class="btn" id="startBtn">Commencer →</button>
+        <span id="poolInfo" style="color:var(--muted); font-size:13px"></span>
+      </div>
+    </details>
 
     <div id="juryTip"></div>
 
