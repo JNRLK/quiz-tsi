@@ -542,14 +542,14 @@ window.MathJax = {
 
       <!-- Sélecteur de mode -->
       <p class="section-label" style="margin-top:18px">Mode</p>
-      <div class="mode-opts" id="modeOpts" style="margin-bottom:20px">
+      <div class="mode-opts" id="modeOpts" style="margin-bottom:10px">
         <button class="mode on" data-mode="all">Tous</button>
         <button class="mode" data-mode="qcm">QCM</button>
         <button class="mode" data-mode="trou">À trou</button>
         <button class="mode" data-mode="saisie">Réponse libre</button>
         <button class="mode" data-mode="flash">Flashcard</button>
       </div>
-      <p id="modeDesc" style="color:var(--muted); font-size:12.5px; margin:-12px 0 20px"></p>
+      <p id="modeDesc" style="color:var(--muted); font-size:12.5px; line-height:1.4; margin:0 0 20px"></p>
 
       <!-- Familles accordéon -->
       <p class="section-label">Chapitres &amp; progression</p>
@@ -676,11 +676,40 @@ window.MathJax = {
   <div class="modal">
     <button class="modal-close" id="authClose" aria-label="Fermer">✕</button>
     <h2 id="authTitle" style="font-family:'Fraunces',serif; margin:0 0 6px">Connexion</h2>
-    <p class="auth-sub">Connecte-toi pour accéder à la console de révision.</p>
+    <p class="auth-sub" id="authSub">Connecte-toi pour accéder à la console de révision.</p>
     <input class="ans-input" id="authEmail" type="email" autocomplete="email" placeholder="Adresse e-mail" style="margin-bottom:10px; width:100%">
     <input class="ans-input" id="authPass" type="password" autocomplete="current-password" placeholder="Mot de passe (6 caractères min.)" style="width:100%">
+
+    <!-- Profil — création de compte uniquement -->
+    <div id="authProfile" style="display:none">
+      <input class="ans-input" id="authPseudo" type="text" autocomplete="nickname" placeholder="Pseudo ou prénom (affiché au prof)" style="margin-top:10px; width:100%">
+      <p class="section-label" style="margin:14px 0 6px">Je suis…</p>
+      <div class="mode-opts" id="authStatut">
+        <button type="button" class="mode on" data-v="eleve">Élève</button>
+        <button type="button" class="mode" data-v="prof">Professeur</button>
+        <button type="button" class="mode" data-v="visiteur">Visiteur</button>
+      </div>
+      <input class="ans-input" id="authLycee" type="text" value="Lycée Chaptal" placeholder="Établissement (lycée)" style="margin-top:12px; width:100%">
+      <div id="authFiliereRow">
+        <p class="section-label" style="margin:14px 0 6px">Filière <span style="text-transform:none;letter-spacing:0">(optionnel)</span></p>
+        <div class="mode-opts" id="authFiliere">
+          <button type="button" class="mode on" data-v="TSI">TSI</button>
+          <button type="button" class="mode" data-v="autre-prepa">Autre prépa</button>
+          <button type="button" class="mode" data-v="autre">Autre</button>
+        </div>
+      </div>
+      <div id="authAnneeRow">
+        <p class="section-label" style="margin:14px 0 6px">Année <span style="text-transform:none;letter-spacing:0">(optionnel)</span></p>
+        <div class="mode-opts" id="authAnnee">
+          <button type="button" class="mode" data-v="1">1re année</button>
+          <button type="button" class="mode" data-v="2">2e année</button>
+        </div>
+      </div>
+    </div>
+
     <div class="auth-err hidden" id="authErr"></div>
     <button class="btn" id="authSubmit" style="width:100%; margin-top:14px">Se connecter</button>
+    <a id="authForgot" style="display:block; text-align:center; margin-top:10px; font-size:13px; color:#a78bfa; cursor:pointer; text-decoration:underline">Mot de passe oublié ?</a>
     <p class="auth-switch" id="authSwitchLine">Pas encore de compte ? <a id="authSwitch">En créer un</a></p>
   </div>
 </div>
@@ -734,7 +763,7 @@ window.MathJax = {
 <script type="module">
 /* ====================== FIREBASE ====================== */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-import { getAuth, setPersistence, browserLocalPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+import { getAuth, setPersistence, browserLocalPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -760,8 +789,20 @@ let currentUser = null;
 let isAdmin = false;
 
 const Cloud = {
-  async signUp(email, pass){ const c = await createUserWithEmailAndPassword(auth, email, pass);
-    await setDoc(doc(db,'users',c.user.uid), {email:c.user.email, displayName:email.split('@')[0], createdAt:serverTimestamp()}, {merge:true}); return c.user; },
+  async signUp(email, pass, profile){
+    const c = await createUserWithEmailAndPassword(auth, email, pass);
+    const uid = c.user.uid;
+    const pseudo = (profile && profile.pseudo) ? profile.pseudo : email.split('@')[0];
+    // 1) doc de base (clés déjà autorisées par les règles Firestore)
+    await setDoc(doc(db,'users',uid), {email:c.user.email, displayName:pseudo, createdAt:serverTimestamp()}, {merge:true});
+    // 2) profil détaillé — best-effort : nécessite d'ajouter la clé 'profile' aux règles Firestore.
+    //    Toujours conservé en local pour ne rien perdre si les règles ne sont pas encore à jour.
+    if(profile){
+      try{ localStorage.setItem('quiztsi_profile', JSON.stringify(profile)); }catch(e){}
+      try{ await setDoc(doc(db,'users',uid), {profile:{statut:profile.statut||null, lycee:profile.lycee||null, filiere:profile.filiere||null, annee:profile.annee||null}}, {merge:true}); }
+      catch(e){ console.warn("Profil non synchronisé : ajoute 'profile' aux règles Firestore (hasOnly).", e); }
+    }
+    return c.user; },
   async signIn(email, pass){ return (await signInWithEmailAndPassword(auth, email, pass)).user; },
   async signOut(){ return signOut(auth); },
   async saveSession(s){
@@ -782,7 +823,7 @@ const Cloud = {
       const t = (agg.byTopic[it.topic] || (agg.byTopic[it.topic]={a:0,c:0})); t.a++; if(it.correct) t.c++;
       const bc = (agg.byCard[it.h] || (agg.byCard[it.h]={a:0,c:0,topic:it.topic})); bc.a++; if(it.correct) bc.c++;
     });
-    await setDoc(uref, {email:currentUser.email, displayName:currentUser.email.split('@')[0], lastActive:serverTimestamp(), agg}, {merge:true});
+    await setDoc(uref, {email:currentUser.email, displayName: cur.displayName || currentUser.email.split('@')[0], lastActive:serverTimestamp(), agg}, {merge:true});
   },
   async myAggregate(){ if(!currentUser) return null; const snap = await getDoc(doc(db,'users',currentUser.uid)); return snap.exists()? (snap.data().agg||null) : null; },
   async mySessions(n=20){ if(!currentUser) return [];
@@ -793,7 +834,8 @@ const Cloud = {
   async loadSRS(){ if(!currentUser) return null; const snap = await getDoc(doc(db,'users',currentUser.uid)); return snap.exists()? (snap.data().srs||null) : null; },
   // ⚠️ Règles Firestore requises (à coller dans Firebase console) :
   // allow create, update: if signedIn() && request.auth.uid == uid
-  //   && request.resource.data.keys().hasOnly(['email','displayName','createdAt','lastActive','agg','srs','srsUpdated']);
+  //   && request.resource.data.keys().hasOnly(['email','displayName','createdAt','lastActive','agg','srs','srsUpdated','profile']);
+  //   ('profile' = {statut, lycee, filiere, annee} ; à ajouter à la liste pour activer la sync cloud du profil)
   // `bundle` = {cards, streak, daily} (tout est imbriqué sous la clé `srs` autorisée par les règles).
   async saveSRS(bundle){ if(!currentUser) return; await setDoc(doc(db,'users',currentUser.uid), {srs:bundle, srsUpdated:serverTimestamp()}, {merge:true}); },
   async sendReport(r){
@@ -4359,16 +4401,42 @@ function updateAccountUI(){
 }
 let authMode = 'login';
 function openAuth(){ authMode='login'; refreshAuthModal(); const cb=$('#authClose'); if(cb) cb.style.display=currentUser?'':'none'; $('#authModal').classList.remove('hidden'); $('#authEmail').focus(); }
-function closeAuth(){ $('#authModal').classList.add('hidden'); $('#authErr').classList.add('hidden'); $('#authEmail').value=''; $('#authPass').value=''; }
+function closeAuth(){ $('#authModal').classList.add('hidden'); $('#authErr').classList.add('hidden'); $('#authEmail').value=''; $('#authPass').value=''; const p=$('#authPseudo'); if(p) p.value=''; }
 function refreshAuthModal(){
-  $('#authTitle').textContent = authMode==='login' ? 'Connexion' : 'Créer un compte';
-  $('#authSubmit').textContent = authMode==='login' ? 'Se connecter' : "Créer mon compte";
-  $('#authSwitchLine').innerHTML = authMode==='login'
-    ? 'Pas encore de compte ? <a id="authSwitch">En créer un</a>'
-    : 'Déjà inscrit ? <a id="authSwitch">Se connecter</a>';
-  $('#authSwitch').onclick = ()=>{ authMode = authMode==='login'?'signup':'login'; refreshAuthModal(); };
+  const signup = authMode==='signup';
+  $('#authTitle').textContent = signup ? 'Créer un compte' : 'Connexion';
+  const sub=$('#authSub'); if(sub) sub.textContent = signup ? 'Crée ton compte pour suivre ta progression.' : 'Connecte-toi pour accéder à la console de révision.';
+  $('#authSubmit').textContent = signup ? "Créer mon compte" : 'Se connecter';
+  $('#authPass').setAttribute('autocomplete', signup ? 'new-password' : 'current-password');
+  const prof=$('#authProfile'); if(prof) prof.style.display = signup ? '' : 'none';
+  const forgot=$('#authForgot'); if(forgot) forgot.style.display = signup ? 'none' : '';
+  $('#authSwitchLine').innerHTML = signup
+    ? 'Déjà inscrit ? <a id="authSwitch">Se connecter</a>'
+    : 'Pas encore de compte ? <a id="authSwitch">En créer un</a>';
+  $('#authSwitch').onclick = ()=>{ authMode = signup?'login':'signup'; refreshAuthModal(); };
+  const e=$('#authErr'); if(e){ e.classList.add('hidden'); e.style.color=''; }
+  if(signup) updateProfileVisibility();
 }
-function authError(msg){ const e=$('#authErr'); e.textContent=msg; e.classList.remove('hidden'); }
+/* Champs profil : affichage conditionnel selon le statut */
+function updateProfileVisibility(){
+  const st = segValue('authStatut');
+  const ar=$('#authAnneeRow'); if(ar) ar.style.display = st==='eleve' ? '' : 'none';
+  const fr=$('#authFiliereRow'); if(fr) fr.style.display = st==='visiteur' ? 'none' : '';
+}
+/* Boutons segmentés (réutilise le style .mode) */
+function segValue(groupId){ const on=document.querySelector('#'+groupId+' .mode.on'); return on ? on.dataset.v : ''; }
+function wireSeg(groupId, onChange){
+  const g=document.getElementById(groupId); if(!g) return;
+  g.addEventListener('click', ev=>{ const b=ev.target.closest('.mode'); if(!b) return;
+    g.querySelectorAll('.mode').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    if(onChange) onChange(b.dataset.v);
+  });
+}
+wireSeg('authStatut', updateProfileVisibility);
+wireSeg('authFiliere');
+wireSeg('authAnnee');
+function authError(msg){ const e=$('#authErr'); e.textContent=msg; e.classList.remove('hidden'); e.style.color=''; }
+function authNote(msg){ const e=$('#authErr'); e.textContent=msg; e.classList.remove('hidden'); e.style.color='#4ade80'; }
 const AUTH_MSG = {
   'auth/invalid-email':"Adresse e-mail invalide.",
   'auth/missing-password':"Entre un mot de passe.",
@@ -4377,7 +4445,9 @@ const AUTH_MSG = {
   'auth/invalid-credential':"E-mail ou mot de passe incorrect.",
   'auth/wrong-password':"Mot de passe incorrect.",
   'auth/user-not-found':"Aucun compte avec cet e-mail.",
-  'auth/network-request-failed':"Problème de connexion réseau."
+  'auth/network-request-failed':"Problème de connexion réseau.",
+  'auth/too-many-requests':"Trop de tentatives — réessaie dans quelques minutes.",
+  'auth/missing-email':"Entre ton adresse e-mail."
 };
 $('#accountBtn').onclick = ()=>{
   if(currentUser){
@@ -4389,13 +4459,38 @@ $('#authModal').addEventListener('click', e=>{ if(e.target.id==='authModal' && c
 $('#authSubmit').onclick = async ()=>{
   const email = $('#authEmail').value.trim(), pass = $('#authPass').value;
   $('#authErr').classList.add('hidden');
+  if(authMode==='signup'){
+    const pseudo=$('#authPseudo').value.trim();
+    const statut=segValue('authStatut');
+    const lycee=$('#authLycee').value.trim();
+    if(!pseudo) return authError('Choisis un pseudo ou prénom.');
+    if(!statut) return authError('Indique si tu es élève, professeur ou visiteur.');
+    if(statut!=='visiteur' && !lycee) return authError('Indique ton établissement (lycée).');
+  }
   $('#authSubmit').disabled = true;
   try{
     if(authMode==='login') await Cloud.signIn(email, pass);
-    else await Cloud.signUp(email, pass);
+    else await Cloud.signUp(email, pass, {
+      pseudo: $('#authPseudo').value.trim(),
+      statut: segValue('authStatut'),
+      lycee: $('#authLycee').value.trim() || null,
+      filiere: segValue('authFiliere') || null,
+      annee: segValue('authAnnee') || null
+    });
     closeAuth();
   }catch(err){ authError(AUTH_MSG[err.code] || ('Erreur : '+(err.code||err.message))); }
   finally{ $('#authSubmit').disabled = false; }
+};
+/* Mot de passe oublié : e-mail de réinitialisation (Firebase) */
+$('#authForgot').onclick = async ()=>{
+  const email = $('#authEmail').value.trim();
+  if(!email) return authError('Entre ton adresse e-mail, puis clique sur « Mot de passe oublié ? ».');
+  $('#authForgot').style.pointerEvents='none';
+  try{
+    await sendPasswordResetEmail(auth, email);
+    authNote('E-mail de réinitialisation envoyé à '+email+' (vérifie aussi les spams).');
+  }catch(err){ authError(AUTH_MSG[err.code] || ('Erreur : '+(err.code||err.message))); }
+  finally{ setTimeout(()=>{ const f=$('#authForgot'); if(f) f.style.pointerEvents=''; }, 4000); }
 };
 $('#authPass').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#authSubmit').click(); });
 
