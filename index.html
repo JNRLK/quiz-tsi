@@ -2632,8 +2632,8 @@ const QUESTIONS = [
    choices:[{t:"$p$ et $p(1-p)$", c:true},{t:"$p$ et $p$", c:false},{t:"$\\frac p2$ et $p$", c:false},{t:"$1$ et $p$", c:false}],
    exp:"$X\\in\\{0,1\\}$, $P(X=1)=p$ : $E(X)=p$, $V(X)=p(1-p)$."},
   {topic:'proba', mode:'flash', q:"Énonce l'inégalité de Bienaymé-Tchebychev.",
-   answer:"$P(|X-E(X)|\\ge\\varepsilon)\\le\\dfrac{V(X)}{\\varepsilon^2}$ (pour $\\varepsilon>0$).",
-   exp:"Borne la dispersion autour de l'espérance."},
+   answer:"Si $X$ admet une variance : $P(|X-E(X)|\\ge\\varepsilon)\\le\\dfrac{V(X)}{\\varepsilon^2}$ (pour $\\varepsilon>0$).",
+   exp:"Hypothèse clé : $X$ doit admettre une variance. Inégalité de concentration qui borne l'écart à l'espérance ; c'est l'outil de preuve de la loi faible des grands nombres."},
   {topic:'proba', mode:'qcm', q:"Deux événements indépendants $A,B$ : $A$ et $\\overline B$ sont :",
    choices:[{t:"indépendants", c:true},{t:"incompatibles", c:false},{t:"dépendants", c:false},{t:"égaux", c:false}],
    exp:"L'indépendance se transmet aux complémentaires."},
@@ -4773,9 +4773,11 @@ async function renderAdmin(){
   let reports = [];
   try{ reports = await Cloud.getReports(50); }
   catch(e){ reports = null; console.warn('reports read', e); }
-  ADM.users = users; ADM.reports = reports;
+  const rawCount = users.length;
+  users = admDedupe(users);
+  ADM.users = users; ADM.reports = reports; ADM.dupCount = rawCount - users.length;
 
-  // --- KPIs globaux (jamais filtrés) ---
+  // --- KPIs globaux (jamais filtrés, après dédup par e-mail) ---
   const active = users.filter(u=>u.agg && u.agg.totalAnswered);
   const complete = users.filter(u=>profileIsComplete(u.profile));
   const totalAns = active.reduce((s,u)=>s+(u.agg.totalAnswered||0),0);
@@ -4814,6 +4816,29 @@ async function renderAdmin(){
   const cb = $('#admCsv'); if(cb){ cb.onclick = ()=> admExportCSV(admFiltered()); }
 
   paintAdmin();
+}
+
+/* Dédup par e-mail : plusieurs docs Firestore peuvent partager le même e-mail
+   (comptes de test recréés → l'ancien doc users/{uid} reste orphelin). On garde
+   un seul doc par e-mail : le plus complet, sinon le plus actif, sinon le plus récent. */
+function admTms(ts){ return ts && ts.toDate ? ts.toDate().getTime() : 0; }
+function admPickBetter(a,b){
+  const ca=profileIsComplete(a.profile), cb=profileIsComplete(b.profile);
+  if(ca!==cb) return ca?a:b;
+  const aa=(a.agg&&a.agg.totalAnswered)||0, ab=(b.agg&&b.agg.totalAnswered)||0;
+  if(aa!==ab) return aa>ab?a:b;
+  const la=admTms(a.lastActive)||admTms(a.createdAt), lb=admTms(b.lastActive)||admTms(b.createdAt);
+  return lb>la ? b : a;
+}
+function admDedupe(users){
+  const byEmail=new Map(); const noEmail=[];
+  for(const u of users){
+    const key=(u.email||'').trim().toLowerCase();
+    if(!key){ noEmail.push(u); continue; }
+    const prev=byEmail.get(key);
+    byEmail.set(key, prev ? admPickBetter(prev,u) : u);
+  }
+  return [...byEmail.values(), ...noEmail];
 }
 
 function admFiltered(){
@@ -4889,6 +4914,7 @@ function paintAdmin(){
 
   // 1) Trombinoscope (liste repliable)
   html += `<details class="adm-sec" open><summary class="adm-sec-h"><span class="cq-ic">👥</span><span class="cq-title">Trombinoscope — comptes (${list.length}/${total})</span><span class="cq-chev">▸</span></summary><div class="adm-sec-b">`;
+  if(ADM.dupCount>0){ html += `<p class="footer-note" style="text-align:left;margin:0 0 12px;color:#fbbf24">⚠ ${ADM.dupCount} doublon(s) de compte (même e-mail) masqué(s). Pour nettoyer : Firebase → Firestore → collection <code>users</code>, supprime les docs orphelins.</p>`; }
   html += list.length ? (`<div class="adm-list">` + list.map(admStudentRow).join('') + `</div>`)
                       : `<div class="empty-state" style="padding:18px">Aucun compte ne correspond aux filtres.</div>`;
   html += `</div></details>`;
