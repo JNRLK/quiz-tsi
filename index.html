@@ -242,9 +242,10 @@ window.MathJax = {
 
     /* header */
     .top{flex-direction:column; align-items:flex-start; gap:12px}
-    .brand h1{font-size:clamp(28px,9vw,42px)}
-    .top-right{width:100%; flex-direction:row; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px}
-    .live-stats{gap:7px}
+    .brand h1{font-size:clamp(26px,8vw,38px)}
+    .top-right{width:100%; flex-direction:row; justify-content:flex-start; align-items:center; flex-wrap:wrap; gap:8px}
+    /* pastilles À réviser/Maîtrisé masquées sur mobile : redondantes avec la carte « Révision du jour » */
+    .live-stats{display:none}
     .stat{min-width:58px; padding:7px 10px}
     .stat .n{font-size:18px}
     .top-actions{gap:6px}
@@ -301,8 +302,9 @@ window.MathJax = {
     .modal{padding:20px 16px}
     .modal h2{font-size:20px}
 
-    /* auth */
-    .top-actions .btn.ghost.mini:not(#accountBtn){display:none}
+    /* boutons d'action : icône seule sur mobile (avant : display:none → inaccessibles) */
+    #statsBtn .bl, #juryBtn .bl, #adminBtn .bl{display:none}
+    #statsBtn, #juryBtn, #adminBtn{padding:8px 10px; font-size:14px}
   }
 
   @media (max-width:380px){
@@ -384,6 +386,7 @@ window.MathJax = {
 
   /* compte / auth */
   .top-actions{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end}
+  .top-actions .btn .bl{margin-left:.4em}
   .cloud-banner{background:#0d1320; border:1px solid var(--line); border-radius:12px; padding:11px 14px; font-size:13.5px; color:var(--muted); margin-bottom:16px}
   .cloud-banner.ok{border-color:color-mix(in srgb,#22c55e 45%,transparent); color:#86efac}
   .cloud-banner a{color:#a78bfa; cursor:pointer; text-decoration:underline}
@@ -438,14 +441,14 @@ window.MathJax = {
     <div class="top-right">
       <div class="live-stats" id="liveStats">
         <div class="stat"><div class="n" id="sDue">0</div><div class="l">À réviser</div></div>
-        <div class="stat"><div class="n" id="sMastery">0%</div><div class="l">Maîtrisé</div></div>
+        <div class="stat"><div class="n" id="sMastery">0%</div><div class="l">Avancement</div></div>
       </div>
       <div class="top-actions">
         <span id="syncIndicator" class="sync-ind hidden"></span>
         <button class="btn ghost mini" id="accountBtn">🔑 Se connecter</button>
-        <button class="btn ghost mini" id="statsBtn">📊 Ma progression</button>
-        <button class="btn ghost mini" id="juryBtn">📋 Mot du jury</button>
-        <button class="btn ghost mini hidden" id="adminBtn">🎓 Vue classe</button>
+        <button class="btn ghost mini" id="statsBtn"><span class="bi">📊</span><span class="bl">Ma progression</span></button>
+        <button class="btn ghost mini" id="juryBtn"><span class="bi">📋</span><span class="bl">Mot du jury</span></button>
+        <button class="btn ghost mini hidden" id="adminBtn"><span class="bi">🎓</span><span class="bl">Vue classe</span></button>
       </div>
     </div>
   </div>
@@ -2716,12 +2719,19 @@ function allQuestionHashes(){
 function updateHeaderStats(){
   const due = $('#sDue'), mast = $('#sMastery');
   if(!due || !mast) return;
-  const dueCount = SRS.due().length;
   const counts = SRS.maturityCounts(allQuestionHashes());
   const total = QUESTIONS.length || 1;
-  const pct = Math.round(counts.mature / total * 100);
-  due.textContent = dueCount;
-  mast.textContent = pct + '%';
+  // « À réviser » = travail réel du jour = révisions dues + nouvelles cartes du jour
+  // (identique au bouton « Réviser (N) ») ; les nouvelles cartes n'étaient pas comptées avant.
+  const totalDue = SRS.due().length;
+  const newRemaining = Math.max(0, NEW_PER_DAY - SRS.dailyNewCount());
+  const newAvail = Math.min(newRemaining, counts.new);
+  const sessionSize = totalDue + newAvail;
+  due.textContent = sessionSize > 0 ? sessionSize : '✓';
+  // « Avancement » = part du programme déjà entamée (bouge dès le 1er jour),
+  // au lieu de « Maîtrisé » (intervalle ≥ 21 j ÷ 444) qui restait bloqué à 0 % pendant des semaines.
+  const started = counts.learning + counts.young + counts.mature;
+  mast.textContent = Math.round(started / total * 100) + '%';
 }
 
 // Rétrocompatibilité : Stats.record pointe vers SRS
