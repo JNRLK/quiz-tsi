@@ -100,6 +100,10 @@ window.MathJax = {
   .cq>*:not(.cq-sum){margin-left:18px; margin-right:18px}
   .cq>.actions{margin-bottom:18px}
 
+  /* ---- Ligne synchro (Ma progression) ---- */
+  .sync-row{display:flex; align-items:center; gap:12px; margin:0 0 16px; flex-wrap:wrap}
+  .sync-when{font-size:12px; color:var(--muted)}
+
   /* ---- SRS barre ---- */
   .srs-dashboard{background:linear-gradient(135deg,color-mix(in srgb,#a78bfa 14%,#0d1320),color-mix(in srgb,#60a5fa 8%,#0d1320));
     border:1px solid color-mix(in srgb,#a78bfa 35%,transparent); border-radius:18px; padding:16px 18px; margin-bottom:22px}
@@ -580,6 +584,10 @@ window.MathJax = {
   <!-- STATS -->
   <div class="card hidden" id="statsScreen">
     <p class="section-label">Ma progression</p>
+    <div class="sync-row" id="syncRow" style="display:none">
+      <button class="btn ghost mini" id="syncNowBtn">🔄 Synchroniser maintenant</button>
+      <span class="sync-when" id="lastSyncLabel"></span>
+    </div>
     <div id="statsBody"></div>
     <div class="actions" style="justify-content:flex-start">
       <button class="btn" id="statsBack">← Retour</button>
@@ -662,7 +670,7 @@ window.MathJax = {
 <script type="module">
 /* ====================== FIREBASE ====================== */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+import { getAuth, setPersistence, browserLocalPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -680,6 +688,9 @@ const ADMIN_EMAILS = ["arthur.lesage05@gmail.com"];
 
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
+// Persistance locale : la session reste active entre les rechargements et les fermetures
+// d'onglet (évite de devoir se reconnecter à chaque visite).
+setPersistence(auth, browserLocalPersistence).catch(e=>console.warn('auth persistence', e));
 const db = getFirestore(fbApp);
 let currentUser = null;
 let isAdmin = false;
@@ -698,10 +709,15 @@ const Cloud = {
     const uref = doc(db,'users',uid);
     const snap = await getDoc(uref);
     const cur = snap.exists()? snap.data() : {};
-    const agg = cur.agg || {totalAnswered:0, totalCorrect:0, bestStreak:0, byTopic:{}};
+    const agg = cur.agg || {totalAnswered:0, totalCorrect:0, bestStreak:0, byTopic:{}, byCard:{}};
+    if(!agg.byTopic) agg.byTopic = {};
+    if(!agg.byCard) agg.byCard = {};   // agrégat par CARTE (pour le top des cartes ratées côté prof)
     agg.totalAnswered += s.total; agg.totalCorrect += s.score;
     agg.bestStreak = Math.max(agg.bestStreak||0, s.bestStreak||0);
-    s.details.forEach(it=>{ const t = (agg.byTopic[it.topic] || (agg.byTopic[it.topic]={a:0,c:0})); t.a++; if(it.correct) t.c++; });
+    s.details.forEach(it=>{
+      const t = (agg.byTopic[it.topic] || (agg.byTopic[it.topic]={a:0,c:0})); t.a++; if(it.correct) t.c++;
+      const bc = (agg.byCard[it.h] || (agg.byCard[it.h]={a:0,c:0,topic:it.topic})); bc.a++; if(it.correct) bc.c++;
+    });
     await setDoc(uref, {email:currentUser.email, displayName:currentUser.email.split('@')[0], lastActive:serverTimestamp(), agg}, {merge:true});
   },
   async myAggregate(){ if(!currentUser) return null; const snap = await getDoc(doc(db,'users',currentUser.uid)); return snap.exists()? (snap.data().agg||null) : null; },
@@ -709,6 +725,7 @@ const Cloud = {
     const qs = await getDocs(query(collection(db,'users',currentUser.uid,'sessions'), orderBy('date','desc'), limit(n)));
     return qs.docs.map(d=>d.data()); },
   async allUsers(){ const qs = await getDocs(collection(db,'users')); return qs.docs.map(d=>({uid:d.id, ...d.data()})); },
+  async getReports(n=50){ const qs = await getDocs(query(collection(db,'reports'), orderBy('date','desc'), limit(n))); return qs.docs.map(d=>({id:d.id, ...d.data()})); },
   async loadSRS(){ if(!currentUser) return null; const snap = await getDoc(doc(db,'users',currentUser.uid)); return snap.exists()? (snap.data().srs||null) : null; },
   // ⚠️ Règles Firestore requises (à coller dans Firebase console) :
   // allow create, update: if signedIn() && request.auth.uid == uid
@@ -3541,6 +3558,8 @@ $('#reportSubmit').onclick = async ()=>{
 /* ====================== TABLEAU DE BORD ====================== */
 async function renderStats(){
   const body = $('#statsBody');
+  const sr = $('#syncRow'); if(sr) sr.style.display = currentUser ? 'flex' : 'none';
+  updateLastSyncLabel();
   const banner = currentUser
     ? `<div class="cloud-banner ok">☁️ Connecté — progression synchronisée (${currentUser.email}).</div>`
     : `<div class="cloud-banner">Stats locales à cet appareil. <a id="statsLogin">Connecte-toi</a> pour les synchroniser sur tous tes appareils.</div>`;
@@ -3669,6 +3688,7 @@ function showStats(){
   renderStats().catch(e=>{ $('#statsBody').innerHTML = `<div class="empty-state">Erreur : ${e.message||e}</div>`; });
 }
 $('#statsBtn').onclick = showStats;
+$('#syncNowBtn').onclick = manualSync;
 $('#statsBack').onclick = ()=>{
   $('#statsScreen').classList.add('hidden');
   $('#startScreen').classList.remove('hidden');
@@ -3971,9 +3991,41 @@ function cloudToast(type, msg){
     _cloudStatusTimer = setTimeout(()=>{ el.classList.remove('show'); }, 3000);
   }
 }
-function cloudOk(msg='☁️ Sauvegardé'){ cloudToast('ok', msg); }
+// Horodatage de la dernière synchro réussie (persisté pour survivre aux rechargements)
+let lastSyncTs = parseInt(localStorage.getItem('quiztsi_lastsync')||'0') || 0;
+function fmtSyncAgo(){
+  if(!lastSyncTs) return 'jamais';
+  const s = Math.round((Date.now()-lastSyncTs)/1000);
+  if(s < 60) return "à l'instant";
+  if(s < 3600) return 'il y a '+Math.floor(s/60)+' min';
+  const d = new Date(lastSyncTs);
+  return 'le '+d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})+' à '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+}
+function updateLastSyncLabel(){ const el=$('#lastSyncLabel'); if(el) el.textContent='Dernière synchro : '+fmtSyncAgo(); }
+function cloudOk(msg='☁️ Sauvegardé'){
+  lastSyncTs = Date.now();
+  try{ localStorage.setItem('quiztsi_lastsync', String(lastSyncTs)); }catch(e){}
+  updateLastSyncLabel();
+  cloudToast('ok', msg);
+}
 function cloudErr(msg='⚠️ Non sauvegardé — hors ligne ?'){ cloudToast('err', msg); }
 function cloudSync(msg='↑ Synchronisation…'){ cloudToast('sync', msg); }
+// Synchro manuelle : pousse l'état local puis refusionne le cloud (bouton « Synchroniser maintenant »)
+async function manualSync(){
+  if(!currentUser){ openAuth(); return; }
+  const btn = $('#syncNowBtn'); if(btn) btn.disabled = true;
+  try{
+    cloudSync('↑ Synchronisation…');
+    const dd = SRS._d();
+    await Cloud.saveSRS({ cards: dd.cards, streak: dd.streak || null, daily: dd.daily || null });
+    const cloud = await Cloud.loadSRS();
+    if(cloud){ SRS.mergeCloud(cloud); SRS.gc(); }
+    cloudOk('☁️ Synchronisé');
+    updateSrsBar(); updateHeaderStats(); buildFamilyAccordion();
+    await renderStats();
+  }catch(e){ console.warn('manual sync', e); cloudErr('⚠️ Sync échouée'); }
+  finally{ if(btn) btn.disabled = false; }
+}
 function updateAccountUI(){
   const btn = $('#accountBtn');
   if(currentUser){
@@ -4088,7 +4140,44 @@ async function renderAdmin(){
     html += `<p class="footer-note" style="margin-top:8px">Ces élèves ont un compte mais n'ont pas encore terminé de quiz : leurs statistiques apparaîtront ensuite.</p>`;
   }
 
+  // --- Top des cartes les plus ratées par la classe (agrégat par CARTE) ---
+  const classByCard = {};
+  active.forEach(u=>{ const bc=u.agg.byCard||{}; for(const h in bc){ const e=bc[h];
+    (classByCard[h] ||= {a:0,c:0,topic:e.topic}); classByCard[h].a+=e.a||0; classByCard[h].c+=e.c||0; } });
+  const qByHash = {}; QUESTIONS.forEach(q=>{ qByHash[qHash(q.q)] = q; });
+  const missCards = Object.entries(classByCard)
+    .map(([h,e])=>({h, ...e, miss:(e.a-e.c), rate:e.a?(e.a-e.c)/e.a:0, q:qByHash[h]}))
+    .filter(e=>e.a>=3 && e.miss>0)        // au moins 3 tentatives au niveau classe
+    .sort((a,b)=> b.rate-a.rate || b.miss-a.miss)
+    .slice(0,12);
+  if(missCards.length){
+    html += `<p class="section-label" style="margin-top:22px">Cartes les plus ratées (classe) — cibles colles / DS</p><div class="review">`;
+    missCards.forEach(e=>{ const t=TOPICS[e.topic]; const rate=Math.round(e.rate*100);
+      const qtxt = e.q ? e.q.q : '(question modifiée ou retirée)';
+      html += `<div class="miss">${qtxt}<div class="ans">Raté ${e.miss}/${e.a} fois · ${rate}% d'échec${t?` · <span style="color:${t.raw}">${t.name}</span>`:''}</div></div>`; });
+    html += `</div>`;
+  }
+
+  // --- Boîte de réception des signalements (collection reports) ---
+  const esc = s => (s||'').replace(/[<>&]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+  let reports = [];
+  try{ reports = await Cloud.getReports(50); }
+  catch(e){ reports = null; console.warn('reports read', e); }
+  if(reports === null){
+    html += `<p class="section-label" style="margin-top:22px">Signalements</p><div class="empty-state" style="padding:16px">Lecture des signalements impossible — autorise la lecture de la collection <code>reports</code> dans les règles Firestore.</div>`;
+  } else if(reports.length){
+    html += `<p class="section-label" style="margin-top:22px">Signalements (${reports.length})</p><div class="review">`;
+    reports.forEach(r=>{ const t=TOPICS[r.topic];
+      const dt = r.date && r.date.toDate ? r.date.toDate() : null;
+      const ds = dt ? dt.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})+' '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '';
+      html += `<div class="miss">${r.question||'(carte)'}<div class="ans"><b style="color:#f87171">${esc(r.type)||'Signalement'}</b>${r.comment?` — ${esc(r.comment)}`:''}<br><span style="opacity:.7">${esc(r.email)||'anonyme'}${t?` · <span style="color:${t.raw}">${t.name}</span>`:''}${ds?` · ${ds}`:''}</span></div></div>`; });
+    html += `</div>`;
+  } else {
+    html += `<p class="section-label" style="margin-top:22px">Signalements</p><div class="empty-state" style="padding:16px">Aucun signalement pour l'instant.</div>`;
+  }
+
   body.innerHTML = html;
+  typeset(body);
 }
 $('#adminBtn').onclick = ()=>{
   ['startScreen','quizScreen','resultScreen','statsScreen','juryScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
