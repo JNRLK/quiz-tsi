@@ -2977,12 +2977,8 @@ function updateSrsBar(){
   const counts = SRS.maturityCounts(allQuestionHashes());  // {new,learning,young,mature}
   const help = `<a id="srsHelp" style="color:#a78bfa;cursor:pointer;font-size:12px;text-decoration:underline">Comment ça marche ?</a>`;
 
-  if(allCards.length === 0){
-    bar.innerHTML = `<div class="srs-none">Lance un quiz : chaque question deviendra une carte à réviser au bon moment. ${help}</div>`;
-    const h=$('#srsHelp'); if(h) h.onclick=openOnboarding;
-    return;
-  }
-
+  // UX : on affiche le tableau de bord DIRECTEMENT, même pour un nouveau compte (0 carte).
+  // Il montre déjà « Réviser (N) » + la répartition ; plus de placeholder « Lance un quiz ».
   const dueColor = totalDue>0 ? '#a78bfa' : '#4ade80';
   // proportions pour la barre de maturité empilée
   const seg = (n)=> totalCards ? (n/totalCards*100) : 0;
@@ -3326,6 +3322,18 @@ function renderQCM(zone, q){
     box.appendChild(b);
   });
   zone.appendChild(box);
+  // P3 — anti-hasard : « Je ne sais pas » révèle et compte comme Oubli (sans deviner)
+  const dunno = document.createElement('button');
+  dunno.className='btn ghost'; dunno.type='button';
+  dunno.style.cssText='margin-top:12px; font-size:13px; padding:9px 14px';
+  dunno.textContent='🤷 Je ne sais pas';
+  dunno.onclick = ()=> answerQCMUnknown(box, q);
+  zone.appendChild(dunno);
+}
+function answerQCMUnknown(box, q){
+  if(answeredFlag) return; answeredFlag=true;
+  [...box.children].forEach((b,i)=>{ b.disabled=true; const c=q._choices[i]; if(c && c.c) b.classList.add('correct'); else b.classList.add('dim'); });
+  finalize(q, false, {unknown:true});
 }
 function answerQCM(btn, choice, q){
   if(answeredFlag) return; answeredFlag=true;
@@ -3346,7 +3354,10 @@ function renderTyped(zone, q){
   wrap.innerHTML = `<div class="input-row">
       <input class="ans-input" id="ansInput" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${ph}">
       <button class="btn" id="checkBtn">Vérifier</button></div>
-      <button class="kb-toggle" id="kbToggle" type="button">⌨️ Clavier maths</button>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; align-items:center">
+        <button class="kb-toggle" id="kbToggle" type="button" style="margin-top:0">⌨️ Clavier maths</button>
+        <button class="btn ghost" id="dunnoBtn" type="button" style="font-size:13px; padding:9px 14px">🤷 Je ne sais pas</button>
+      </div>
       <div id="kbMount"></div>`;
   zone.appendChild(wrap);
   const input = wrap.querySelector('#ansInput');
@@ -3370,6 +3381,7 @@ function renderTyped(zone, q){
     const auto = autoCheck(q, input.value);
     revealTyped(q, input.value, auto);
   };
+  wrap.querySelector('#dunnoBtn').onclick = ()=> revealUnknown(q);
 }
 
 /* ---- Clavier mathématique ---- */
@@ -3416,6 +3428,28 @@ function buildMathKeyboard(input, mount){
   fillKeys(KB_TABS[0]);
   panel.appendChild(tabs); panel.appendChild(keys); mount.appendChild(panel);
 }
+/* P3 — « Je ne sais pas » (trou/saisie/flash) : révèle la réponse et compte comme Oubli, sans deviner */
+function revealUnknown(q){
+  if(answeredFlag) return; answeredFlag=true;
+  const inp=$('#ansInput'); if(inp) inp.disabled=true;
+  const kb=$('#kbMount'); if(kb) kb.innerHTML='';
+  const rb=$('#revealBtn'); if(rb) rb.disabled=true;
+  const db=$('#dunnoBtn'); if(db) db.disabled=true;
+  const fb=$('#feedback');
+  let html = `<div class="verdict no">🤷 Non su</div>`;
+  html += `<div class="reveal-ans"><span class="rl">${q.mode==='flash'?'Réponse':'Réponse attendue'}</span>${q.answer}</div>`;
+  if(q.exp) html += `<div class="exp" style="margin-top:10px">${q.exp}</div>`;
+  if(q.vig) html += `<div class="vig"><span class="ic">⚠️</span><span><b>Vigilance.</b> ${q.vig}</span></div>`;
+  html += courseLink(q);
+  fb.innerHTML=html; fb.className='feedback';
+  SRS.review(qHash(q.q), q.q, q.topic, 0);   // Oubli
+  streak=0; q._missed=true;
+  $('#progBar').style.width = ((idx+1)/pool.length*100)+'%';
+  updateHeaderStats();
+  $('#nextBtn').classList.remove('hidden');
+  scrollToAction($('#nextBtn'));
+  typeset(fb);
+}
 function revealTyped(q, typed, auto){
   const fb = $('#feedback');
   let html = '';
@@ -3440,7 +3474,11 @@ function revealTyped(q, typed, auto){
 /* ---- Flashcard ---- */
 function renderFlash(zone, q){
   zone.innerHTML = `<p class="flash-hint">Réfléchis à la réponse, puis révèle pour t'auto-évaluer.</p>
-    <button class="btn" id="revealBtn">Afficher la réponse</button>`;
+    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+      <button class="btn" id="revealBtn">Afficher la réponse</button>
+      <button class="btn ghost" id="dunnoBtn" type="button" style="font-size:13px; padding:9px 14px">🤷 Je ne sais pas</button>
+    </div>`;
+  zone.querySelector('#dunnoBtn').onclick = ()=> revealUnknown(q);
   zone.querySelector('#revealBtn').onclick = ()=>{
     if(answeredFlag) return; answeredFlag=true;
     const fb = $('#feedback');
@@ -3531,28 +3569,59 @@ function wrongQuip(){ return WRONG_QUIPS[Math.floor(Math.random()*WRONG_QUIPS.le
 
 /* P2 — défilement auto vers la zone d'action (feedback/validation) pour éviter le scroll manuel */
 function scrollToAction(el){ if(el) setTimeout(()=>{ try{ el.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){} }, 80); }
-function finalize(q, ok){
+function finalize(q, ok, opt){
+  const unknown = !!(opt && opt.unknown);
   if(ok){ score++; streak++; bestStreak=Math.max(bestStreak,streak); }
   else { streak=0; q._missed=true; }
   $('#progBar').style.width = ((idx+1)/pool.length*100)+'%';
   const fb = $('#feedback');
   if(q.mode==='qcm'){
-    let html = `<div class="verdict ${ok?'ok':'no'}">${ok?'✓ Correct':'✗ Incorrect'}${ok&&streak>=3?` · série de ${streak} 🔥`:''}</div>`;
-    if(!ok) html += `<div class="wrong-quip">${wrongQuip()}</div>`;
+    const verdict = ok ? '✓ Correct' : (unknown ? '🤷 Non su' : '✗ Incorrect');
+    let html = `<div class="verdict ${ok?'ok':'no'}">${verdict}${ok&&streak>=3?` · série de ${streak} 🔥`:''}</div>`;
+    if(!ok && !unknown) html += `<div class="wrong-quip">${wrongQuip()}</div>`;
     html += `<div class="exp">${q.exp}</div>`;
     if(q.vig) html += `<div class="vig"><span class="ic">⚠️</span><span><b>Vigilance.</b> ${q.vig}</span></div>`;
     html += courseLink(q);
-    fb.innerHTML = html; fb.className='feedback'; typeset(fb);
-    // QCM : le clic sur la réponse EST la validation. SRS direct, pas de double étape.
-    SRS.review(qHash(q.q), q.q, q.topic, ok ? 2 : 0);
+    fb.innerHTML = html; fb.className='feedback';
     updateHeaderStats();
-    $('#nextBtn').classList.remove('hidden');
-    $('#nextBtn').focus();
-    scrollToAction($('#nextBtn'));
+    if(ok){
+      // P3 anti-hasard : après une bonne réponse, on demande la confiance.
+      // Sûr → Correct (g2) ; au pif → Difficile (g1, replanifié plus court). Jamais « Facile » auto.
+      const hint=document.createElement('p'); hint.style.cssText='color:var(--muted);font-size:13px;margin:14px 0 2px';
+      hint.textContent='Tu étais sûr ?';
+      fb.appendChild(hint);
+      qcmConfidence(q, fb);
+      scrollToAction(fb.lastElementChild);
+    } else {
+      // Incorrect ou « je ne sais pas » → Oubli, on enchaîne.
+      SRS.review(qHash(q.q), q.q, q.topic, 0);
+      $('#nextBtn').classList.remove('hidden');
+      $('#nextBtn').focus();
+      scrollToAction($('#nextBtn'));
+    }
+    typeset(fb);
   } else {
     $('#nextBtn').classList.remove('hidden');
     scrollToAction($('#nextBtn'));
   }
+}
+/* P3 — confiance après une bonne réponse QCM (anti-réponse au hasard) */
+function qcmConfidence(q, container){
+  const h=qHash(q.q);
+  const div=document.createElement('div'); div.className='srs-grade';
+  [{g:2,label:'Oui, sûr',emoji:'✅'},{g:1,label:'Au pifomètre',emoji:'🎲'}].forEach(({g,label,emoji})=>{
+    const days=SRS.previewInterval(h,g);
+    const b=document.createElement('button'); b.className=`sg2 g${g}`; b.type='button';
+    b.innerHTML=`<span class="gl">${emoji} ${label}</span><span class="gd">${fmtDelay(days)}</span>`;
+    b.onclick=()=>{
+      SRS.review(h, q.q, q.topic, g);
+      updateHeaderStats();
+      div.querySelectorAll('.sg2').forEach(x=>{ x.disabled=true; x.style.opacity = x===b?'1':'.3'; });
+      setTimeout(()=>{ if(idx<pool.length-1){ idx++; renderQuestion(); } else showResults(); }, 160);
+    };
+    div.appendChild(b);
+  });
+  container.appendChild(div);
 }
 
 function finalizeSelf(q, ok){
