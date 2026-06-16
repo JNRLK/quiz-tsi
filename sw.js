@@ -3,7 +3,7 @@
    quand on a du réseau), "cache-first" pour MathJax/polices (gros fichiers
    externes qui ne changent jamais). Fonctionne hors ligne après 1ère visite. */
 
-const CACHE = 'quiz-tsi-v22';
+const CACHE = 'quiz-tsi-v23';
 const CORE = [
   './',
   './index.html',

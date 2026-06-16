@@ -969,9 +969,9 @@ function openCourse(h,v){
   if(note && typeof NOTION_HTML!=='undefined' && NOTION_HTML[note]){
     // cours réécrit en HTML natif : net + limité à la notion exacte
     htmlEl.innerHTML=NOTION_HTML[note]; htmlEl.style.display='block'; img.style.display='none'; img.removeAttribute('src');
-    document.getElementById('courseTitle').textContent='📖 '+((typeof NOTION_TITLE!=='undefined' && NOTION_TITLE[note])?NOTION_TITLE[note]:'Cours');
-    if(tab){ if(v){ tab.href='cours-'+v+'.pdf'; tab.style.display=''; } else tab.style.display='none'; }
-    if(typeof typeset==='function') typeset(htmlEl);
+    const tt=document.getElementById('courseTitle'); tt.innerHTML='📖 '+((typeof NOTION_TITLE!=='undefined' && NOTION_TITLE[note])?NOTION_TITLE[note]:'Cours');
+    if(tab) tab.style.display='none';   // le HTML natif EST déjà la notion précise : pas de lien PDF (fiche entière) trompeur
+    if(typeof typeset==='function'){ typeset(htmlEl); typeset(tt); }
   } else if(v){
     // repli : image de la page de la fiche
     htmlEl.style.display='none'; htmlEl.innerHTML=''; img.style.display='block'; img.src='cours-'+v+'.jpg';
