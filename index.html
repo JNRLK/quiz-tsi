@@ -257,6 +257,7 @@ window.MathJax = {
   .btn:active{transform:translateY(0)}
   .btn.ghost{background:transparent; color:var(--ink); border:1.5px solid var(--line); box-shadow:none}
   .btn.ghost:hover{border-color:var(--accent)}
+  #advBtn.on{border-color:var(--accent); background:color-mix(in srgb,var(--accent) 16%,#0d1320); color:var(--ink)}
   .btn:disabled{opacity:.4; cursor:not-allowed; transform:none}
   .actions{display:flex; gap:12px; align-items:center; margin-top:26px; flex-wrap:wrap}
 
@@ -396,8 +397,8 @@ window.MathJax = {
     .modal h2{font-size:20px}
 
     /* boutons d'action : icône seule sur mobile (avant : display:none → inaccessibles) */
-    #statsBtn .bl, #juryBtn .bl, #adminBtn .bl{display:none}
-    #statsBtn, #juryBtn, #adminBtn{padding:8px 10px; font-size:14px}
+    #statsBtn .bl, #juryBtn .bl, #adminBtn .bl, #advBtn .bl{display:none}
+    #statsBtn, #juryBtn, #adminBtn, #advBtn{padding:8px 10px; font-size:14px}
   }
 
   @media (max-width:380px){
@@ -613,6 +614,7 @@ window.MathJax = {
         <button class="btn ghost mini" id="accountBtn">🔑 Se connecter</button>
         <button class="btn ghost mini" id="statsBtn" aria-label="Ma progression"><span class="bi" aria-hidden="true">📊</span><span class="bl">Ma progression</span></button>
         <button class="btn ghost mini" id="juryBtn" aria-label="Mot du jury"><span class="bi" aria-hidden="true">📋</span><span class="bl">Mot du jury</span></button>
+        <button class="btn ghost mini" id="advBtn" aria-pressed="false" aria-label="Inclure l'approfondissement" title="Cartes théoriques avancées (approfondissement) — s'applique à tous les modes"><span class="bi" aria-hidden="true">➕</span><span class="bl">Approfondissement</span></button>
         <button class="btn ghost mini hidden" id="adminBtn" aria-label="Vue classe"><span class="bi" aria-hidden="true">🎓</span><span class="bl">Vue classe</span></button>
       </div>
     </div>
@@ -663,7 +665,6 @@ window.MathJax = {
         </div>
         <label class="toggle" style="margin-left:auto"><input type="checkbox" id="shuffleToggle" checked> Mélanger</label>
       </div>
-      <label class="toggle" id="advToggleWrap" style="margin-top:12px"><input type="checkbox" id="advToggle"> ➕ Inclure l'approfondissement <span style="color:var(--muted); font-size:12px">— cartes théoriques avancées (pour aller plus loin)</span></label>
 
       <div class="actions" style="margin-top:18px">
         <button class="btn" id="startBtn">Commencer →</button>
@@ -3512,7 +3513,10 @@ $('#modeOpts').addEventListener('click', e=>{
   b.classList.add('on'); selectedMode = b.dataset.mode;
   updateModeDesc(); updatePoolInfo();
 });
-const _advToggle=$('#advToggle'); if(_advToggle){ _advToggle.checked = includeAdv; _advToggle.addEventListener('change', e=>{ includeAdv = e.target.checked; try{ localStorage.setItem('quiztsi_adv', includeAdv?'1':'0'); }catch(_){ } updatePoolInfo(); }); }
+const _advBtn=$('#advBtn');
+function _syncAdvBtn(){ if(_advBtn){ _advBtn.classList.toggle('on', includeAdv); _advBtn.setAttribute('aria-pressed', includeAdv?'true':'false'); } }
+_syncAdvBtn();
+if(_advBtn) _advBtn.onclick = ()=>{ includeAdv = !includeAdv; try{ localStorage.setItem('quiztsi_adv', includeAdv?'1':'0'); }catch(_){ } _syncAdvBtn(); updatePoolInfo(); };
 
 /* P1 — description courte du mode sélectionné */
 const MODE_DESC = {
