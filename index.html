@@ -2845,7 +2845,7 @@ const QUESTIONS = [
 /* ====================== ÉTAT ====================== */
 let selected = new Set(); // P1 : opt-in — aucun chapitre coché par défaut
 let selectedMode = 'all';
-let includeAdv = false;   // différenciation : inclure les cartes d'approfondissement (toggle du start screen, OFF par défaut)
+let includeAdv = (()=>{ try{ return localStorage.getItem('quiztsi_adv')==='1'; }catch(e){ return false; } })();   // pref globale persistée (approfondissement) : OFF par défaut, respectée par TOUS les modes de lancement
 let chosenLen = 10;
 let pool = [];
 let idx = 0, score = 0, streak = 0, bestStreak = 0;
@@ -3512,7 +3512,7 @@ $('#modeOpts').addEventListener('click', e=>{
   b.classList.add('on'); selectedMode = b.dataset.mode;
   updateModeDesc(); updatePoolInfo();
 });
-const _advToggle=$('#advToggle'); if(_advToggle) _advToggle.addEventListener('change', e=>{ includeAdv = e.target.checked; updatePoolInfo(); });
+const _advToggle=$('#advToggle'); if(_advToggle){ _advToggle.checked = includeAdv; _advToggle.addEventListener('change', e=>{ includeAdv = e.target.checked; try{ localStorage.setItem('quiztsi_adv', includeAdv?'1':'0'); }catch(_){ } updatePoolInfo(); }); }
 
 /* P1 — description courte du mode sélectionné */
 const MODE_DESC = {
