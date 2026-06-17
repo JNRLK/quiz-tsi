@@ -625,6 +625,8 @@ window.MathJax = {
 
     <!-- SRS dashboard -->
     <div id="srsBar" style="margin-bottom:0"></div>
+    <!-- Adhésion à la classe TSI Chaptal (rempli par updateClassJoinUI, visible aux élèves connectés) -->
+    <div id="classJoin" class="hidden" style="margin:14px 0 0"></div>
 
     <!-- Constructeur de quiz personnalisé (replié par défaut pour alléger l'accueil) -->
     <details class="cq">
@@ -998,6 +1000,11 @@ const Cloud = {
   async myAggregate(){ if(!currentUser) return null; const snap = await getDoc(doc(db,'users',currentUser.uid)); return snap.exists()? (snap.data().agg||null) : null; },
   async myDoc(){ if(!currentUser) return null; const snap = await getDoc(doc(db,'users',currentUser.uid)); return snap.exists()? snap.data() : null; },
   async saveProfile(p){ if(!currentUser) return; await setDoc(doc(db,'users',currentUser.uid), {profile:p}, {merge:true}); },
+  // --- Classe TSI Chaptal : demande d'adhésion (élève) + roster d'approbation (admin) ---
+  // Aucune règle Firestore à changer : la demande est écrite dans le profil de l'élève (clé 'profile'
+  // autorisée), l'approbation dans le profil de l'admin (son propre doc). Fusion profonde des maps.
+  async requestClass(){ if(!currentUser) return; await setDoc(doc(db,'users',currentUser.uid), {profile:{classRequest:'tsi-chaptal', classRequestedAt:Date.now()}}, {merge:true}); },
+  async setApproval(uid, status){ if(!currentUser) return; await setDoc(doc(db,'users',currentUser.uid), {profile:{classRoster:{[uid]:status}}}, {merge:true}); },
   // --- Unicité des pseudos (collection 'usernames') ---
   async usernameTaken(pseudo){
     const key = normUsername(pseudo); if(!key) return false;
@@ -4683,6 +4690,31 @@ async function manualSync(){
   }catch(e){ console.warn('manual sync', e); cloudErr('⚠️ Sync échouée'); }
   finally{ if(btn) btn.disabled = false; }
 }
+// Bloc d'accueil « Rejoindre la classe TSI Chaptal » (élève connecté, non-admin).
+function updateClassJoinUI(){
+  const host = $('#classJoin'); if(!host) return;
+  if(!currentUser || isAdmin){ host.classList.add('hidden'); host.innerHTML=''; return; }
+  let requested = false;
+  try{ const p = JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); requested = !!(p && p.classRequest); }catch(e){}
+  host.classList.remove('hidden');
+  if(requested){
+    host.innerHTML = `<div style="border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;font-size:14px">
+      <span>⏳</span><span>Demande envoyée à la <b>classe TSI Chaptal</b> — en attente de validation par ton professeur.</span></div>`;
+  } else {
+    host.innerHTML = `<div style="border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:14px">
+      <span style="flex:1;min-width:180px">🎓 Rejoins la <b>classe TSI Chaptal</b> pour que ton professeur suive ta progression.</span>
+      <button class="btn mini" id="classJoinBtn" type="button">Rejoindre la classe</button></div>`;
+    const b = $('#classJoinBtn');
+    if(b) b.onclick = async ()=>{
+      b.disabled = true; b.textContent = 'Envoi…';
+      try{
+        await Cloud.requestClass();
+        try{ const p = JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); p.classRequest='tsi-chaptal'; localStorage.setItem('quiztsi_profile', JSON.stringify(p)); }catch(e){}
+        updateClassJoinUI();
+      }catch(e){ console.warn('requestClass', e); b.disabled=false; b.textContent='Rejoindre la classe'; alert('Demande impossible pour le moment. Réessaie.'); }
+    };
+  }
+}
 function updateAccountUI(){
   const btn = $('#accountBtn');
   if(currentUser){
@@ -4694,6 +4726,7 @@ function updateAccountUI(){
   }
   const adminBtn = $('#adminBtn');
   if(adminBtn) adminBtn.classList.toggle('hidden', !isAdmin);
+  updateClassJoinUI();
   // si le tableau de bord est ouvert, le rafraîchir
   if(!$('#statsScreen').classList.contains('hidden')) renderStats();
 }
@@ -5192,6 +5225,25 @@ function paintAdmin(){
 
   // 4) Signalements (globaux, non filtrés)
   const reports = ADM.reports;
+  // Classe TSI Chaptal — demandes d'adhésion + membres approuvés. Roster = union des rosters des admins.
+  const _adminEmails = ADMIN_EMAILS;
+  const roster = {};
+  (ADM.users||[]).forEach(u=>{ if(u.email && _adminEmails.includes(u.email) && u.profile && u.profile.classRoster){ const r=u.profile.classRoster; for(const k in r){ if(r[k]==='approved' || !roster[k]) roster[k]=r[k]; } } });
+  const requesters = (ADM.users||[]).filter(u=> u.profile && u.profile.classRequest);
+  const pendingC = requesters.filter(u=> roster[u.uid] !== 'approved' && roster[u.uid] !== 'rejected');
+  const approvedC = (ADM.users||[]).filter(u=> roster[u.uid]==='approved');
+  const _nm = u => admEsc((u.profile&&u.profile.nom) || u.displayName || u.email || '—');
+  html += `<details class="adm-sec"${pendingC.length?' open':''}><summary class="adm-sec-h"><span class="cq-ic">🎓</span><span class="cq-title">Classe TSI Chaptal — ${approvedC.length} membre(s)${pendingC.length?` · ${pendingC.length} demande(s)`:''}</span><span class="cq-chev">▸</span></summary><div class="adm-sec-b">`;
+  if(pendingC.length){
+    html += `<p class="footer-note" style="text-align:left;margin:0 0 10px">Demandes en attente</p><div class="adm-list">`;
+    pendingC.forEach(u=>{ html += `<div class="miss" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="flex:1;min-width:150px">${_nm(u)} <span style="color:var(--muted);font-size:12px">${admEsc(u.email||'')}</span></span><button class="btn mini" type="button" data-approve-uid="${admEsc(u.uid)}">✓ Approuver</button><button class="btn ghost mini" type="button" data-reject-uid="${admEsc(u.uid)}">✗ Refuser</button></div>`; });
+    html += `</div>`;
+  }
+  if(approvedC.length){
+    html += `<p class="footer-note" style="text-align:left;margin:${pendingC.length?'14px':'0'} 0 8px">Membres (${approvedC.length})</p><div class="adm-weak">`+approvedC.map(u=>`<span class="adm-chip">${_nm(u)}</span>`).join('')+`</div>`;
+  }
+  if(!pendingC.length && !approvedC.length){ html += `<div class="empty-state" style="padding:18px">Aucune demande pour l'instant. Les élèves rejoignent la classe depuis l'écran d'accueil.</div>`; }
+  html += `</div></details>`;
   html += `<details class="adm-sec"><summary class="adm-sec-h"><span class="cq-ic">⚐</span><span class="cq-title">Signalements${reports&&reports.length?` (${reports.length})`:''}</span><span class="cq-chev">▸</span></summary><div class="adm-sec-b">`;
   if(reports === null){ html += `<div class="empty-state" style="padding:18px">Lecture des signalements impossible — autorise la lecture de la collection <code>reports</code> dans les règles Firestore.</div>`; }
   else if(reports.length){
@@ -5205,6 +5257,9 @@ function paintAdmin(){
 
   box.innerHTML = html;
   box.querySelectorAll('[data-del-uid]').forEach(b=>{ b.onclick=(e)=>{ e.preventDefault(); e.stopPropagation(); admDeleteOne(b.dataset.delUid, b.dataset.delLabel); }; });
+  const _approve = async (uid,status,btn)=>{ btn.disabled=true; try{ await Cloud.setApproval(uid,status); renderAdmin(); }catch(e){ console.warn('approbation classe', e); btn.disabled=false; } };
+  box.querySelectorAll('[data-approve-uid]').forEach(b=>{ b.onclick=()=>_approve(b.dataset.approveUid,'approved',b); });
+  box.querySelectorAll('[data-reject-uid]').forEach(b=>{ b.onclick=()=>_approve(b.dataset.rejectUid,'rejected',b); });
   typeset(box);
 }
 
