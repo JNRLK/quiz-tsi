@@ -3447,6 +3447,10 @@ function maybeOnboard(){ try{ if(!localStorage.getItem(ONBOARD_KEY)) openOnboard
 /* Lance une session de révision espacée */
 let srsMode = false;
 let srsQueue = [];
+// « Révision du jour » : on révise TOUT en flashcard (réfléchir → révéler → s'auto-évaluer),
+// méthode la plus efficace pour la rétention. Réponse révélée = q.answer (trou/saisie/flash)
+// ou la bonne proposition (QCM). La personnalisation des modes reste dans le quiz « Commencer ».
+function toFlashCard(q){ const ans = q.answer || (q.choices ? ((q.choices.find(c=>c.c)||{}).t || '') : ''); return {...q, mode:'flash', answer: ans, _choices: undefined }; }
 function startSrsReview(){
   srsMode = true;
   const d = SRS._d();
@@ -3470,7 +3474,7 @@ function startSrsReview(){
   shuffle(srsQueue);            // entrelacement (interleaving) des chapitres : meilleure rétention
   srsQueue = srsQueue.slice(0, 40);  // garde-fou de longueur de session
   // on utilise le flux quiz normal mais avec les questions de la file SRS
-  pool = srsQueue.map(q=>({...q, _choices: q.mode==='qcm'? shuffle(q.choices.map((c,i)=>({...c,orig:i}))) : undefined }));
+  pool = srsQueue.map(toFlashCard);   // bandeau « Révision du jour » → flashcards uniquement
   idx=0; score=0; streak=0; bestStreak=0;
   updateHeaderStats();
   $('#startScreen').classList.add('hidden'); $('#resultScreen').classList.add('hidden');
