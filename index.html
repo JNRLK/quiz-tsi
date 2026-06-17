@@ -1049,15 +1049,32 @@ onAuthStateChanged(auth, async (user)=>{
       const cloud = await Cloud.loadSRS();
       if(cloud && typeof SRS!=='undefined'){ SRS.mergeCloud(cloud); SRS.gc(); SRS._syncCloud(); }
     }catch(e){ console.warn('SRS cloud load', e); }
+    // Rafraîchit l'état serveur : emailVerified peut être périmé dans le token
+    // mis en cache par le navigateur (Chrome surtout). Best-effort, non bloquant.
+    try{ await user.reload(); if(auth.currentUser){ user = auth.currentUser; currentUser = user; } }
+    catch(e){ console.warn('user.reload', e); }
+    isAdmin = !!(user && ADMIN_EMAILS.map(e=>e.toLowerCase()).includes((user.email||'').toLowerCase()));
     // Blocage tant que l'e-mail n'est pas vérifié (les comptes prof/admin déclarés passent outre)
     if(!user.emailVerified && !isAdmin){
       if(typeof showVerifyGate === 'function') showVerifyGate(user);
     } else {
-      // Profil complet requis (mise à jour) — sinon écran de complétion bloquant.
-      // En cas d'échec de lecture cloud, on ne bloque pas.
-      let needs=false, udoc=null;
-      try{ udoc = await Cloud.myDoc(); needs = (typeof needsProfile==='function') && needsProfile(udoc, user); }
-      catch(e){ console.warn('profile check', e); }
+      // Profil complet requis — sinon écran de complétion bloquant.
+      // Lecture cloud avec 2 tentatives. Si la lecture échoue TOTALEMENT, on ne
+      // fait pas confiance au cloud : on se rabat sur le drapeau local, et à
+      // défaut on AFFICHE le gate (fail-closed — un compte sans profil connu ne
+      // doit jamais passer ; c'était la faille des gates sautés sur Chrome).
+      let udoc=null, readOk=false;
+      for(let attempt=0; attempt<2 && !readOk; attempt++){
+        try{ udoc = await Cloud.myDoc(); readOk=true; }
+        catch(e){ console.warn('profile check (essai '+(attempt+1)+')', e); }
+      }
+      let needs;
+      if(readOk){
+        needs = (typeof needsProfile==='function') && needsProfile(udoc, user);
+      } else {
+        let doneLocal=false; try{ doneLocal = (localStorage.getItem('quiztsi_profile_done')===user.uid); }catch(e){}
+        needs = !doneLocal;
+      }
       if(needs && typeof showProfileGate === 'function'){
         showProfileGate(udoc, user);
       } else if(typeof maybeOnboard === 'function'){
@@ -5134,7 +5151,27 @@ document.addEventListener('visibilitychange', ()=>{
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {/* hors ligne / non supporté */});
+    // updateViaCache:'none' => sw.js n'est jamais servi depuis le cache HTTP,
+    // donc une nouvelle version est toujours détectée.
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+      .then((reg) => {
+        reg.update();                                    // cherche tout de suite
+        setInterval(() => reg.update(), 60 * 60 * 1000); // puis toutes les heures
+        // Quand une nouvelle version s'installe ALORS qu'un SW contrôle déjà la
+        // page = vraie mise à jour → on recharge pour charger le HTML frais.
+        // Évite que les élèves restent coincés sur une ancienne page en cache
+        // (cause des gates « profil / vérif e-mail » sautés sur Chrome).
+        reg.addEventListener('updatefound', () => {
+          const nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener('statechange', () => {
+            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+              location.reload();
+            }
+          });
+        });
+      })
+      .catch(() => {/* hors ligne / non supporté */});
   });
 }
 </script>
