@@ -4,6 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Console de révision TSI</title>
+<meta name="description" content="Console de révision interactive pour la prépa TSI (Lycée Chaptal) : 440+ QCM de maths corrigés (analyse, algèbre, probabilités…) niveau concours Centrale-Supélec, avec répétition espacée. Gratuit, sans installation, fonctionne hors ligne.">
+
+<!-- Open Graph / partage (aperçu riche WhatsApp, Discord, etc.) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Console de révision TSI">
+<meta property="og:title" content="Console de révision TSI — QCM de maths prépa">
+<meta property="og:description" content="440+ questions de maths corrigées, niveau concours Centrale-Supélec TSI, avec répétition espacée. Révise où tu veux, même hors ligne.">
+<meta property="og:url" content="https://education-tsi.fr/">
+<meta property="og:image" content="https://education-tsi.fr/icon-512.png">
+<meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Console de révision TSI — QCM de maths prépa">
+<meta name="twitter:description" content="440+ questions de maths corrigées, niveau concours Centrale-Supélec TSI, avec répétition espacée.">
+<meta name="twitter:image" content="https://education-tsi.fr/icon-512.png">
 
 <!-- PWA -->
 <link rel="manifest" href="manifest.json">
@@ -41,6 +55,10 @@ window.MathJax = {
     --analyse:#ef4444; --algebre:#8b5cf6; --poly:#22c55e; --matrices:#3b82f6; --integ:#f59e0b;
     --accent:#8b5cf6;
   }
+  #mjLoading{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:9999;
+    background:var(--panel-2);color:var(--muted);border:1px solid var(--line);
+    border-radius:999px;padding:6px 14px;font-size:12px;
+    box-shadow:0 4px 16px rgba(0,0,0,.4);pointer-events:none}
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
   body{
@@ -562,6 +580,23 @@ window.MathJax = {
 </style>
 </head>
 <body>
+<!-- Indicateur discret de chargement MathJax : disparaît dès que MathJax est prêt ;
+     affiche un message d'erreur si le CDN reste injoignable (~10 s). -->
+<div id="mjLoading" role="status" aria-live="polite">Formules en cours de chargement…</div>
+<script>
+(function(){
+  var b=document.getElementById('mjLoading');
+  if(!b) return;
+  function hide(){ b.classList.add('hidden'); }
+  function ready(){ return window.MathJax && window.MathJax.startup && window.MathJax.startup.promise; }
+  function attach(){ window.MathJax.startup.promise.then(hide).catch(hide); }
+  if(ready()){ attach(); return; }
+  var n=0, t=setInterval(function(){
+    if(ready()){ clearInterval(t); attach(); }
+    else if(++n>40){ clearInterval(t); b.textContent='⚠️ Formules indisponibles — vérifie ta connexion.'; }
+  },250);
+})();
+</script>
 <div class="wrap">
   <div class="top">
     <div class="brand">
@@ -576,9 +611,9 @@ window.MathJax = {
       <div class="top-actions">
         <span id="syncIndicator" class="sync-ind hidden"></span>
         <button class="btn ghost mini" id="accountBtn">🔑 Se connecter</button>
-        <button class="btn ghost mini" id="statsBtn"><span class="bi">📊</span><span class="bl">Ma progression</span></button>
-        <button class="btn ghost mini" id="juryBtn"><span class="bi">📋</span><span class="bl">Mot du jury</span></button>
-        <button class="btn ghost mini hidden" id="adminBtn"><span class="bi">🎓</span><span class="bl">Vue classe</span></button>
+        <button class="btn ghost mini" id="statsBtn" aria-label="Ma progression"><span class="bi" aria-hidden="true">📊</span><span class="bl">Ma progression</span></button>
+        <button class="btn ghost mini" id="juryBtn" aria-label="Mot du jury"><span class="bi" aria-hidden="true">📋</span><span class="bl">Mot du jury</span></button>
+        <button class="btn ghost mini hidden" id="adminBtn" aria-label="Vue classe"><span class="bi" aria-hidden="true">🎓</span><span class="bl">Vue classe</span></button>
       </div>
     </div>
   </div>
@@ -653,7 +688,7 @@ window.MathJax = {
     <div id="badge"></div>
     <div class="question" id="qText"></div>
     <div id="answerZone"></div>
-    <div class="feedback hidden" id="feedback"></div>
+    <div class="feedback hidden" id="feedback" role="status" aria-live="polite"></div>
     <div class="next-row">
       <button class="btn ghost" id="reportBtn" style="font-size:13px; padding:9px 14px" title="Signaler une erreur sur cette carte">⚐ Signaler</button>
       <button class="btn ghost" id="abandonBtn" style="font-size:13px; padding:9px 14px">✕ Abandonner</button>
@@ -2222,9 +2257,10 @@ const QUESTIONS = [
   {topic:'fonctions', mode:'trou', q:"$(\\arctan x)' = \\square$ (sur $\\mathbb{R}$).",
    answer:"$\\dfrac{1}{1+x^{2}}$", accept:["1/(1+x^2)","1/(1+x²)"],
    exp:"Dérivée de $\\arctan$, définie sur tout $\\mathbb{R}$."},
-  {topic:'fonctions', mode:'trou', q:"$(\\arcsin x)' = \\square$ (sur $]-1,1[$).",
-   answer:"$\\dfrac{1}{\\sqrt{1-x^{2}}}$", accept:["1/sqrt(1-x^2)","1/√(1-x^2)","1/racine(1-x^2)"],
-   exp:"Dérivable seulement sur l'ouvert $]-1,1[$."},
+  {topic:'fonctions', mode:'trou', q:"$\\sin(\\arcsin x) = \\square$ (sur $[-1,1]$).",
+   answer:"$x$", accept:["x"],
+   exp:"$\\sin$ et $\\arcsin$ sont réciproques sur $[-1,1]$.",
+   vig:"Attention à l'asymétrie : $\\arcsin(\\sin x)=x$ seulement sur $[-\\frac\\pi2,\\frac\\pi2]$."},
   {topic:'fonctions', mode:'saisie', q:"$\\displaystyle\\lim_{x\\to+\\infty}\\arctan x=$ ?",
    answer:"$\\dfrac{\\pi}{2}$", accept:["pi/2","π/2","\\frac{\\pi}{2}"],
    exp:"$\\arctan$ admet l'asymptote horizontale $y=\\frac\\pi2$ (jamais atteinte)."},
