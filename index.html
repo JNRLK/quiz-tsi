@@ -5013,6 +5013,7 @@ function admFiltered(){
   return list;
 }
 
+function admFmtDur(ms){ const m=Math.round(ms/60000); if(m<1) return '<1 min'; if(m<60) return m+' min'; const h=Math.floor(m/60), mm=m%60; return h+' h'+(mm?' '+String(mm).padStart(2,'0'):''); }
 function admStudentRow(u){
   const p = u.profile||{}; const a = u.agg||{};
   const ans = a.totalAnswered||0; const pct = ans ? Math.round(a.totalCorrect/ans*100) : null;
@@ -5024,6 +5025,10 @@ function admStudentRow(u){
   let weakHtml='';
   const weak = Object.entries(a.byTopic||{}).map(([k,s])=>({k,a:s.a,c:s.c,r:s.a?s.c/s.a:1})).filter(x=>x.a>=2).sort((x,y)=>x.r-y.r).slice(0,3);
   if(weak.length){ weakHtml = `<div class="adm-weak">`+weak.map(w=>{const t=TOPICS[w.k]; if(!t)return''; return `<span class="adm-chip" style="border-color:${t.raw}55;color:${t.raw}">${admEsc(t.name)} · ${Math.round(w.r*100)}%</span>`;}).join('')+`</div>`; }
+  // assiduité (champs additifs ; '—' tant qu'il n'y a pas de données récentes)
+  let _tms=0,_tn=0; { const bc=a.byCard||{}; for(const h in bc){ _tms+=bc[h].tms||0; _tn+=bc[h].tn||0; } }
+  const avgSec = _tn ? (_tms/_tn/1000) : null;
+  let last7=0; if(a.dayset){ const lim=new Date(); lim.setHours(0,0,0,0); lim.setDate(lim.getDate()-6); for(const k in a.dayset){ if(new Date(k+'T00:00:00')>=lim) last7++; } }
   const field = (label,val)=>`<div class="adm-field"><span class="fl">${label}</span><span class="fv">${val}</span></div>`;
   const details = `<div class="adm-grid">
     ${field('Pseudo', admEsc(u.displayName||'—'))}
@@ -5037,6 +5042,10 @@ function admStudentRow(u){
     ${field('Réponses', ans)}
     ${field('Réussite', pct==null?'—':pct+' %')}
     ${field('Meilleure série', a.bestStreak||0)}
+    ${field('Sessions', a.sessionsCount!=null ? a.sessionsCount : '—')}
+    ${field('Temps total', a.totalDurationMs!=null ? admFmtDur(a.totalDurationMs) : '—')}
+    ${field('Jours actifs', a.dayset ? (Object.keys(a.dayset).length + (last7?` · ${last7} cette sem.`:'')) : '—')}
+    ${field('Vitesse moy.', avgSec!=null ? ((avgSec<10?avgSec.toFixed(1):Math.round(avgSec))+' s/rép.') : '—')}
     ${field('Note', admEsc(p.note||'—'))}
   </div>${weakHtml}
     <div class="adm-rowact"><button class="adm-del" type="button" data-del-uid="${admEsc(u.uid)}" data-del-label="${admEsc(name)}">🗑 Supprimer ce compte</button></div>`;
