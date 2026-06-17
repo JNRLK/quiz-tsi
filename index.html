@@ -663,6 +663,7 @@ window.MathJax = {
         </div>
         <label class="toggle" style="margin-left:auto"><input type="checkbox" id="shuffleToggle" checked> Mélanger</label>
       </div>
+      <label class="toggle" id="advToggleWrap" style="margin-top:12px"><input type="checkbox" id="advToggle"> ➕ Inclure l'approfondissement <span style="color:var(--muted); font-size:12px">— cartes théoriques avancées (pour aller plus loin)</span></label>
 
       <div class="actions" style="margin-top:18px">
         <button class="btn" id="startBtn">Commencer →</button>
@@ -1557,6 +1558,10 @@ const QUESTIONS = [
   {topic:'ev', mode:'qcm', q:"Théorème du rang ($u\\in\\mathcal{L}(E,F)$, $E$ dim finie) :",
    choices:[{t:"$\\dim E=\\dim\\ker u+\\mathrm{rg}(u)$", c:true},{t:"$\\dim F=\\dim\\ker u+\\mathrm{rg}(u)$", c:false},{t:"$\\mathrm{rg}(u)=\\dim\\ker u$", c:false},{t:"$\\dim E=\\dim F$", c:false}],
    exp:"$\\dim\\ker u+\\dim\\mathrm{Im}\\,u=\\dim E$."},
+  {topic:'ev', mode:'qcm', niveau:'approfondissement', q:"Théorème de la base incomplète ($E$ de dimension finie) : que peut-on toujours faire ?",
+   choices:[{t:"Compléter toute famille libre de $E$ en une base de $E$", c:true},{t:"Extraire une base de toute famille libre", c:false},{t:"Compléter toute famille génératrice en une base", c:false},{t:"Compléter n'importe quelle famille (libre ou non) en une base", c:false}],
+   exp:"Toute famille libre d'un espace de dimension finie se complète en une base, en lui adjoignant des vecteurs d'une base existante. Dualement, de toute famille génératrice on peut extraire une base.",
+   vig:"On COMPLÈTE une famille LIBRE ; on EXTRAIT d'une famille GÉNÉRATRICE — ne pas intervertir."},
   {topic:'ev', mode:'qcm', q:"$u$ est INJECTIVE $\\iff$ ?",
    choices:[{t:"$\\ker u=\\{0\\}$", c:true},{t:"$\\mathrm{Im}\\,u=F$", c:false},{t:"$\\ker u=E$", c:false},{t:"$\\mathrm{rg}(u)=0$", c:false}],
    exp:"Noyau réduit au vecteur nul."},
@@ -2840,6 +2845,7 @@ const QUESTIONS = [
 /* ====================== ÉTAT ====================== */
 let selected = new Set(); // P1 : opt-in — aucun chapitre coché par défaut
 let selectedMode = 'all';
+let includeAdv = false;   // différenciation : inclure les cartes d'approfondissement (toggle du start screen, OFF par défaut)
 let chosenLen = 10;
 let pool = [];
 let idx = 0, score = 0, streak = 0, bestStreak = 0;
@@ -3226,7 +3232,7 @@ const LVL_COLOR = ['#374151','#ef4444','#f59e0b','#3b82f6','#8b5cf6','#22c55e'];
 const LVL_LABEL = ['Nouveau','Difficile','Moyen','Bien','Très bien','Maîtrisé'];
 
 function srsStatsForTopic(key, d, now){
-  const qs = QUESTIONS.filter(q=>q.topic===key);
+  const qs = QUESTIONS.filter(q=>q.topic===key && advAllowed(q));
   let due=0, learned=0, seen=0;
   qs.forEach(q=>{
     const h=qHash(q.q), c=d.cards[h];
@@ -3448,7 +3454,7 @@ function startSrsReview(){
   const dueCards = SRS.due().map(c => hMap[c.h]).filter(Boolean);
   // 2) NOUVELLES cartes, plafonnées par le quota quotidien restant
   const remaining = Math.max(0, NEW_PER_DAY - SRS.dailyNewCount());
-  const newCards = QUESTIONS.filter(q => !d.cards[qHash(q.q)]);
+  const newCards = QUESTIONS.filter(q => !d.cards[qHash(q.q)] && advAllowed(q));
   shuffle(newCards);
   const newPick = newCards.slice(0, remaining);
 
@@ -3471,7 +3477,8 @@ function startSrsReview(){
 }
 
 /* ====================== START SCREEN ====================== */
-function poolFilter(q){ return selected.has(q.topic) && (selectedMode==='all' || q.mode===selectedMode); }
+function advAllowed(q){ return q.niveau!=='approfondissement' || includeAdv; }   // cartes d'approfondissement servies seulement si le toggle est actif
+function poolFilter(q){ return selected.has(q.topic) && (selectedMode==='all' || q.mode===selectedMode) && advAllowed(q); }
 
 function poolSize(){ return QUESTIONS.filter(poolFilter).length; }
 function updatePoolInfo(){
@@ -3505,6 +3512,7 @@ $('#modeOpts').addEventListener('click', e=>{
   b.classList.add('on'); selectedMode = b.dataset.mode;
   updateModeDesc(); updatePoolInfo();
 });
+const _advToggle=$('#advToggle'); if(_advToggle) _advToggle.addEventListener('change', e=>{ includeAdv = e.target.checked; updatePoolInfo(); });
 
 /* P1 — description courte du mode sélectionné */
 const MODE_DESC = {
@@ -4535,10 +4543,10 @@ function startReviewForTopics(keys){
   const hMap = {}; QUESTIONS.forEach(q=>{ hMap[qHash(q.q)] = q; });
   const due = SRS.due().map(c=>hMap[c.h]).filter(q=>q && set.has(q.topic));
   const remaining = Math.max(0, NEW_PER_DAY - SRS.dailyNewCount());
-  const fresh = QUESTIONS.filter(q=>set.has(q.topic) && !d.cards[qHash(q.q)]);
+  const fresh = QUESTIONS.filter(q=>set.has(q.topic) && !d.cards[qHash(q.q)] && advAllowed(q));
   shuffle(fresh);
   let queue = [...due, ...fresh.slice(0, remaining)];
-  if(!queue.length){ queue = QUESTIONS.filter(q=>set.has(q.topic)); shuffle(queue); } // repli : entraînement libre
+  if(!queue.length){ queue = QUESTIONS.filter(q=>set.has(q.topic) && advAllowed(q)); shuffle(queue); } // repli : entraînement libre
   if(!queue.length){ alert('Aucune carte disponible pour ce thème.'); return; }
   shuffle(queue); queue = queue.slice(0, 40);
   pool = queue.map(q=>({...q, _choices: q.mode==='qcm'? shuffle(q.choices.map((c,i)=>({...c,orig:i}))) : undefined }));
