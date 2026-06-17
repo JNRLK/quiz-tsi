@@ -921,7 +921,7 @@ const firebaseConfig = {
 
 // >>> METS ICI l'e-mail du compte PROF (celui que tu créeras dans l'appli).
 // Il doit être IDENTIQUE à celui mis dans les règles Firestore (voir consignes).
-const ADMIN_EMAILS = ["arthur.lesage05@gmail.com"];
+const ADMIN_EMAILS = ["arthur.lesage05@gmail.com", "sophie-marcus@orange.fr"];
 
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
@@ -980,6 +980,10 @@ const Cloud = {
     if(!agg.byCard) agg.byCard = {};   // agrégat par CARTE (pour le top des cartes ratées côté prof)
     agg.totalAnswered += s.total; agg.totalCorrect += s.score;
     agg.bestStreak = Math.max(agg.bestStreak||0, s.bestStreak||0);
+    // analytique session (additif) : nb de sessions, temps cumulé, jours actifs distincts
+    agg.sessionsCount = (agg.sessionsCount||0)+1;
+    if(typeof s.durationMs==='number') agg.totalDurationMs = (agg.totalDurationMs||0)+s.durationMs;
+    { const _d=new Date(s.date||Date.now()); const _k=_d.getFullYear()+'-'+String(_d.getMonth()+1).padStart(2,'0')+'-'+String(_d.getDate()).padStart(2,'0'); (agg.dayset||(agg.dayset={}))[_k]=1; }
     s.details.forEach(it=>{
       const t = (agg.byTopic[it.topic] || (agg.byTopic[it.topic]={a:0,c:0})); t.a++; if(it.correct) t.c++;
       const bc = (agg.byCard[it.h] || (agg.byCard[it.h]={a:0,c:0,topic:it.topic})); bc.a++; if(it.correct) bc.c++;
@@ -5077,16 +5081,30 @@ function paintAdmin(){
   } else { html += `<div class="empty-state" style="padding:18px">Aucune activité dans cette sélection.</div>`; }
   html += `</div></details>`;
 
-  // 3) Cartes les plus ratées (sélection active)
+  // 3) Cartes les plus ratées (sélection active) — classement lissé (Wilson) + distracteurs + temps moyen
   const classByCard = {};
-  activeSel.forEach(u=>{ const bc=u.agg.byCard||{}; for(const h in bc){ const e=bc[h]; (classByCard[h] ||= {a:0,c:0,topic:e.topic}); classByCard[h].a+=e.a||0; classByCard[h].c+=e.c||0; } });
+  activeSel.forEach(u=>{ const bc=u.agg.byCard||{}; for(const h in bc){ const e=bc[h];
+    const C = (classByCard[h] ||= {a:0,c:0,topic:e.topic,tms:0,tn:0,dist:{}});
+    C.a+=e.a||0; C.c+=e.c||0; C.tms+=e.tms||0; C.tn+=e.tn||0;
+    if(e.dist){ for(const k in e.dist){ C.dist[k]=(C.dist[k]||0)+e.dist[k]; } }
+  } });
   const qByHash = {}; QUESTIONS.forEach(q=>{ qByHash[qHash(q.q)] = q; });
-  const missCards = Object.entries(classByCard).map(([h,e])=>({h,...e,miss:(e.a-e.c),rate:e.a?(e.a-e.c)/e.a:0,q:qByHash[h]})).filter(e=>e.a>=3 && e.miss>0).sort((a,b)=>b.rate-a.rate||b.miss-a.miss).slice(0,12);
+  // borne inférieure de Wilson (95%) sur le taux d'échec : pénalise les cartes vues trop peu → classement fiable
+  const wilson = (pos,n)=>{ if(!n) return 0; const z=1.96, p=pos/n; return (p+z*z/(2*n)-z*Math.sqrt((p*(1-p)+z*z/(4*n))/n))/(1+z*z/n); };
+  const missCards = Object.entries(classByCard).map(([h,e])=>({h,...e,miss:(e.a-e.c),rate:e.a?(e.a-e.c)/e.a:0,w:wilson(e.a-e.c,e.a),q:qByHash[h]})).filter(e=>e.a>=3 && e.miss>0).sort((a,b)=>b.w-a.w||b.miss-a.miss).slice(0,12);
   html += `<details class="adm-sec"><summary class="adm-sec-h"><span class="cq-ic">🎯</span><span class="cq-title">Cartes les plus ratées — cibles colles / DS${missCards.length?` (${missCards.length})`:''}</span><span class="cq-chev">▸</span></summary><div class="adm-sec-b">`;
   if(missCards.length){
-    html += `<div class="review">`;
+    html += `<p class="footer-note" style="text-align:left;margin:0 0 12px">Classées par taux d'échec fiabilisé (Wilson) — une carte vue 2× ne dépasse pas une carte vue 50×. 💡 = le distracteur le plus choisi (idée fausse à corriger en cours).</p><div class="review">`;
     missCards.forEach(e=>{ const t=TOPICS[e.topic]; const rate=Math.round(e.rate*100); const qtxt = e.q ? e.q.q : '(question modifiée ou retirée)';
-      html += `<div class="miss">${qtxt}<div class="ans">Raté ${e.miss}/${e.a} fois · ${rate}% d'échec${t?` · <span style="color:${t.raw}">${t.name}</span>`:''}</div></div>`; });
+      const sec = e.tn ? (e.tms/e.tn/1000) : null;
+      const timeStr = (sec!=null) ? ` · ⏱ ${sec<10?sec.toFixed(1):Math.round(sec)} s/réponse` : '';
+      let distStr = '';
+      if(e.q && e.q.mode==='qcm' && e.q.choices && e.dist){
+        const ents = Object.entries(e.dist).map(([i,n])=>({i:+i,n})).filter(x=>x.i>=0 && e.q.choices[x.i]).sort((a,b)=>b.n-a.n);
+        const tot = ents.reduce((s,x)=>s+x.n,0);
+        if(ents.length && tot>0){ const share=Math.round(ents[0].n/tot*100); distStr = `<div class="ans" style="color:#fbbf24">💡 Piège n°1 : ${share}% des erreurs choisissent « ${e.q.choices[ents[0].i].t} »</div>`; }
+      }
+      html += `<div class="miss">${qtxt}<div class="ans">Raté ${e.miss}/${e.a} fois · ${rate}% d'échec${timeStr}${t?` · <span style="color:${t.raw}">${t.name}</span>`:''}</div>${distStr}</div>`; });
     html += `</div>`;
   } else { html += `<div class="empty-state" style="padding:18px">Pas encore assez de données dans cette sélection.</div>`; }
   html += `</div></details>`;
