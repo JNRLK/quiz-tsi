@@ -2852,6 +2852,7 @@ let pool = [];
 let idx = 0, score = 0, streak = 0, bestStreak = 0;
 let answeredFlag = false;
 let sessionStartedAt = 0;   // début de session quiz (durée de connexion) — capture analytique
+let _sessionFlushed = false;   // garde anti-doublon : une session n'est sauvée qu'une fois (bilan OU abandon OU pagehide)
 
 const $ = s => document.querySelector(s);
 const shuffle = a => { for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]];} return a; };
@@ -3566,7 +3567,7 @@ $('#startBtn').onclick = ()=>{
 function renderQuestion(){
   answeredFlag=false;
   const q = pool[idx], t = TOPICS[q.topic];
-  if(idx===0) sessionStartedAt = Date.now();   // démarrage de session (pour la durée)
+  if(idx===0){ sessionStartedAt = Date.now(); _sessionFlushed = false; }   // démarrage de session (durée + reset anti-doublon)
   q._shownAt = Date.now();                      // horodatage d'affichage (temps de réponse)
   const pad = n => String(n).padStart(2,'0');
   $('#qCounter').textContent = `${pad(idx+1)} / ${pad(pool.length)}`;
@@ -3713,7 +3714,7 @@ function buildMathKeyboard(input, mount){
 /* P3 — « Je ne sais pas » (trou/saisie/flash) : révèle la réponse et compte comme Oubli, sans deviner */
 function revealUnknown(q){
   if(answeredFlag) return; answeredFlag=true;
-  if(q._ms==null && q._shownAt) q._ms = Date.now()-q._shownAt;   // temps avant abandon
+  if(q._ms==null && q._shownAt) q._ms = Date.now()-q._shownAt; q._answered=true;   // temps avant abandon + marque « répondu »
   const inp=$('#ansInput'); if(inp) inp.disabled=true;
   const kb=$('#kbMount'); if(kb) kb.innerHTML='';
   const rb=$('#revealBtn'); if(rb) rb.disabled=true;
@@ -3853,7 +3854,7 @@ function wrongQuip(){ return WRONG_QUIPS[Math.floor(Math.random()*WRONG_QUIPS.le
 /* P2 — défilement auto vers la zone d'action (feedback/validation) pour éviter le scroll manuel */
 function scrollToAction(el){ if(el) setTimeout(()=>{ try{ el.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){} }, 80); }
 function finalize(q, ok, opt){
-  if(q._ms==null && q._shownAt) q._ms = Date.now()-q._shownAt;   // temps de réponse (1er commit)
+  if(q._ms==null && q._shownAt) q._ms = Date.now()-q._shownAt; q._answered=true;   // temps de réponse + marque « répondu »
   const unknown = !!(opt && opt.unknown);
   if(ok){ score++; streak++; bestStreak=Math.max(bestStreak,streak); }
   else { streak=0; q._missed=true; }
@@ -3909,7 +3910,7 @@ function qcmConfidence(q, container){
 }
 
 function finalizeSelf(q, ok){
-  if(q._ms==null && q._shownAt) q._ms = Date.now()-q._shownAt;   // temps de réponse (1er commit)
+  if(q._ms==null && q._shownAt) q._ms = Date.now()-q._shownAt; q._answered=true;   // temps de réponse + marque « répondu »
   // ok = true (auto-correct sûr), false (raté/non reconnu), null (flash : pas de jugement auto)
   const sg = document.querySelector('.selfgrade'); if(sg) sg.remove();
   $('#progBar').style.width = ((idx+1)/pool.length*100)+'%';
@@ -3977,27 +3978,37 @@ document.addEventListener('keydown', (e)=>{
 });
 
 /* ====================== RESULTS ====================== */
+// Sauvegarde de session (analytics cloud + local). Ne compte que les questions RÉPONDUES,
+// donc fonctionne même si le quiz n'est pas terminé (abandon, fermeture d'onglet). Anti-doublon.
+function flushSession(reason){
+  if(_sessionFlushed) return;
+  const answered = pool.filter(q=>q._answered);
+  if(!answered.length) return;
+  _sessionFlushed = true;
+  const sc = answered.filter(q=>!q._missed).length;
+  const rec = {
+    date: Date.now(), score: sc, total: answered.length, mode: selectedMode,
+    topics: [...new Set(answered.map(q=>q.topic))], bestStreak,
+    durationMs: sessionStartedAt ? (Date.now()-sessionStartedAt) : null,
+    partial: answered.length < pool.length,
+    details: answered.map(q=>({h:qHash(q.q), q:q.q, topic:q.topic, mode:q.mode, correct:!q._missed, chosen:(q._chosen===undefined?null:q._chosen), ms:(typeof q._ms==='number'?q._ms:null)}))
+  };
+  try { Stats.record(rec); } catch(e){}
+  if(currentUser){
+    if(reason==='done') cloudSync('↑ Sauvegarde…');
+    Cloud.saveSession(rec)
+      .then(()=>{ if(reason==='done') cloudOk('☁️ Session sauvegardée'); })
+      .catch(err=>{ console.warn('flush save', err); if(reason==='done') cloudErr('⚠️ Session non sauvegardée'); });
+  }
+  return rec;
+}
 function showResults(){
   $('#quizScreen').classList.add('hidden');
   $('#resultScreen').classList.remove('hidden');
 
   const total = pool.length, pct = Math.round(score/total*100);
 
-  // enregistrement local de la session (anonyme, dans ce navigateur)
-  const sessionRec = {
-    date: Date.now(), score, total, mode: selectedMode,
-    topics: [...new Set(pool.map(q=>q.topic))], bestStreak,
-    durationMs: sessionStartedAt ? (Date.now()-sessionStartedAt) : null,   // temps de connexion (session)
-    details: pool.map(q=>({h:qHash(q.q), q:q.q, topic:q.topic, mode:q.mode, correct:!q._missed, chosen:(q._chosen===undefined?null:q._chosen), ms:(typeof q._ms==='number'?q._ms:null)}))
-  };
-  try { Stats.record(sessionRec); } catch(e){}
-  // synchro cloud si connecté
-  if(currentUser){
-    cloudSync('↑ Sauvegarde…');
-    Cloud.saveSession(sessionRec)
-      .then(()=> cloudOk('☁️ Session sauvegardée'))
-      .catch(err=>{ console.warn('cloud save', err); cloudErr('⚠️ Session non sauvegardée'); });
-  }
+  flushSession('done');   // sauvegarde answered-only ; déjà déclenchée aussi sur Abandonner et pagehide
 
   $('#rPct').textContent = pct+'%';
   $('#rFrac').textContent = `${score} / ${total}`;
@@ -4052,6 +4063,7 @@ $('#homeBtn').onclick = ()=>{
 $('#resultStatsBtn').onclick = showStats;
 $('#abandonBtn').onclick = ()=>{
   if(confirm('Abandonner ce quiz et revenir à l\'accueil ?')){
+    flushSession('abandon');   // on conserve les questions déjà répondues
     $('#quizScreen').classList.add('hidden');
     $('#startScreen').classList.remove('hidden');
     updateSrsBar(); updateHeaderStats(); buildFamilyAccordion(); updatePoolInfo(); renderJuryTip();
@@ -5025,6 +5037,8 @@ function admFiltered(){
   return list;
 }
 
+let _qByHashCache=null;
+function qByHashMap(){ if(!_qByHashCache){ _qByHashCache={}; QUESTIONS.forEach(q=>{ _qByHashCache[qHash(q.q)]=q; }); } return _qByHashCache; }
 function admFmtDur(ms){ const m=Math.round(ms/60000); if(m<1) return '<1 min'; if(m<60) return m+' min'; const h=Math.floor(m/60), mm=m%60; return h+' h'+(mm?' '+String(mm).padStart(2,'0'):''); }
 function admStudentRow(u){
   const p = u.profile||{}; const a = u.agg||{};
@@ -5041,6 +5055,10 @@ function admStudentRow(u){
   let _tms=0,_tn=0; { const bc=a.byCard||{}; for(const h in bc){ _tms+=bc[h].tms||0; _tn+=bc[h].tn||0; } }
   const avgSec = _tn ? (_tms/_tn/1000) : null;
   let last7=0; if(a.dayset){ const lim=new Date(); lim.setHours(0,0,0,0); lim.setDate(lim.getDate()-6); for(const k in a.dayset){ if(new Date(k+'T00:00:00')>=lim) last7++; } }
+  // réussite par type (QCM/flashcard/…) — dérivée de byCard via le mode de chaque carte (rétroactif)
+  const _QBH=qByHashMap(); const byMode={}; { const bc=a.byCard||{}; for(const h in bc){ const qq=_QBH[h]; if(!qq) continue; const md=qq.mode||'?'; (byMode[md]||(byMode[md]={a:0,c:0})); byMode[md].a+=bc[h].a||0; byMode[md].c+=bc[h].c||0; } }
+  const modeEntries=Object.entries(byMode).filter(([m,s])=>s.a>0).sort((x,y)=>y[1].a-x[1].a);
+  const modeHtml = modeEntries.length ? `<div class="adm-weak" style="margin-top:8px"><span style="color:var(--muted);font-size:11.5px;width:100%;display:block;margin-bottom:4px">Réussite par type</span>`+modeEntries.map(([m,s])=>`<span class="adm-chip">${MODE_LABEL[m]||m} · ${Math.round(s.c/s.a*100)}% <span style="opacity:.55">(${s.a})</span></span>`).join('')+`</div>` : '';
   const field = (label,val)=>`<div class="adm-field"><span class="fl">${label}</span><span class="fv">${val}</span></div>`;
   const details = `<div class="adm-grid">
     ${field('Pseudo', admEsc(u.displayName||'—'))}
@@ -5059,7 +5077,7 @@ function admStudentRow(u){
     ${field('Jours actifs', a.dayset ? (Object.keys(a.dayset).length + (last7?` · ${last7} cette sem.`:'')) : '—')}
     ${field('Vitesse moy.', avgSec!=null ? ((avgSec<10?avgSec.toFixed(1):Math.round(avgSec))+' s/rép.') : '—')}
     ${field('Note', admEsc(p.note||'—'))}
-  </div>${weakHtml}
+  </div>${weakHtml}${modeHtml}
     <div class="adm-rowact"><button class="adm-del" type="button" data-del-uid="${admEsc(u.uid)}" data-del-label="${admEsc(name)}">🗑 Supprimer ce compte</button></div>`;
   return `<details class="adm-row${incomplete?' incomplete':''}">
     <summary>
@@ -5196,6 +5214,8 @@ document.addEventListener('visibilitychange', ()=>{
     updateSrsBar(); updateHeaderStats(); buildFamilyAccordion();
   }).catch(()=>{});
 });
+// Collecte best-effort si l'élève quitte la page en plein quiz (sans finir ni abandonner explicitement)
+window.addEventListener('pagehide', ()=>{ try{ flushSession('leave'); }catch(e){} });
 </script>
 
 <!-- PWA : enregistrement du service worker (hors module pour rester robuste) -->
