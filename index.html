@@ -983,6 +983,9 @@ const Cloud = {
     s.details.forEach(it=>{
       const t = (agg.byTopic[it.topic] || (agg.byTopic[it.topic]={a:0,c:0})); t.a++; if(it.correct) t.c++;
       const bc = (agg.byCard[it.h] || (agg.byCard[it.h]={a:0,c:0,topic:it.topic})); bc.a++; if(it.correct) bc.c++;
+      // analytique (additif) : temps cumulé + distribution des distracteurs choisis (QCM ratés)
+      if(typeof it.ms==='number'){ bc.tms=(bc.tms||0)+it.ms; bc.tn=(bc.tn||0)+1; }
+      if(it.mode==='qcm' && !it.correct && typeof it.chosen==='number' && it.chosen>=0){ (bc.dist||(bc.dist={}))[it.chosen]=(bc.dist[it.chosen]||0)+1; }
     });
     await setDoc(uref, {email:currentUser.email, displayName: cur.displayName || currentUser.email.split('@')[0], lastActive:serverTimestamp(), agg}, {merge:true});
   },
@@ -2837,6 +2840,7 @@ let chosenLen = 10;
 let pool = [];
 let idx = 0, score = 0, streak = 0, bestStreak = 0;
 let answeredFlag = false;
+let sessionStartedAt = 0;   // début de session quiz (durée de connexion) — capture analytique
 
 const $ = s => document.querySelector(s);
 const shuffle = a => { for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]];} return a; };
@@ -3546,6 +3550,8 @@ $('#startBtn').onclick = ()=>{
 function renderQuestion(){
   answeredFlag=false;
   const q = pool[idx], t = TOPICS[q.topic];
+  if(idx===0) sessionStartedAt = Date.now();   // démarrage de session (pour la durée)
+  q._shownAt = Date.now();                      // horodatage d'affichage (temps de réponse)
   const pad = n => String(n).padStart(2,'0');
   $('#qCounter').textContent = `${pad(idx+1)} / ${pad(pool.length)}`;
   $('#qTopicTag').textContent = t.name;
@@ -3590,11 +3596,13 @@ function renderQCM(zone, q){
 }
 function answerQCMUnknown(box, q){
   if(answeredFlag) return; answeredFlag=true;
+  q._chosen = -1;   // « je ne sais pas » (QCM)
   [...box.children].forEach((b,i)=>{ b.disabled=true; const c=q._choices[i]; if(c && c.c) b.classList.add('correct'); else b.classList.add('dim'); });
   finalize(q, false, {unknown:true});
 }
 function answerQCM(btn, choice, q){
   if(answeredFlag) return; answeredFlag=true;
+  q._chosen = (choice && typeof choice.orig === 'number') ? choice.orig : null;   // distracteur choisi (index d'origine)
   const buttons = [...btn.parentElement.children];
   buttons.forEach((b,i)=>{
     b.disabled=true; const c = q._choices[i];
@@ -3689,6 +3697,7 @@ function buildMathKeyboard(input, mount){
 /* P3 — « Je ne sais pas » (trou/saisie/flash) : révèle la réponse et compte comme Oubli, sans deviner */
 function revealUnknown(q){
   if(answeredFlag) return; answeredFlag=true;
+  if(q._ms==null && q._shownAt) q._ms = Date.now()-q._shownAt;   // temps avant abandon
   const inp=$('#ansInput'); if(inp) inp.disabled=true;
   const kb=$('#kbMount'); if(kb) kb.innerHTML='';
   const rb=$('#revealBtn'); if(rb) rb.disabled=true;
@@ -3828,6 +3837,7 @@ function wrongQuip(){ return WRONG_QUIPS[Math.floor(Math.random()*WRONG_QUIPS.le
 /* P2 — défilement auto vers la zone d'action (feedback/validation) pour éviter le scroll manuel */
 function scrollToAction(el){ if(el) setTimeout(()=>{ try{ el.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){} }, 80); }
 function finalize(q, ok, opt){
+  if(q._ms==null && q._shownAt) q._ms = Date.now()-q._shownAt;   // temps de réponse (1er commit)
   const unknown = !!(opt && opt.unknown);
   if(ok){ score++; streak++; bestStreak=Math.max(bestStreak,streak); }
   else { streak=0; q._missed=true; }
@@ -3883,6 +3893,7 @@ function qcmConfidence(q, container){
 }
 
 function finalizeSelf(q, ok){
+  if(q._ms==null && q._shownAt) q._ms = Date.now()-q._shownAt;   // temps de réponse (1er commit)
   // ok = true (auto-correct sûr), false (raté/non reconnu), null (flash : pas de jugement auto)
   const sg = document.querySelector('.selfgrade'); if(sg) sg.remove();
   $('#progBar').style.width = ((idx+1)/pool.length*100)+'%';
@@ -3960,7 +3971,8 @@ function showResults(){
   const sessionRec = {
     date: Date.now(), score, total, mode: selectedMode,
     topics: [...new Set(pool.map(q=>q.topic))], bestStreak,
-    details: pool.map(q=>({h:qHash(q.q), q:q.q, topic:q.topic, mode:q.mode, correct:!q._missed}))
+    durationMs: sessionStartedAt ? (Date.now()-sessionStartedAt) : null,   // temps de connexion (session)
+    details: pool.map(q=>({h:qHash(q.q), q:q.q, topic:q.topic, mode:q.mode, correct:!q._missed, chosen:(q._chosen===undefined?null:q._chosen), ms:(typeof q._ms==='number'?q._ms:null)}))
   };
   try { Stats.record(sessionRec); } catch(e){}
   // synchro cloud si connecté
