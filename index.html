@@ -2915,19 +2915,29 @@ const MODE_LABEL = {qcm:'QCM', trou:'À trou', saisie:'Réponse libre', flash:'F
    ============================================================ */
 const STATS_KEY = 'quiztsi_srs_v1';
 
-/* Paramètres de planification (façon Anki) */
-const SRS_MAX_INTERVAL = 270;   // plafond d'intervalle (jours)
-const SRS_LAPSE_MULT   = 0.4;   // échec doux : on conserve 40 % de l'intervalle
-const SRS_FUZZ         = 0.12;  // ±12 % d'aléa sur les longs intervalles (évite l'effet avalanche)
-const NEW_PER_DAY      = 20;    // nouvelles cartes introduites au maximum par jour
-// Première vue d'une carte : l'intervalle dépend de la note choisie (façon Anki).
-const SRS_NEW_INTERVALS = {0:1, 1:2, 2:4, 3:7}; // Oubli / Difficile / Correct / Facile (jours)
-const SRS_HARD_MULT    = 1.2;   // multiplicateur « Difficile » sur une carte déjà vue
-const SRS_EASY_BONUS   = 1.3;   // bonus « Facile » par rapport à « Correct »
+/* Paramètres de planification — SM-2 fidèle à Anki.
+   Étapes d'apprentissage en MINUTES (une carte neuve se voit plusieurs fois avant de
+   « sortir »), puis intervalles en JOURS qui croissent par le facteur de facilité.
+   Nouveauté clé : AMORTISSEMENT des révisions anticipées — réviser une carte avant son
+   échéance ne gonfle (presque) plus l'intervalle (corrige « 3 semaines en 3 jours »).
+   Réfs : SuperMemo SM-2, documentation Anki, littérature sur l'effet d'espacement. */
+const DAY_MS            = 86400000;
+const SRS_LEARN_STEPS   = [1, 10];   // minutes — carte neuve
+const SRS_RELEARN_STEPS = [10];      // minutes — après un oubli (réapprentissage)
+const SRS_GRAD_IVL      = 1;         // jours — diplôme « Correct » depuis la dernière étape
+const SRS_EASY_IVL      = 4;         // jours — diplôme direct « Facile »
+const SRS_START_EASE    = 2.5;       // facilité initiale (250 %)
+const SRS_MIN_EASE      = 1.3;       // plancher de facilité (anti « ease hell » : jamais en dessous)
+const SRS_HARD_MULT     = 1.2;       // « Difficile » : intervalle × 1.2, facilité −0.15
+const SRS_EASY_BONUS    = 1.3;       // « Facile » : bonus en plus de la facilité, facilité +0.15
+const SRS_LAPSE_MULT    = 0.0;       // oubli : part d'intervalle conservée (0 → repart à ~1 j après réapprentissage)
+const SRS_MAX_INTERVAL  = 365;       // plafond d'intervalle (jours)
+const SRS_FUZZ          = 0.05;      // léger aléa anti-avalanche sur les longs intervalles
+const NEW_PER_DAY       = 20;        // nouvelles cartes introduites au maximum par jour
 function srsFuzz(ivl){
-  if(ivl < 3) return ivl;       // pas d'aléa sur les petits pas d'apprentissage
+  if(ivl < 7) return ivl;            // pas d'aléa sur les courts intervalles
   const delta = ivl * SRS_FUZZ;
-  return Math.max(3, Math.round(ivl + (Math.random()*2 - 1) * delta));
+  return Math.max(7, Math.round(ivl + (Math.random()*2 - 1) * delta));
 }
 
 const SRS = {
@@ -2995,57 +3005,85 @@ const SRS = {
   // Retourne la carte (ou crée-la)
   card(h, q, topic){
     const d = this._d();
-    if(!d.cards[h]) d.cards[h] = {q, topic, lvl:0, ef:2.5, interval:0, due:Date.now(), reps:0, lapses:0};
+    if(!d.cards[h]) d.cards[h] = {q, topic, lvl:0, ef:SRS_START_EASE, interval:0, due:Date.now(), reps:0, lapses:0, state:'new', step:0, last:Date.now()};
     return {d, card: d.cards[h]};
   },
 
-  // Calcule (sans rien modifier) l'intervalle EN JOURS résultant d'un grade.
-  // Reproduit exactement la logique de review() ci-dessous.
-  previewInterval(h, grade){
-    const d = this._d();
-    const c = d.cards[h] || {lvl:0, ef:2.5, interval:0, reps:0};
-    const I = c.interval || 0;
-    // Première vue (jamais révisée ou intervalle nul) : barème par note, façon Anki.
-    if((c.reps||0) === 0 || I === 0) return SRS_NEW_INTERVALS[grade];
-    const ef = c.ef || 2.5;
-    let ivl;
-    if(grade === 0)      ivl = Math.max(1, Math.round(I * SRS_LAPSE_MULT));     // échec doux : intervalle réduit
-    else if(grade === 1) ivl = Math.max(I + 1, Math.round(I * SRS_HARD_MULT));  // difficile
-    else if(grade === 2) ivl = Math.max(I + 1, Math.round(I * ef));             // correct
-    else                 ivl = Math.max(I + 1, Math.round(I * ef * SRS_EASY_BONUS)); // facile
-    return Math.min(ivl, SRS_MAX_INTERVAL); // affichage stable (l'aléa s'applique à la planification réelle)
+  // Projection PURE (ne modifie rien) de l'état d'une carte après un grade donné.
+  // Source unique de vérité, utilisée par review() ET previewInterval().
+  // Renvoie soit dueMin (étape d'apprentissage, minutes), soit dueDays (intervalle, jours).
+  _project(c, grade, now){
+    let state = c.state || (((c.reps||0) > 0 && (c.interval||0) > 0) ? 'review' : 'new');
+    let step = c.step||0, ef = (c.ef==null?SRS_START_EASE:c.ef), interval = c.interval||0;
+    let lapses = c.lapses||0, lvl = c.lvl||0, lapseIvl = c._lapseIvl;
+    let dueMin = null, dueDays = null;
+    const learning = (state==='new' || state==='learning' || state==='relearning');
+    if(learning){
+      const relearn = (state==='relearning');
+      const steps = relearn ? SRS_RELEARN_STEPS : SRS_LEARN_STEPS;
+      if(grade === 0){ step = 0; state = relearn?'relearning':'learning'; interval = 0; dueMin = steps[0]; }
+      else if(grade === 3){ state='review'; interval = relearn ? Math.max(1, lapseIvl||1) : SRS_EASY_IVL; lapseIvl = undefined; dueDays = interval; lvl = Math.min(5, lvl+1); }
+      else {
+        const ns = (grade===2) ? step+1 : step;          // « Correct » avance, « Difficile » répète l'étape
+        if(ns >= steps.length){ state='review'; interval = relearn ? Math.max(1, lapseIvl||1) : SRS_GRAD_IVL; lapseIvl = undefined; dueDays = interval; lvl = Math.min(5, lvl+1); }
+        else { step = ns; state = relearn?'relearning':'learning'; interval = 0; dueMin = steps[ns]; }
+      }
+    } else {
+      const I = Math.max(1, interval||1);
+      if(grade === 0){
+        lapses++; ef = Math.max(SRS_MIN_EASE, ef - 0.20);
+        lapseIvl = Math.max(1, Math.round(I * SRS_LAPSE_MULT));   // intervalle visé après réapprentissage
+        state = 'relearning'; step = 0; interval = 0; dueMin = SRS_RELEARN_STEPS[0]; lvl = Math.max(0, lvl-1);
+      } else {
+        const elapsed = Math.max(0, (now - (c.last||now)) / DAY_MS);  // jours écoulés depuis la dernière révision
+        let factor;
+        if(grade === 1){ ef = Math.max(SRS_MIN_EASE, ef - 0.15); factor = SRS_HARD_MULT; }
+        else if(grade === 2){ factor = ef; }
+        else { ef = ef + 0.15; factor = ef * SRS_EASY_BONUS; }
+        const target = I * factor;                       // intervalle « plein » si révisé pile à l'échéance
+        const frac = Math.min(1, elapsed / I);           // AMORTISSEMENT : 0 si révisé tout de suite, 1 si à l'échéance
+        let ivl = Math.round(I + (target - I) * frac);
+        if(ivl < I) ivl = I;
+        if(elapsed >= I && ivl <= I) ivl = I + 1;         // règle Anki : +1 j minimum quand révisé à l'heure
+        interval = Math.min(SRS_MAX_INTERVAL, ivl); dueDays = interval; lvl = Math.min(5, lvl+1);
+      }
+    }
+    return { state, step, ef, interval, lapses, lvl, lapseIvl, dueMin, dueDays };
   },
 
-  // Met à jour après réponse : grade 0-3 (0=oubli, 1=difficile, 2=correct, 3=facile)
+  // Intervalle (jours, fractionnaire si étape en minutes) résultant d'un grade — pour les boutons.
+  previewInterval(h, grade){
+    const d = this._d();
+    const c = d.cards[h] || {state:'new', step:0, ef:SRS_START_EASE, interval:0, reps:0, last:Date.now()};
+    const p = this._project(c, grade, Date.now());
+    return (p.dueMin != null) ? (p.dueMin / 1440) : p.dueDays;
+  },
+
+  // Met à jour après réponse : grade 0-3 (0=oubli, 1=difficile, 2=correct, 3=facile).
+  // Planification déléguée à _project() : étapes d'apprentissage + SM-2 + amortissement anticipation.
   review(h, q, topic, grade){
     const {d, card: c} = this.card(h, q, topic);
     const now = Date.now();
-    const ivlAvant = c.interval || 0;   // intervalle AVANT cette révision (pour rétention vraie)
-    const dejaVue = c.reps > 0;
-    const premiereVue = !dejaVue || (c.interval || 0) === 0;
-    c.reps++;
+    const ivlAvant = c.interval || 0;   // intervalle (jours) AVANT cette révision (rétention vraie)
+    const dejaVue = (c.reps||0) > 0;
+    // migration douce des cartes de l'ancien format (sans state / step / last)
+    if(c.ef == null) c.ef = SRS_START_EASE;
+    if(!c.state) c.state = (dejaVue && (c.interval||0) > 0) ? 'review' : 'new';
+    if(c.step == null) c.step = 0;
+    if(c.last == null) c.last = c.due ? (c.due - (c.interval||0)*DAY_MS) : now;
 
-    if(premiereVue){
-      // Première vue : barème par note (1/2/4/7 j selon Oubli/Difficile/Correct/Facile).
-      c.interval = SRS_NEW_INTERVALS[grade];
-      if(grade === 0){ c.lapses++; c.ef = Math.max(1.3, c.ef - 0.2); c.lvl = 0; }
-      else { c.lvl = Math.min(5, grade >= 3 ? 2 : 1); }
-    } else if(grade === 0){                   // oubli → échec DOUX (relearning) : on garde une partie de l'acquis
-      c.lapses++;
-      c.ef = Math.max(1.3, c.ef - 0.2);
-      c.interval = Math.max(1, Math.round(c.interval * SRS_LAPSE_MULT));
-      c.lvl = Math.max(0, c.lvl - 1);
-    } else {
-      const q_ef = grade===1 ? -0.15 : grade===2 ? 0 : 0.1; // « difficile » baisse l'aisance
-      c.ef = Math.max(1.3, c.ef + q_ef);
-      let ivl;
-      if(grade === 1)      ivl = Math.max(c.interval + 1, Math.round(c.interval * SRS_HARD_MULT));
-      else if(grade === 2) ivl = Math.max(c.interval + 1, srsFuzz(Math.round(c.interval * c.ef)));
-      else                 ivl = Math.max(c.interval + 1, srsFuzz(Math.round(c.interval * c.ef * SRS_EASY_BONUS)));
-      c.interval = Math.min(ivl, SRS_MAX_INTERVAL);
-      c.lvl = Math.min(5, c.lvl + 1);
+    const p = this._project(c, grade, now);
+    c.reps = (c.reps||0) + 1;
+    c.state = p.state; c.step = p.step; c.ef = p.ef; c.lapses = p.lapses; c.lvl = p.lvl;
+    if(p.lapseIvl === undefined) delete c._lapseIvl; else c._lapseIvl = p.lapseIvl;
+    if(p.dueMin != null){            // encore en apprentissage : prochaine vue dans quelques minutes
+      c.interval = 0;
+      c.due = now + p.dueMin * 60000;
+    } else {                          // carte de révision : intervalle en jours (+ léger aléa)
+      c.interval = Math.min(SRS_MAX_INTERVAL, srsFuzz(p.dueDays));
+      c.due = now + c.interval * DAY_MS;
     }
-    c.due = now + c.interval * 86400000;
+    c.last = now;
     d.cards[h] = c;
 
     // ---- Streak quotidien + quota de nouvelles cartes ----
@@ -3785,7 +3823,7 @@ function renderFlash(zone, q){
 /* ---- Finalisation commune ---- */
 // Formate un nombre de jours en libellé court : "1 j", "3 j", "2 sem", "1 mois"...
 function fmtDelay(days){
-  if(days < 1) return "<1 j";
+  if(days < 1){ const mins = Math.round(days*1440); return mins < 60 ? mins+' min' : Math.round(days*24)+' h'; }
   if(days === 1) return "1 j";
   if(days < 7) return days + " j";
   if(days < 21) return Math.round(days/7) + " sem";
