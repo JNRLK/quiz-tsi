@@ -890,6 +890,15 @@ window.MathJax = {
   </div>
 </div>
 
+<!-- ACCÈS RÉVISION RÉSERVÉ (freemium : QCM libres, révision réservée à la classe / aux abonnés) -->
+<div class="modal-overlay hidden" id="accessModal">
+  <div class="modal">
+    <button class="modal-close" id="accessClose" aria-label="Fermer">✕</button>
+    <h2 style="font-family:'Fraunces',serif; margin:0 0 6px">🔒 Mode révision réservé</h2>
+    <div id="accessBody"></div>
+  </div>
+</div>
+
 <!-- SIGNALEMENT D'ERREUR -->
 <div class="modal-overlay hidden" id="reportModal">
   <div class="modal">
@@ -941,6 +950,7 @@ const ADMIN_EMAILS = ["arthur.lesage05@gmail.com", "sophie-marcus@orange.fr"];
 const fbApp = initializeApp(firebaseConfig);
 const fbFunctions = getFunctions(fbApp);                       // région par défaut us-central1 (= région de la Cloud Function deleteAccount)
 const deleteAccountFn = httpsCallable(fbFunctions, 'deleteAccount');
+const setClassApprovalFn = httpsCallable(fbFunctions, 'setClassApproval');
 const auth = getAuth(fbApp);
 auth.languageCode = 'fr';   // e-mails (vérification, reset) ET pages d'action Firebase en français
 // Persistance locale : la session reste active entre les rechargements et les fermetures
@@ -949,6 +959,12 @@ setPersistence(auth, browserLocalPersistence).catch(e=>console.warn('auth persis
 const db = getFirestore(fbApp);
 let currentUser = null;
 let isAdmin = false;
+// --- Accès au mode révision (freemium) : QCM libres pour tous ; révision (SRS) + suivi réservés ---
+// ACCESS_GATE_ON=false => déploiement « blanc » (rien ne change) le temps de réparer/approuver
+// les accès dans la console admin, puis repasser à true.
+const ACCESS_GATE_ON = false;   // ⚠️ DORMANT : passer à true APRÈS déploiement fonction + réparation/approbation des accès (console admin)
+let myClassStatus = null;                 // 'approved' | 'pending' | 'rejected' | null (lu sur le doc de l'élève)
+function revisionAllowed(){ return !ACCESS_GATE_ON || isAdmin || myClassStatus === 'approved'; }
 
 // Clé de réservation d'un pseudo (unicité insensible à la casse, ID Firestore valide)
 function normUsername(s){
@@ -1097,6 +1113,7 @@ onAuthStateChanged(auth, async (user)=>{
         try{ udoc = await Cloud.myDoc(); readOk=true; }
         catch(e){ console.warn('profile check (essai '+(attempt+1)+')', e); }
       }
+      myClassStatus = (readOk && udoc && udoc.profile && udoc.profile.classStatus) || null;
       let needs;
       if(readOk){
         needs = (typeof needsProfile==='function') && needsProfile(udoc, user);
@@ -1115,6 +1132,7 @@ onAuthStateChanged(auth, async (user)=>{
     // Déconnexion : purge de la progression locale pour empêcher toute fuite entre comptes
     if(typeof SRS!=='undefined') SRS.clear();
     try{ localStorage.removeItem(SRS_OWNER_KEY); }catch(e){}
+    myClassStatus = null;
     // Connexion obligatoire : ouvrir la modale, non fermable
     if(typeof openAuth === 'function') openAuth();
   }
@@ -3477,6 +3495,7 @@ function buildFamilyAccordion(){
 
 /* Révision SRS ciblée sur un chapitre */
 function startSrsReviewForTopic(topicKey){
+  if(!revisionAllowed()){ showAccessGate(); return; }
   const d=SRS._d(), now=Date.now();
   const hMap={}; QUESTIONS.forEach(q=>{ hMap[qHash(q.q)]=q; });
   const dueForTopic=Object.entries(d.cards)
@@ -3510,6 +3529,7 @@ let srsQueue = [];
 // ou la bonne proposition (QCM). La personnalisation des modes reste dans le quiz « Commencer ».
 function toFlashCard(q){ const ans = q.answer || (q.choices ? ((q.choices.find(c=>c.c)||{}).t || '') : ''); return {...q, mode:'flash', answer: ans, _choices: undefined }; }
 function startSrsReview(){
+  if(!revisionAllowed()){ showAccessGate(); return; }
   srsMode = true;
   const d = SRS._d();
   const hMap = {};
@@ -4366,6 +4386,7 @@ async function renderStats(){
   typeset(body);
 }
 function showStats(){
+  if(!revisionAllowed()){ showAccessGate(); return; }
   ['startScreen','quizScreen','resultScreen','adminScreen','juryScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
   $('#statsScreen').classList.remove('hidden');
   $('#statsBody').innerHTML = '<div class="empty-state">Chargement…</div>';
@@ -4737,6 +4758,30 @@ function updateClassJoinUI(){
     };
   }
 }
+// Écran bloquant : un non-membre tente d'ouvrir le mode révision (les QCM, eux, restent libres).
+function showAccessGate(){
+  const m=$('#accessModal'), body=$('#accessBody'); if(!m||!body) return;
+  let requested = (myClassStatus==='pending');
+  try{ const p=JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); if(p && p.classRequest) requested=true; }catch(e){}
+  if(myClassStatus==='rejected'){
+    body.innerHTML = `<p class="auth-sub">Le <b>mode révision</b> (répétition espacée) et le suivi de progression sont réservés aux membres de la <b>classe TSI Chaptal</b>.</p><p style="color:#f87171;font-size:14px;margin:10px 0 0">Ta demande n'a pas été acceptée. Rapproche-toi de ton professeur si c'est une erreur.</p><p style="color:var(--muted);font-size:13px;margin:14px 0 0">Les <b>QCM restent en accès libre</b> depuis l'accueil.</p>`;
+  } else if(requested){
+    body.innerHTML = `<p class="auth-sub">Le <b>mode révision</b> et le suivi de progression sont réservés aux membres de la <b>classe TSI Chaptal</b>.</p><div style="border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;font-size:14px;margin-top:12px"><span>⏳</span><span>Demande envoyée — en attente de validation par ton professeur.</span></div><p style="color:var(--muted);font-size:13px;margin:14px 0 0">Les <b>QCM restent en accès libre</b> depuis l'accueil.</p>`;
+  } else {
+    body.innerHTML = `<p class="auth-sub">Le <b>mode révision</b> (répétition espacée) et le suivi de progression sont réservés aux membres de la <b>classe TSI Chaptal</b>. Les <b>QCM restent en accès libre</b> pour tout le monde.</p><button class="btn" id="accessJoinBtn" type="button" style="width:100%;margin-top:16px">🎓 Demander l'accès à la classe</button>`;
+    const b=$('#accessJoinBtn');
+    if(b) b.onclick = async ()=>{ b.disabled=true; b.textContent='Envoi…';
+      try{ await Cloud.requestClass(); myClassStatus='pending';
+        try{ const p=JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); p.classRequest='tsi-chaptal'; localStorage.setItem('quiztsi_profile', JSON.stringify(p)); }catch(e){}
+        if(typeof updateClassJoinUI==='function') updateClassJoinUI(); showAccessGate();
+      }catch(e){ console.warn('requestClass', e); b.disabled=false; b.textContent='🎓 Demander l\'accès à la classe'; alert('Demande impossible pour le moment. Réessaie.'); }
+    };
+  }
+  m.classList.remove('hidden');
+}
+function closeAccessGate(){ const m=$('#accessModal'); if(m) m.classList.add('hidden'); }
+$('#accessClose').onclick = closeAccessGate;
+$('#accessModal').addEventListener('click', e=>{ if(e.target.id==='accessModal') closeAccessGate(); });
 function updateAccountUI(){
   const btn = $('#accountBtn');
   if(currentUser){
@@ -5255,11 +5300,21 @@ function paintAdmin(){
   const _adminEmails = ADMIN_EMAILS;
   const roster = {};
   (ADM.users||[]).forEach(u=>{ if(u.email && _adminEmails.includes(u.email) && u.profile && u.profile.classRoster){ const r=u.profile.classRoster; for(const k in r){ if(r[k]==='approved' || !roster[k]) roster[k]=r[k]; } } });
+  // Statut effectif : classStatus (doc élève, lu aussi par le verrou côté élève) prioritaire, sinon ancien roster.
+  const statusOf = u => (u.profile && u.profile.classStatus) || roster[u.uid] || null;
   const requesters = (ADM.users||[]).filter(u=> u.profile && u.profile.classRequest);
-  const pendingC = requesters.filter(u=> roster[u.uid] !== 'approved' && roster[u.uid] !== 'rejected');
-  const approvedC = (ADM.users||[]).filter(u=> roster[u.uid]==='approved');
+  const pendingC = requesters.filter(u=> statusOf(u) !== 'approved' && statusOf(u) !== 'rejected');
+  const approvedC = (ADM.users||[]).filter(u=> statusOf(u)==='approved');
+  // Approuvés dans l'ANCIEN roster mais sans classStatus → le verrou élève les bloquerait : à réparer.
+  const needBackfill = (ADM.users||[]).filter(u=> roster[u.uid]==='approved' && !(u.profile && u.profile.classStatus));
   const _nm = u => admEsc((u.profile&&u.profile.nom) || u.displayName || u.email || '—');
   html += `<details class="adm-sec"><summary class="adm-sec-h"><span class="cq-ic">🎓</span><span class="cq-title">Classe TSI Chaptal — ${approvedC.length} membre(s)${pendingC.length?` · ${pendingC.length} demande(s)`:''}</span><span class="cq-chev">▸</span></summary><div class="adm-sec-b">`;
+  if(pendingC.length || needBackfill.length){
+    html += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px">`;
+    if(pendingC.length){ html += `<button class="btn mini" type="button" id="admApproveAll">✓ Approuver les ${pendingC.length} demande(s)</button>`; }
+    if(needBackfill.length){ html += `<button class="btn ghost mini" type="button" id="admBackfill">🔄 Réparer l'accès de ${needBackfill.length} membre(s)</button>`; }
+    html += `</div>`;
+  }
   if(pendingC.length){
     html += `<p class="footer-note" style="text-align:left;margin:0 0 10px">Demandes en attente</p><div class="adm-list">`;
     pendingC.forEach(u=>{ html += `<div class="miss" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="flex:1;min-width:150px">${_nm(u)} <span style="color:var(--muted);font-size:12px">${admEsc(u.email||'')}</span></span><button class="btn mini" type="button" data-approve-uid="${admEsc(u.uid)}">✓ Approuver</button><button class="btn ghost mini" type="button" data-reject-uid="${admEsc(u.uid)}">✗ Refuser</button></div>`; });
@@ -5283,9 +5338,13 @@ function paintAdmin(){
 
   box.innerHTML = html;
   box.querySelectorAll('[data-del-uid]').forEach(b=>{ b.onclick=(e)=>{ e.preventDefault(); e.stopPropagation(); admDeleteOne(b.dataset.delUid, b.dataset.delLabel); }; });
-  const _approve = async (uid,status,btn)=>{ btn.disabled=true; try{ await Cloud.setApproval(uid,status); renderAdmin(); }catch(e){ console.warn('approbation classe', e); btn.disabled=false; } };
+  const _approve = async (uid,status,btn)=>{ btn.disabled=true; try{ await setClassApprovalFn({uid, status}); renderAdmin(); }catch(e){ console.warn('approbation classe', e); btn.disabled=false; alert('Action impossible. La Cloud Function setClassApproval est-elle déployée ?'); } };
   box.querySelectorAll('[data-approve-uid]').forEach(b=>{ b.onclick=()=>_approve(b.dataset.approveUid,'approved',b); });
   box.querySelectorAll('[data-reject-uid]').forEach(b=>{ b.onclick=()=>_approve(b.dataset.rejectUid,'rejected',b); });
+  const _aa = box.querySelector('#admApproveAll');
+  if(_aa) _aa.onclick = async ()=>{ _aa.disabled=true; _aa.textContent='Approbation…'; for(const u of pendingC){ try{ await setClassApprovalFn({uid:u.uid, status:'approved'}); }catch(e){ console.warn('approve all', u.uid, e); } } renderAdmin(); };
+  const _bf = box.querySelector('#admBackfill');
+  if(_bf) _bf.onclick = async ()=>{ _bf.disabled=true; _bf.textContent='Réparation…'; for(const u of needBackfill){ try{ await setClassApprovalFn({uid:u.uid, status:'approved'}); }catch(e){ console.warn('backfill', u.uid, e); } } renderAdmin(); };
   typeset(box);
 }
 
