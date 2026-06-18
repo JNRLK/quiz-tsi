@@ -258,6 +258,13 @@ window.MathJax = {
   .btn.ghost{background:transparent; color:var(--ink); border:1.5px solid var(--line); box-shadow:none}
   .btn.ghost:hover{border-color:var(--accent)}
   #advBtn.on{border-color:var(--accent); background:color-mix(in srgb,var(--accent) 16%,#0d1320); color:var(--ink)}
+  /* Légende explicative du toggle Approfondissement (#advBtn) — affichée sur l'accueil */
+  .adv-legend{margin:14px 0 0; padding:11px 13px; border:1px solid var(--line); border-radius:14px; background:rgba(13,19,32,.5); color:var(--muted); font-size:12.5px; line-height:1.5; display:flex; gap:9px; align-items:flex-start}
+  .adv-legend.on{border-color:color-mix(in srgb,var(--accent) 55%,var(--line)); background:color-mix(in srgb,var(--accent) 8%,rgba(13,19,32,.6))}
+  .adv-legend .al-ic{flex:none; font-size:15px; line-height:1.3}
+  .adv-legend b{color:var(--ink); font-weight:600}
+  .adv-legend .al-state{font-weight:600}
+  .adv-legend.on .al-state{color:var(--accent)}
   .btn:disabled{opacity:.4; cursor:not-allowed; transform:none}
   .actions{display:flex; gap:12px; align-items:center; margin-top:26px; flex-wrap:wrap}
 
@@ -627,6 +634,9 @@ window.MathJax = {
     <div id="srsBar" style="margin-bottom:0"></div>
     <!-- Adhésion à la classe TSI Chaptal (rempli par updateClassJoinUI, visible aux élèves connectés) -->
     <div id="classJoin" class="hidden" style="margin:14px 0 0"></div>
+
+    <!-- Légende du bouton Approfondissement (header #advBtn) : explique sa fonction + état courant, rempli/MAJ par _syncAdvBtn() -->
+    <div id="advLegend" class="adv-legend" aria-live="polite"></div>
 
     <!-- Constructeur de quiz personnalisé (replié par défaut pour alléger l'accueil) -->
     <details class="cq">
@@ -1336,10 +1346,10 @@ const QUESTIONS = [
    choices:[{t:"$\\frac{0}{0}$", c:true},{t:"$\\frac{1}{0^{+}}$", c:false},{t:"$0\\times 5$", c:false},{t:"$\\frac{3}{+\\infty}$", c:false}],
    exp:"$\\frac00$ est indéterminée ; $\\frac{1}{0^+}=+\\infty$ et $\\frac{3}{+\\infty}=0$ sont déterminées."},
   {topic:'limites', mode:'qcm', q:"Si $f(x)\\le g(x)$ au voisinage de $a$, $f\\to L$, $g\\to M$, alors :",
-   choices:[{t:"$L\\le M$", c:true},{t:"$L<M$", c:false},{t:"$L=M$", c:false},{t:"rien", c:false}],
+   choices:[{t:"$L\\le M$", c:true},{t:"$L < M$", c:false},{t:"$L=M$", c:false},{t:"rien", c:false}],
    exp:"Le passage à la limite conserve les inégalités au sens large.",
    vig:"Une inégalité stricte ne donne qu'une inégalité LARGE à la limite ($\\tfrac1n>0$ mais $\\to0$)."},
-  {topic:'limites', mode:'qcm', q:"$f$ continue sur $[a,b]$ avec $f(a)<0<f(b)$. Le TVI garantit :",
+  {topic:'limites', mode:'qcm', q:"$f$ continue sur $[a,b]$ avec $f(a) < 0 < f(b)$. Le TVI garantit :",
    choices:[{t:"$\\exists c\\in\\,]a,b[,\\ f(c)=0$", c:true},{t:"$f$ strictement croissante", c:false},{t:"un tel $c$ unique", c:false},{t:"$f$ dérivable", c:false}],
    exp:"Le TVI donne l'EXISTENCE d'un zéro ; l'unicité exige la stricte monotonie."},
   {topic:'limites', mode:'saisie', q:"$\\displaystyle\\lim_{x\\to 0}\\frac{\\sin x}{x} = ?$",
@@ -1555,7 +1565,7 @@ const QUESTIONS = [
   {topic:'systemes', mode:'saisie', q:"Un système homogène $AX=0$ admet toujours au moins quelle solution ?",
    answer:"la solution nulle $X=0$", accept:["0","x=0","la solution nulle","nulle","solution nulle","le vecteur nul"],
    exp:"$X=0$ est toujours solution : un système homogène est toujours compatible."},
-  {topic:'systemes', mode:'flash', q:"Système compatible de rang $r$ à $n$ inconnues ($r<n$) : combien de solutions ?",
+  {topic:'systemes', mode:'flash', q:"Système compatible de rang $r$ à $n$ inconnues ($r < n$) : combien de solutions ?",
    answer:"Une infinité, décrite par $n-r$ paramètres (inconnues libres).",
    exp:"Espace affine de dimension $n-r$."},
 
@@ -1607,7 +1617,7 @@ const QUESTIONS = [
    answer:"$n!$", accept:["n!","factorielle n","n factorielle"],
    exp:"Bijections de l'ensemble sur lui-même : $n!$."},
   {topic:'denombrement', mode:'trou', q:"Combinaisons : $\\dbinom{n}{p}=\\dfrac{n!}{\\square}$.",
-   answer:"$p!\\,(n-p)!$", accept:["p!(n-p)!","p! (n-p)!","p!*(n-p)!"],
+   answer:"$p!\\,(n-p)!$", accept:["p!(n-p)!","p! (n-p)!","p!*(n-p)!","(n-p)!p!","(n-p)! p!","(n-p)!*p!"],
    exp:"$\\binom{n}{p}=\\frac{n!}{p!(n-p)!}$."},
   {topic:'denombrement', mode:'flash', q:"Formule du crible pour $\\mathrm{Card}(A\\cup B)$.",
    answer:"$\\mathrm{Card}(A\\cup B)=\\mathrm{Card}\\,A+\\mathrm{Card}\\,B-\\mathrm{Card}(A\\cap B)$.",
@@ -1849,7 +1859,7 @@ const QUESTIONS = [
   {topic:'polynomes', mode:'qcm', q:"Si $\\Delta=0$, l'équation $ax^2+bx+c=0$ admet :",
    choices:[{t:"une racine double $x=-\\dfrac{b}{2a}$", c:true},{t:"deux racines distinctes", c:false},{t:"aucune racine réelle", c:false},{t:"une infinité", c:false}],
    exp:"Racine double $-\\frac{b}{2a}$."},
-  {topic:'polynomes', mode:'qcm', q:"Signe de $ax^2+bx+c$ avec $a>0$ et $\\Delta>0$ (racines $x_1<x_2$) :",
+  {topic:'polynomes', mode:'qcm', q:"Signe de $ax^2+bx+c$ avec $a>0$ et $\\Delta>0$ (racines $x_1 < x_2$) :",
    choices:[{t:"$>0$ à l'extérieur de $[x_1,x_2]$, $<0$ entre les racines", c:true},{t:"$>0$ partout", c:false},{t:"$<0$ partout", c:false},{t:"$<0$ à l'extérieur, $>0$ entre", c:false}],
    exp:"Du signe de $a$ à l'extérieur des racines (« signe de $a$ partout sauf entre »).",
    vig:"Règle : signe de $a$ à l'extérieur des racines, signe de $-a$ entre les racines."},
@@ -1967,9 +1977,9 @@ const QUESTIONS = [
   {topic:'ev', mode:'flash', q:"Définition d'une base d'un espace vectoriel ?",
    answer:"Une famille à la fois libre et génératrice.",
    exp:"Tout vecteur s'écrit alors de façon unique comme combinaison linéaire des vecteurs de la base."},
-  {topic:'ev', mode:'qcm', q:"Dans un espace de dimension $n$, une famille de $p<n$ vecteurs :",
+  {topic:'ev', mode:'qcm', q:"Dans un espace de dimension $n$, une famille de $p < n$ vecteurs :",
    choices:[{t:"ne peut pas être génératrice", c:true},{t:"est toujours une base", c:false},{t:"est toujours liée", c:false},{t:"engendre $E$", c:false}],
-   exp:"Une famille génératrice a au moins $n$ vecteurs ; avec $p<n$, impossible d'engendrer.",
+   exp:"Une famille génératrice a au moins $n$ vecteurs ; avec $p < n$, impossible d'engendrer.",
    vig:"À l'inverse, une famille de $p>n$ vecteurs est nécessairement liée."},
   {topic:'ev', mode:'saisie', q:"Dimension de l'espace des solutions d'un système homogène de rang $r$ à $n$ inconnues ?",
    answer:"n-r", accept:["n-r","n - r"],
@@ -2242,7 +2252,7 @@ const QUESTIONS = [
   {topic:'sommes', mode:'saisie', q:"$\\displaystyle\\sum_{k=0}^{n}q^k$ lorsque $q=1$ vaut ?",
    answer:"$n+1$", accept:["n+1"],
    exp:"Tous les termes valent $1$ : la formule géométrique ne s'applique pas (division par $0$)."},
-  {topic:'sommes', mode:'qcm', q:"Relation de Chasles pour les sommes ($p<m\\le n$) :",
+  {topic:'sommes', mode:'qcm', q:"Relation de Chasles pour les sommes ($p < m\\le n$) :",
    choices:[{t:"$\\sum_{k=p}^{n}u_k=\\sum_{k=p}^{m}u_k+\\sum_{k=m+1}^{n}u_k$", c:true},{t:"$\\sum_{k=p}^{n}u_k=\\sum_{k=p}^{m}u_k+\\sum_{k=m}^{n}u_k$", c:false},{t:"$\\sum_{k=p}^{n}u_k=\\sum_{k=p}^{m}u_k\\times\\sum_{k=m}^{n}u_k$", c:false},{t:"$\\sum_{k=p}^{n}u_k=\\sum_{k=m}^{n}u_k$", c:false}],
    exp:"Découpage de l'intervalle d'indices ; attention à ne pas compter $u_m$ deux fois.",
    vig:"La seconde somme repart à $m+1$, sinon $u_m$ est compté deux fois."},
@@ -3567,7 +3577,16 @@ $('#modeOpts').addEventListener('click', e=>{
   updateModeDesc(); updatePoolInfo();
 });
 const _advBtn=$('#advBtn');
-function _syncAdvBtn(){ if(_advBtn){ _advBtn.classList.toggle('on', includeAdv); _advBtn.setAttribute('aria-pressed', includeAdv?'true':'false'); } }
+const _advLegend=$('#advLegend');
+function _syncAdvBtn(){
+  if(_advBtn){ _advBtn.classList.toggle('on', includeAdv); _advBtn.setAttribute('aria-pressed', includeAdv?'true':'false'); }
+  if(_advLegend){
+    _advLegend.classList.toggle('on', includeAdv);
+    _advLegend.innerHTML = includeAdv
+      ? '<span class="al-ic" aria-hidden="true">➕</span><span><b>Approfondissement <span class="al-state">activé</span>.</b> Les cartes théoriques avancées (pour aller plus loin) sont incluses dans tous les modes, révision SRS comprise. Re-clique sur ➕ Approfondissement (en haut) pour les retirer.</span>'
+      : '<span class="al-ic" aria-hidden="true">➕</span><span><b>Approfondissement <span class="al-state">désactivé</span>.</b> Seules les cartes essentielles sont posées. Clique sur ➕ Approfondissement (en haut à droite) pour ajouter les cartes théoriques avancées (pour aller plus loin) à tous les modes, révision SRS comprise.</span>';
+  }
+}
 _syncAdvBtn();
 if(_advBtn) _advBtn.onclick = ()=>{ includeAdv = !includeAdv; try{ localStorage.setItem('quiztsi_adv', includeAdv?'1':'0'); }catch(_){ } _syncAdvBtn(); updatePoolInfo(); };
 
