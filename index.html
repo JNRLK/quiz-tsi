@@ -962,7 +962,7 @@ let isAdmin = false;
 // --- Accès au mode révision (freemium) : QCM libres pour tous ; révision (SRS) + suivi réservés ---
 // ACCESS_GATE_ON=false => déploiement « blanc » (rien ne change) le temps de réparer/approuver
 // les accès dans la console admin, puis repasser à true.
-const ACCESS_GATE_ON = false;   // ⚠️ DORMANT : passer à true APRÈS déploiement fonction + réparation/approbation des accès (console admin)
+const ACCESS_GATE_ON = true;    // Verrou ACTIF : révision (SRS) + suivi réservés aux membres approuvés (classStatus==='approved') ou admin ; QCM libres pour tous
 let myClassStatus = null;                 // 'approved' | 'pending' | 'rejected' | null (lu sur le doc de l'élève)
 function revisionAllowed(){ return !ACCESS_GATE_ON || isAdmin || myClassStatus === 'approved'; }
 
