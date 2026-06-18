@@ -1123,9 +1123,11 @@ onAuthStateChanged(auth, async (user)=>{
       }
       if(needs && typeof showProfileGate === 'function'){
         showProfileGate(udoc, user);
-      } else if(typeof maybeOnboard === 'function'){
+      } else {
         // Onboarding seulement après connexion vérifiée et profil complet
-        maybeOnboard();
+        if(typeof maybeOnboard === 'function') maybeOnboard();
+        // Avis ponctuel (1×/appareil) : informe les élèves déjà inscrits du passage en accès classe
+        if(typeof maybeAccessNotice === 'function') maybeAccessNotice();
       }
     }
   } else {
@@ -4782,6 +4784,15 @@ function showAccessGate(){
 function closeAccessGate(){ const m=$('#accessModal'); if(m) m.classList.add('hidden'); }
 $('#accessClose').onclick = closeAccessGate;
 $('#accessModal').addEventListener('click', e=>{ if(e.target.id==='accessModal') closeAccessGate(); });
+// Avis ponctuel au login (1×/appareil) pour les non-membres : réutilise l'écran d'accès comme annonce du changement.
+function maybeAccessNotice(){
+  if(isAdmin || myClassStatus==='approved') return;
+  const onb=$('#onboardModal'); if(onb && !onb.classList.contains('hidden')) return;  // ne pas empiler sur l'onboarding (s'affichera à la prochaine connexion)
+  let shown=false; try{ shown = localStorage.getItem('quiztsi_notice_accessgate_v1')==='1'; }catch(e){}
+  if(shown) return;
+  try{ localStorage.setItem('quiztsi_notice_accessgate_v1','1'); }catch(e){}
+  showAccessGate();
+}
 function updateAccountUI(){
   const btn = $('#accountBtn');
   if(currentUser){
