@@ -646,7 +646,7 @@ window.MathJax = {
         <button class="mode" data-mode="saisie">Réponse libre</button>
         <button class="mode" data-mode="flash">Flashcard</button>
       </div>
-      <p id="modeDesc" style="color:var(--muted); font-size:12.5px; line-height:1.4; margin:0 0 20px"></p>
+      <p id="modeDesc" style="color:var(--muted); font-size:12.5px; line-height:1.4; margin:0 18px 20px"></p>
 
       <!-- Familles accordéon -->
       <p class="section-label">Chapitres &amp; progression</p>
@@ -913,6 +913,7 @@ window.MathJax = {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
 import { getAuth, setPersistence, browserLocalPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, sendEmailVerification } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp, runTransaction, deleteDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-functions.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBOs7FU54O37WkA9cvugGJmaWjHB6Zjg4o",
@@ -928,6 +929,8 @@ const firebaseConfig = {
 const ADMIN_EMAILS = ["arthur.lesage05@gmail.com", "sophie-marcus@orange.fr"];
 
 const fbApp = initializeApp(firebaseConfig);
+const fbFunctions = getFunctions(fbApp);                       // région par défaut us-central1 (= région de la Cloud Function deleteAccount)
+const deleteAccountFn = httpsCallable(fbFunctions, 'deleteAccount');
 const auth = getAuth(fbApp);
 auth.languageCode = 'fr';   // e-mails (vérification, reset) ET pages d'action Firebase en français
 // Persistance locale : la session reste active entre les rechargements et les fermetures
@@ -5073,15 +5076,19 @@ async function admDeleteDuplicates(){
   if(!confirm(`Supprimer définitivement ${dups.length} compte(s) en double (même e-mail) ?\n\nCette action est irréversible.`)) return;
   const btn=$('#admDelDup'); if(btn){ btn.disabled=true; btn.textContent='Suppression…'; }
   let okN=0, errN=0;
-  for(const u of dups){ try{ await Cloud.deleteUserDoc(u.uid); okN++; }catch(e){ errN++; console.warn('delete', u.uid, e); } }
-  if(errN) alert(`${okN} compte(s) supprimé(s), ${errN} échec(s).\nVérifie la règle Firestore « allow delete: if isAdmin() » sur la collection users.`);
+  for(const u of dups){ try{ await deleteAccountFn({ uid:u.uid }); okN++; }catch(e){ errN++; console.warn('delete', u.uid, e); } }
+  if(errN) alert(`${okN} compte(s) supprimé(s), ${errN} échec(s). Si la fonction vient d'être déployée, réessaie dans un instant.`);
   renderAdmin();
 }
 async function admDeleteOne(uid, label){
   if(!uid) return;
-  if(!confirm(`Supprimer définitivement le compte « ${label||uid} » ?\n\nCette action est irréversible.`)) return;
-  try{ await Cloud.deleteUserDoc(uid); }
-  catch(e){ alert('Suppression impossible — vérifie la règle « allow delete: if isAdmin() ».\n'+(e.code||e.message)); return; }
+  if(!confirm(`Supprimer définitivement le compte « ${label||uid} » ?\n\nCette action est irréversible (login Firebase + données).`)) return;
+  try{
+    const res = await deleteAccountFn({ uid });
+    const d = (res && res.data) || {};
+    if(d.authError){ alert("Données supprimées, mais le login Firebase n'a pas pu être retiré :\n"+d.authError); }
+  }
+  catch(e){ alert('Suppression impossible : '+(e.message||e.code||e)); return; }
   renderAdmin();
 }
 
@@ -5173,7 +5180,7 @@ function paintAdmin(){
   let html = '';
 
   // 1) Trombinoscope (liste repliable)
-  html += `<details class="adm-sec" open><summary class="adm-sec-h"><span class="cq-ic">👥</span><span class="cq-title">Trombinoscope — comptes (${list.length}/${total})</span><span class="cq-chev">▸</span></summary><div class="adm-sec-b">`;
+  html += `<details class="adm-sec"><summary class="adm-sec-h"><span class="cq-ic">👥</span><span class="cq-title">Trombinoscope — comptes (${list.length}/${total})</span><span class="cq-chev">▸</span></summary><div class="adm-sec-b">`;
   if(ADM.dupCount>0){ html += `<p class="footer-note" style="text-align:left;margin:0 0 12px;color:#fbbf24">⚠ ${ADM.dupCount} doublon(s) de compte (même e-mail) masqué(s). Clique « 🗑 Supprimer les doublons » en haut pour les retirer définitivement.</p>`; }
   if(ADM.pseudoDupes && ADM.pseudoDupes.length){ const names=ADM.pseudoDupes.map(g=>`« ${admEsc(g[0].displayName)} » (${g.length})`).join(', '); html += `<p class="footer-note" style="text-align:left;margin:0 0 12px;color:#fbbf24">⚠ Pseudo(s) en double sur des comptes distincts : ${names}. Déplie le compte concerné et supprime/renomme pour garantir l'unicité.</p>`; }
   html += list.length ? (`<div class="adm-list">` + list.map(admStudentRow).join('') + `</div>`)
@@ -5184,7 +5191,7 @@ function paintAdmin(){
   const activeSel = list.filter(u=>u.agg && u.agg.totalAnswered);
   const classByTopic = {};
   activeSel.forEach(u=>{ const bt=u.agg.byTopic||{}; for(const k in bt){ (classByTopic[k] ||= {a:0,c:0}); classByTopic[k].a+=bt[k].a; classByTopic[k].c+=bt[k].c; } });
-  html += `<details class="adm-sec"${Object.keys(classByTopic).length?' open':''}><summary class="adm-sec-h"><span class="cq-ic">📊</span><span class="cq-title">Analyse par chapitre</span><span class="cq-chev">▸</span></summary><div class="adm-sec-b">`;
+  html += `<details class="adm-sec"><summary class="adm-sec-h"><span class="cq-ic">📊</span><span class="cq-title">Analyse par chapitre</span><span class="cq-chev">▸</span></summary><div class="adm-sec-b">`;
   if(Object.keys(classByTopic).length){
     html += `<p class="footer-note" style="text-align:left;margin:0 0 12px">Classés du plus difficile au plus maîtrisé (sélection active).</p><div class="breakdown">`;
     Object.entries(classByTopic).map(([k,s])=>({k,...s,r:s.c/s.a})).sort((a,b)=>a.r-b.r).forEach(({k,a,c})=>{
@@ -5233,7 +5240,7 @@ function paintAdmin(){
   const pendingC = requesters.filter(u=> roster[u.uid] !== 'approved' && roster[u.uid] !== 'rejected');
   const approvedC = (ADM.users||[]).filter(u=> roster[u.uid]==='approved');
   const _nm = u => admEsc((u.profile&&u.profile.nom) || u.displayName || u.email || '—');
-  html += `<details class="adm-sec"${pendingC.length?' open':''}><summary class="adm-sec-h"><span class="cq-ic">🎓</span><span class="cq-title">Classe TSI Chaptal — ${approvedC.length} membre(s)${pendingC.length?` · ${pendingC.length} demande(s)`:''}</span><span class="cq-chev">▸</span></summary><div class="adm-sec-b">`;
+  html += `<details class="adm-sec"><summary class="adm-sec-h"><span class="cq-ic">🎓</span><span class="cq-title">Classe TSI Chaptal — ${approvedC.length} membre(s)${pendingC.length?` · ${pendingC.length} demande(s)`:''}</span><span class="cq-chev">▸</span></summary><div class="adm-sec-b">`;
   if(pendingC.length){
     html += `<p class="footer-note" style="text-align:left;margin:0 0 10px">Demandes en attente</p><div class="adm-list">`;
     pendingC.forEach(u=>{ html += `<div class="miss" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="flex:1;min-width:150px">${_nm(u)} <span style="color:var(--muted);font-size:12px">${admEsc(u.email||'')}</span></span><button class="btn mini" type="button" data-approve-uid="${admEsc(u.uid)}">✓ Approuver</button><button class="btn ghost mini" type="button" data-reject-uid="${admEsc(u.uid)}">✗ Refuser</button></div>`; });
