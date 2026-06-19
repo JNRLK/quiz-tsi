@@ -644,6 +644,16 @@ window.MathJax = {
   .scope-soon .ss-emoji{font-size:30px; display:block; margin-bottom:8px}
   .scope-soon .ss-t{font-family:'Fraunces',serif; font-weight:700; font-size:17px; color:var(--ink); margin-bottom:4px}
   .scope-soon .ss-s{font-size:13px; line-height:1.5; max-width:340px; margin:0 auto}
+  /* ---- Menu de classe (TSI0/1/2) en tête de l'accueil ---- */
+  .class-menu{display:flex; gap:10px; margin:0 0 16px; flex-wrap:wrap}
+  .class-menu .cm-lbl{flex-basis:100%; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:700; margin:0 0 2px}
+  .class-card{flex:1; min-width:96px; background:#0d1320; border:1.5px solid var(--line); border-radius:14px; padding:12px 10px; cursor:pointer; transition:.15s; text-align:center; color:var(--muted); font-family:'Hanken Grotesk',system-ui,sans-serif}
+  .class-card:hover{border-color:#4b5563; color:var(--ink)}
+  .class-card.on{border-color:#a78bfa; background:color-mix(in srgb,#a78bfa 16%,#0d1320); color:#fff}
+  .class-card .cc-y{font-family:'Fraunces',serif; font-weight:900; font-size:21px; line-height:1; display:block}
+  .class-card .cc-s{font-size:11px; margin-top:4px; display:block; line-height:1.2; color:var(--muted)}
+  .class-card.on .cc-s{color:#cbb6ff}
+  .class-card .cc-soon{display:inline-block; font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:1px 7px; margin-top:6px}
 </style>
 </head>
 <body>
@@ -688,6 +698,9 @@ window.MathJax = {
 
   <!-- START -->
   <div class="card" id="startScreen">
+
+    <!-- Menu de CLASSE (TSI0 / TSI1 / TSI2) — toujours visible, en premier. Rempli par buildClassMenu(). -->
+    <div id="classMenu" class="class-menu"></div>
 
     <!-- SRS dashboard -->
     <div id="srsBar" style="margin-bottom:0"></div>
@@ -1397,6 +1410,10 @@ function levelsWithContent(subject){ if(isTransversal(subject)) return []; retur
 /* Phase 2 : l'élève atterrit sur SON année. filiere==='TSI' + annee 0/1/2 → activeLevel.
    Si l'année visée n'a pas (encore) de contenu, buildNavScope la corrige (révélation progressive). */
 function applyPreferredLevel(p){ if(p && p.filiere==='TSI' && ['0','1','2'].includes(String(p.annee))) activeLevel = 'tsi'+p.annee; }
+/* Matières disponibles pour une classe (année) : celles qui ont du contenu à ce niveau + les transversales. */
+function subjectsForLevel(level){ return Object.keys(SUBJECTS).filter(s => isTransversal(s) ? hasContent(s,'tr') : hasContent(s,level)).sort((a,b)=>SUBJECTS[a].order-SUBJECTS[b].order); }
+/* La classe a-t-elle du contenu « cœur » (hors langues transversales) ? sinon badge « bientôt ». */
+function levelHasOwnContent(level){ return Object.keys(SUBJECTS).some(s => !isTransversal(s) && hasContent(s,level)); }
 /* ============================================================================================ */
 
 // ====================== RENVOI AU COURS (page exacte de la notion) ======================
@@ -3578,46 +3595,43 @@ function updateSrsBar(){
   });
 }
 
-/* ====================== SÉLECTEUR MATIÈRE × ANNÉE ======================
-   Révélation progressive : on n'affiche que les matières / années qui ont du contenu.
-   Tant qu'une seule matière ET une seule année sont remplies (aujourd'hui : maths / TSI1),
-   le sélecteur reste MASQUÉ → l'élève ne voit aucun changement. Les onglets apparaissent
-   automatiquement dès qu'une banque est ajoutée (cf. subjectsWithContent / levelsWithContent). */
+/* ====================== MENU DE CLASSE (TSI0/1/2) + SÉLECTEUR MATIÈRE ======================
+   Demande de l'utilisateur : on choisit D'ABORD sa classe (TSI0 / TSI1 / TSI2), bien visible en
+   haut de l'accueil ; le menu de révision (chapitres/QCM) s'affiche EN CONSÉQUENCE pour cette classe.
+   Les 3 classes sont TOUJOURS affichées (badge « bientôt » si pas encore de contenu cœur).
+   La matière est un sous-choix secondaire (sélecteur ci-dessous, scopé à la classe active). */
+const CLS_SUB = { tsi0:'transition · bac pro', tsi1:'1re année', tsi2:'2e année' };
+function buildClassMenu(){
+  const host=$('#classMenu'); if(!host) return;
+  host.innerHTML = `<div class="cm-lbl">Choisis ta classe</div>` + ['tsi0','tsi1','tsi2'].map(l=>{
+    const soon = !levelHasOwnContent(l);
+    return `<button class="class-card${activeLevel===l?' on':''}" data-cls="${l}"><span class="cc-y">${LEVELS[l].short}</span><span class="cc-s">${CLS_SUB[l]}</span>${soon?'<span class="cc-soon">bientôt</span>':''}</button>`;
+  }).join('');
+  host.querySelectorAll('[data-cls]').forEach(b=>b.onclick=()=>{ activeLevel=b.dataset.cls; buildFamilyAccordion(); updatePoolInfo(); updateSelectAllBtn(); });
+}
 function buildNavScope(){
   const host=$('#navScope'); if(!host) return;
-  const subs=subjectsWithContent();
-  if(subs.length && !subs.includes(activeSubject)) activeSubject=subs[0];   // garde l'actif sur une matière remplie
-  const lvls=levelsWithContent(activeSubject);
-  if(lvls.length && !lvls.includes(activeLevel)) activeLevel=lvls[0];
-  const showSub=subs.length>=2, showLvl=lvls.length>=2;
-  if(!showSub && !showLvl){ host.style.display='none'; host.innerHTML=''; return; }  // dormant : rien à choisir
+  const subs=subjectsForLevel(activeLevel);                  // matières disponibles pour la classe active
+  if(subs.length<2){ host.style.display='none'; host.innerHTML=''; return; }  // 0 ou 1 matière → pas de sélecteur
   host.style.display='';
-  let html='';
-  if(showSub){
-    html+=`<div class="scope-row"><span class="scope-lbl">Matière</span>`;
-    for(const s of subs) html+=`<button class="scope-btn${s===activeSubject?' on':''}" data-sub="${s}">${SUBJECTS[s].name}</button>`;
-    html+=`</div>`;
-  }
-  if(showLvl){
-    html+=`<div class="scope-row"><span class="scope-lbl">Année</span>`;
-    for(const l of lvls) html+=`<button class="scope-btn${l===activeLevel?' on':''}" data-lvl="${l}">${LEVELS[l].short}</button>`;
-    html+=`</div>`;
-  }
+  let html=`<div class="scope-row"><span class="scope-lbl">Matière</span>`;
+  for(const s of subs) html+=`<button class="scope-btn${s===activeSubject?' on':''}" data-sub="${s}">${SUBJECTS[s].name}</button>`;
+  html+=`</div>`;
   host.innerHTML=html;
-  host.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>{ activeSubject=b.dataset.sub; const ls=levelsWithContent(activeSubject); if(ls.length&&!ls.includes(activeLevel)) activeLevel=ls[0]; buildFamilyAccordion(); updatePoolInfo(); updateSelectAllBtn(); });
-  host.querySelectorAll('[data-lvl]').forEach(b=>b.onclick=()=>{ activeLevel=b.dataset.lvl; buildFamilyAccordion(); updatePoolInfo(); updateSelectAllBtn(); });
+  host.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>{ activeSubject=b.dataset.sub; buildFamilyAccordion(); updatePoolInfo(); updateSelectAllBtn(); });
 }
 
 /* ====================== ACCORDÉON FAMILLES ====================== */
 function buildFamilyAccordion(){
   const host=$('#famAccordion'); if(!host) return;
+  buildClassMenu();
   buildNavScope();
   host.innerHTML='';
   const lvl=effLevel();
-  // Aucun chapitre pour cette (matière × année) → état « bientôt disponible »
+  // Aucun chapitre pour cette classe × matière → état « bientôt disponible »
   const scopeTopics=Object.keys(TOPICS).filter(k=>TOPICS[k].subject===activeSubject && TOPICS[k].level===lvl);
   if(scopeTopics.length===0){
-    host.innerHTML=`<div class="scope-soon"><span class="ss-emoji">🚧</span><div class="ss-t">${SUBJECTS[activeSubject].name} · ${isTransversal(activeSubject)?'Transversal':(LEVELS[activeLevel]?LEVELS[activeLevel].short:'')}</div><div class="ss-s">Contenu bientôt disponible. L'infrastructure est prête : les QCM seront ajoutés ici.</div></div>`;
+    host.innerHTML=`<div class="scope-soon"><span class="ss-emoji">🚧</span><div class="ss-t">${LEVELS[activeLevel]?LEVELS[activeLevel].short:''} · ${SUBJECTS[activeSubject].name}</div><div class="ss-s">Pas encore de chapitres pour cette classe en ${SUBJECTS[activeSubject].name}. Bientôt disponible.</div></div>`;
     updateSelectAllBtn();
     return;
   }
