@@ -944,6 +944,7 @@ window.MathJax = {
 <script type="module">
 /* ====================== FIREBASE ====================== */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app-check.js";
 import { getAuth, setPersistence, browserLocalPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, sendEmailVerification } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp, runTransaction, deleteDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-functions.js";
@@ -962,6 +963,14 @@ const firebaseConfig = {
 const ADMIN_EMAILS = ["arthur.lesage05@gmail.com", "sophie-marcus@orange.fr"];
 
 const fbApp = initializeApp(firebaseConfig);
+// App Check (anti-abus / anti-robots) — reCAPTCHA v3. L'enforcement réel se règle côté console Firebase.
+// Enveloppé dans try/catch : en cas de souci, l'application continue de fonctionner normalement.
+try {
+  initializeAppCheck(fbApp, {
+    provider: new ReCaptchaV3Provider('6LexBSgtAAAAABJAkE-n-nwWOCcFZFepYhGGlAuI'),
+    isTokenAutoRefreshEnabled: true
+  });
+} catch (e) { console.warn('AppCheck init', e); }
 const fbFunctions = getFunctions(fbApp);                       // région par défaut us-central1 (= région de la Cloud Function deleteAccount)
 const deleteAccountFn = httpsCallable(fbFunctions, 'deleteAccount');
 const setClassApprovalFn = httpsCallable(fbFunctions, 'setClassApproval');
@@ -5528,7 +5537,7 @@ if ('serviceWorker' in navigator) {
       <b>Finalités :</b> fournir l'outil de révision et la progression personnalisée ; permettre au professeur un suivi pédagogique ; améliorer le contenu.<br>
       <b>Bases légales :</b> exécution du service demandé ; intérêt légitime (suivi pédagogique) ; consentement (mesure d'audience le cas échéant).<br>
       <b>Mineurs :</b> information adaptée ; pour les moins de 15 ans, consentement d'un titulaire de l'autorité parentale ; aucune utilisation à des fins de prospection.<br>
-      <b>Destinataires / sous-traitants :</b> Google (Firebase — authentification, base de données, fonctions), OVH (e-mails de service, domaine), GitHub / Microsoft (hébergement), Cloudflare (diffusion technique — CDN). Stripe en cas d'abonnement ultérieur.<br>
+      <b>Destinataires / sous-traitants :</b> Google (Firebase — authentification, base de données, fonctions), OVH (e-mails de service, domaine), GitHub / Microsoft (hébergement), Cloudflare (diffusion technique — CDN), Google reCAPTCHA (protection anti-robots / App Check). Stripe en cas d'abonnement ultérieur.<br>
       <b>Transferts hors UE :</b> certains traitements (fonctions serveur) sont opérés aux États-Unis, encadrés par les clauses contractuelles types de la Commission européenne.<br>
       <b>Conservation :</b> données conservées tant que le compte est actif ; suppression automatique après 24 mois sans connexion, ou immédiatement à la demande.<br>
       <b>Vos droits :</b> accès, rectification, effacement (bouton « supprimer mon compte » dans l'application), portabilité, opposition. Demandes : arthur.lesage05@gmail.com (réponse sous 1 mois). Réclamation possible auprès de la CNIL — cnil.fr.<br>
