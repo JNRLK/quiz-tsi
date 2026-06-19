@@ -209,6 +209,13 @@ window.MathJax = {
   .srs-cnt .n{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:22px; line-height:1}
   .srs-cnt .l{font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted)}
   .srs-none{color:var(--muted); font-size:14px; text-align:center; padding:14px; background:#0d1320; border:1px solid var(--line); border-radius:14px; margin-bottom:22px}
+  /* ---- Objectif de session (sélecteur sur le tableau de bord) ---- */
+  .rev-obj-row{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:12px}
+  .rev-obj-row .lbl{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+  .obj-opts{display:inline-flex; gap:6px; flex-wrap:wrap}
+  .obj-btn{background:#0d1320; border:1px solid var(--line); color:var(--muted); border-radius:9px; padding:5px 11px; font-size:12.5px; font-family:'JetBrains Mono',monospace; cursor:pointer; transition:.15s; line-height:1.1}
+  .obj-btn:hover{color:var(--ink); border-color:#3b4a63}
+  .obj-btn.on{background:color-mix(in srgb,#a78bfa 22%,#0d1320); border-color:#a78bfa; color:#fff; font-weight:600}
 
   /* ---- Accordéon familles ---- */
   .fam-block{margin-bottom:14px; border:1px solid var(--line); border-radius:18px; overflow:hidden}
@@ -425,8 +432,13 @@ window.MathJax = {
     .stat-card .big{font-size:24px}
 
     /* modal */
+    .modal-overlay{padding:12px; padding-bottom:max(12px, env(safe-area-inset-bottom))}
     .modal{padding:20px 16px}
     .modal h2{font-size:20px}
+    /* inscription : formulaire long → on resserre les espacements pour limiter le défilement sur petit écran */
+    #authProfile .ans-input, #authProfile .mode-opts{margin-top:8px !important}
+    #authProfile .section-label{margin:10px 0 4px !important}
+    #authSubmit{margin-top:12px !important}
 
     /* boutons d'action : icône seule sur mobile (avant : display:none → inaccessibles) */
     #statsBtn .bl, #juryBtn .bl, #adminBtn .bl, #advBtn .bl{display:none}
@@ -516,8 +528,10 @@ window.MathJax = {
   .cloud-banner{background:#0d1320; border:1px solid var(--line); border-radius:12px; padding:11px 14px; font-size:13.5px; color:var(--muted); margin-bottom:16px}
   .cloud-banner.ok{border-color:color-mix(in srgb,#22c55e 45%,transparent); color:#86efac}
   .cloud-banner a{color:#a78bfa; cursor:pointer; text-decoration:underline}
-  .modal-overlay{position:fixed; inset:0; z-index:50; background:rgba(4,7,14,.72); backdrop-filter:blur(5px); display:flex; align-items:center; justify-content:center; padding:20px; animation:rise .2s both}
-  .modal{position:relative; width:100%; max-width:380px; background:linear-gradient(180deg,#1b2333,#111827); border:1px solid var(--line); border-radius:20px; padding:26px; box-shadow:0 30px 70px -20px rgba(0,0,0,.85)}
+  /* overlay défilable : un formulaire long (inscription) ne doit jamais rogner le bouton de validation.
+     margin:auto sur l'enfant centre sans rogner le haut/bas quand le contenu dépasse (le parent défile). */
+  .modal-overlay{position:fixed; inset:0; z-index:50; background:rgba(4,7,14,.72); backdrop-filter:blur(5px); display:flex; padding:20px; padding-bottom:max(20px, env(safe-area-inset-bottom)); overflow-y:auto; -webkit-overflow-scrolling:touch; animation:rise .2s both}
+  .modal{position:relative; width:100%; max-width:380px; margin:auto; background:linear-gradient(180deg,#1b2333,#111827); border:1px solid var(--line); border-radius:20px; padding:26px; box-shadow:0 30px 70px -20px rgba(0,0,0,.85)}
   .modal-close{position:absolute; top:14px; right:14px; background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; line-height:1}
   .modal-close:hover{color:var(--ink)}
   .auth-sub{color:var(--muted); font-size:14px; margin:0 0 18px}
@@ -2947,6 +2961,11 @@ let idx = 0, score = 0, streak = 0, bestStreak = 0;
 let answeredFlag = false;
 let sessionStartedAt = 0;   // début de session quiz (durée de connexion) — capture analytique
 let _sessionFlushed = false;   // garde anti-doublon : une session n'est sauvée qu'une fois (bilan OU abandon OU pagehide)
+// Session de révision : pioche à la demande (dues → nouvelles → entraînement libre), bornée par un objectif.
+// null = quiz normal à pool fixe. lastSessionKind/restartSession pilotent le bouton du bilan.
+let reviewSession = null;
+let lastSessionKind = 'quiz';   // 'review' | 'quiz'
+let restartSession = null;      // ()=>void : relance une session de même nature depuis le bilan
 
 const $ = s => document.querySelector(s);
 const shuffle = a => { for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]];} return a; };
@@ -3416,6 +3435,15 @@ function updateSrsBar(){
         ? `<button class="btn" id="srsStartBtn" style="margin-left:auto">Réviser (${sessionSize}) →</button>`
         : `<span style="color:#4ade80;font-size:14px;font-weight:600;margin-left:auto">✓ Tout à jour !</span>`}
     </div>
+    ${sessionSize>0 ? `<div class="rev-obj-row">
+      <span class="lbl">Objectif</span>
+      <div class="obj-opts">
+        <button class="obj-btn" data-t="10">10</button>
+        <button class="obj-btn" data-t="20">20</button>
+        <button class="obj-btn" data-t="40">40</button>
+        <button class="obj-btn" data-t="inf">∞ Illimité</button>
+      </div>
+    </div>` : ''}
     <div class="mat-bar" title="Répartition par maturité">
       <div style="width:${seg(counts.mature)}%;background:#22c55e"></div>
       <div style="width:${seg(counts.young)}%;background:#84cc16"></div>
@@ -3430,6 +3458,13 @@ function updateSrsBar(){
 
   const sb=$('#srsStartBtn'); if(sb) sb.onclick=startSrsReview;
   const sh=$('#srsHelp'); if(sh) sh.onclick=openOnboarding;
+  // sélecteur d'objectif de session (10/20/40/∞), persisté côté client
+  const curTgt = getReviewTarget();
+  bar.querySelectorAll('.obj-btn').forEach(b=>{
+    const v = b.dataset.t==='inf' ? Infinity : parseInt(b.dataset.t,10);
+    if(v===curTgt) b.classList.add('on');
+    b.onclick = ()=>{ setReviewTarget(v); updateSrsBar(); };
+  });
 }
 
 /* ====================== ACCORDÉON FAMILLES ====================== */
@@ -3562,6 +3597,7 @@ function startSrsReviewForTopic(topicKey){
   if(!dueForTopic.length){ alert('Aucune carte due pour ce chapitre.'); return; }
   pool=dueForTopic.map(q=>({...q, _choices:q.mode==='qcm'?shuffle(q.choices.map((c,i)=>({...c,orig:i}))):undefined}));
   idx=0; score=0; streak=0; bestStreak=0;
+  reviewSession = null; lastSessionKind = 'review'; restartSession = ()=>startSrsReviewForTopic(topicKey);
   updateHeaderStats();
   ['startScreen','resultScreen','examScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
   $('#quizScreen').classList.remove('hidden');
@@ -3581,40 +3617,90 @@ function maybeOnboard(){ try{ if(!localStorage.getItem(ONBOARD_KEY)) openOnboard
 /* Lance une session de révision espacée */
 let srsMode = false;
 let srsQueue = [];
+
+/* Objectif de session (nombre de cartes à faire) : 10/20/40 ou illimité (∞).
+   Persisté côté client (compatible hébergement statique). Illimité par défaut. */
+const REVIEW_TARGET_KEY = 'quiztsi_review_target';
+function getReviewTarget(){
+  let v = null; try{ v = localStorage.getItem(REVIEW_TARGET_KEY); }catch(e){}
+  if(v==null || v==='inf') return Infinity;
+  const n = parseInt(v,10); return (n>0) ? n : Infinity;
+}
+function setReviewTarget(v){
+  try{ localStorage.setItem(REVIEW_TARGET_KEY, (v===Infinity||!isFinite(v)) ? 'inf' : String(v)); }catch(e){}
+}
+
 // « Révision du jour » : on révise TOUT en flashcard (réfléchir → révéler → s'auto-évaluer),
 // méthode la plus efficace pour la rétention. Réponse révélée = q.answer (trou/saisie/flash)
 // ou la bonne proposition (QCM). La personnalisation des modes reste dans le quiz « Commencer ».
 function toFlashCard(q){ const ans = q.answer || (q.choices ? ((q.choices.find(c=>c.c)||{}).t || '') : ''); return {...q, mode:'flash', answer: ans, _choices: undefined }; }
+
+/* Source de cartes à la demande pour une session de révision.
+   Ordre : 1) cartes DUES + NOUVELLES du jour (le « travail SRS » réel, entrelacé),
+           2) puis ENTRAÎNEMENT LIBRE : tout le programme, mélangé, recyclé à l'infini.
+   primaryCount = taille du travail SRS du jour (sert à la barre de progression en illimité). */
+function makeReviewSource(){
+  const d = SRS._d();
+  const hMap = {}; QUESTIONS.forEach(q => { hMap[qHash(q.q)] = q; });
+  const due = SRS.due().map(c => hMap[c.h]).filter(Boolean);
+  const remaining = Math.max(0, NEW_PER_DAY - SRS.dailyNewCount());
+  let fresh = QUESTIONS.filter(q => !d.cards[qHash(q.q)] && advAllowed(q));
+  shuffle(fresh); fresh = fresh.slice(0, remaining);
+  const primary = shuffle([...due, ...fresh]);          // travail du jour, entrelacé
+  const freeAll = QUESTIONS.filter(advAllowed);          // réservoir d'entraînement libre
+  let freeBag = [];
+  let pi = 0;
+  return {
+    primaryCount: primary.length,
+    next(){
+      if(pi < primary.length) return primary[pi++];
+      if(!freeBag.length) freeBag = shuffle(freeAll.slice());   // recycle le programme à l'infini
+      return freeBag.shift() || null;
+    }
+  };
+}
+
 function startSrsReview(){
   if(!revisionAllowed()){ showAccessGate(); return; }
-  srsMode = true;
-  const d = SRS._d();
-  const hMap = {};
-  QUESTIONS.forEach(q => { hMap[qHash(q.q)] = q; });
-  // 1) cartes DUES (déjà vues, à revoir)
-  const dueCards = SRS.due().map(c => hMap[c.h]).filter(Boolean);
-  // 2) NOUVELLES cartes, plafonnées par le quota quotidien restant
-  const remaining = Math.max(0, NEW_PER_DAY - SRS.dailyNewCount());
-  const newCards = QUESTIONS.filter(q => !d.cards[qHash(q.q)] && advAllowed(q));
-  shuffle(newCards);
-  const newPick = newCards.slice(0, remaining);
-
-  srsQueue = [...dueCards, ...newPick];
-  if(!srsQueue.length){
-    alert(dueCards.length===0 && remaining===0
-      ? 'Objectif du jour atteint : plus de nouvelles cartes et rien à réviser. Reviens demain ! 💪'
-      : 'Rien à réviser pour l\'instant. Lance un quiz pour découvrir des cartes.');
-    srsMode = false; return;
+  const src = makeReviewSource();
+  const first = src.next();
+  if(!first){
+    alert('Rien à réviser pour l\'instant. Lance un quiz pour découvrir des cartes.');
+    return;
   }
-  shuffle(srsQueue);            // entrelacement (interleaving) des chapitres : meilleure rétention
-  srsQueue = srsQueue.slice(0, 40);  // garde-fou de longueur de session
-  // on utilise le flux quiz normal mais avec les questions de la file SRS
-  pool = srsQueue.map(toFlashCard);   // bandeau « Révision du jour » → flashcards uniquement
-  idx=0; score=0; streak=0; bestStreak=0;
+  srsMode = true;
+  lastSessionKind = 'review';
+  restartSession = startSrsReview;
+  reviewSession = { target: getReviewTarget(), count: 0, src, primaryCount: src.primaryCount };
+  pool = [ toFlashCard(first) ];
+  idx = 0; score = 0; streak = 0; bestStreak = 0;
   updateHeaderStats();
   $('#startScreen').classList.add('hidden'); $('#resultScreen').classList.add('hidden');
   $('#quizScreen').classList.remove('hidden');
   renderQuestion();
+}
+
+/* Avancement centralisé : route vers la session de révision (file dynamique) ou
+   le flux quiz à pool fixe. Appelé par les boutons de notation, la confiance QCM et « Suivant ». */
+function advanceCard(){
+  if(reviewSession){ reviewAdvance(); return; }
+  if(idx < pool.length-1){ idx++; renderQuestion(); }
+  else showResults();
+}
+function reviewAdvance(){
+  reviewSession.count++;
+  // objectif fixe atteint → bilan
+  if(isFinite(reviewSession.target) && reviewSession.count >= reviewSession.target){ finishReview(); return; }
+  const card = reviewSession.src.next();
+  if(!card){ finishReview(); return; }   // garde-fou (réservoir vide) ; en pratique l'entraînement libre ne tarit pas
+  pool.push(toFlashCard(card));
+  idx = pool.length - 1;
+  renderQuestion();
+}
+function finishReview(){
+  // bilan de la session (showResults s'appuie sur `pool`, qui contient les cartes traitées)
+  showResults();
+  reviewSession = null;
 }
 
 /* ====================== START SCREEN ====================== */
@@ -3705,6 +3791,7 @@ $('#startBtn').onclick = ()=>{
   if(chosenLen>0) qs = qs.slice(0, chosenLen);
   qs.forEach(q=>{ if(q.mode==='qcm') q._choices = shuffle(q.choices.map((c,i)=>({...c, orig:i}))); });
   pool = qs; idx=0; score=0; streak=0; bestStreak=0;
+  reviewSession = null; lastSessionKind = 'quiz'; restartSession = ()=>$('#startBtn').click();
   updateHeaderStats();
   $('#startScreen').classList.add('hidden');
   $('#resultScreen').classList.add('hidden');
@@ -3718,10 +3805,20 @@ function renderQuestion(){
   if(idx===0){ sessionStartedAt = Date.now(); _sessionFlushed = false; }   // démarrage de session (durée + reset anti-doublon)
   q._shownAt = Date.now();                      // horodatage d'affichage (temps de réponse)
   const pad = n => String(n).padStart(2,'0');
-  $('#qCounter').textContent = `${pad(idx+1)} / ${pad(pool.length)}`;
+  if(reviewSession){
+    // compteur/progression pilotés par la session (file dynamique), pas par pool.length
+    const tgt = reviewSession.target, cur = reviewSession.count + 1;
+    const free = reviewSession.count >= (reviewSession.primaryCount||0);   // au-delà du travail du jour → entraînement libre
+    $('#qCounter').textContent = isFinite(tgt) ? `${pad(cur)} / ${pad(tgt)}` : (free ? `Libre · ${cur}` : `Carte ${cur}`);
+    const denom = isFinite(tgt) ? tgt : (reviewSession.primaryCount || cur);
+    $('#progBar').style.width = Math.min(100, reviewSession.count/denom*100)+'%';
+  } else {
+    $('#qCounter').textContent = `${pad(idx+1)} / ${pad(pool.length)}`;
+    $('#progBar').style.width = ((idx)/pool.length*100)+'%';
+  }
   $('#qTopicTag').textContent = t.name;
   $('#qTopicTag').style.color = t.raw;
-  $('#progBar').style.width = ((idx)/pool.length*100)+'%';
+  const ab=$('#abandonBtn'); if(ab) ab.textContent = reviewSession ? '✓ Terminer' : '✕ Abandonner';
 
   $('#badge').innerHTML = `<span class="badge" style="background:${t.raw}">${t.name}</span><span class="mtag">${MODE_LABEL[q.mode]||''}</span>`;
   $('#qText').innerHTML = q.q;
@@ -3733,7 +3830,7 @@ function renderQuestion(){
 
   const fb = $('#feedback'); fb.className='feedback hidden'; fb.innerHTML='';
   $('#nextBtn').classList.add('hidden');
-  $('#nextBtn').textContent = idx===pool.length-1 ? 'Voir le bilan →' : 'Suivant →';
+  $('#nextBtn').textContent = (!reviewSession && idx===pool.length-1) ? 'Voir le bilan →' : 'Suivant →';
 
   typeset($('#quizScreen'));
   $('#quizScreen').scrollIntoView({behavior:'smooth', block:'start'});
@@ -3980,7 +4077,7 @@ function srsGradeButtons(q, container){
       updateHeaderStats();
       div.querySelectorAll('.sg2').forEach(x=>{x.disabled=true; x.style.opacity=x===b?'1':'.3';});
       // la note EST l'action finale : on enchaîne directement sur la carte suivante
-      setTimeout(()=>{ if(idx < pool.length-1){ idx++; renderQuestion(); } else showResults(); }, 160);
+      setTimeout(advanceCard, 160);
     };
     div.appendChild(b);
   });
@@ -4050,7 +4147,7 @@ function qcmConfidence(q, container){
       SRS.review(h, q.q, q.topic, g);
       updateHeaderStats();
       div.querySelectorAll('.sg2').forEach(x=>{ x.disabled=true; x.style.opacity = x===b?'1':'.3'; });
-      setTimeout(()=>{ if(idx<pool.length-1){ idx++; renderQuestion(); } else showResults(); }, 160);
+      setTimeout(advanceCard, 160);
     };
     div.appendChild(b);
   });
@@ -4061,7 +4158,7 @@ function finalizeSelf(q, ok){
   if(q._ms==null && q._shownAt) q._ms = Date.now()-q._shownAt; q._answered=true;   // temps de réponse + marque « répondu »
   // ok = true (auto-correct sûr), false (raté/non reconnu), null (flash : pas de jugement auto)
   const sg = document.querySelector('.selfgrade'); if(sg) sg.remove();
-  $('#progBar').style.width = ((idx+1)/pool.length*100)+'%';
+  if(!reviewSession) $('#progBar').style.width = ((idx+1)/pool.length*100)+'%';   // en révision, la barre est pilotée par renderQuestion (compteur de session)
   const fb = $('#feedback');
 
   // Verdict seulement si l'on a une info fiable (saisie/trou). Pas pour les flash.
@@ -4082,10 +4179,7 @@ function finalizeSelf(q, ok){
   scrollToAction(fb.lastElementChild);
 }
 
-$('#nextBtn').onclick = ()=>{
-  if(idx < pool.length-1){ idx++; renderQuestion(); }
-  else showResults();
-};
+$('#nextBtn').onclick = ()=> advanceCard();
 
 /* ====================== RACCOURCIS CLAVIER ====================== */
 document.addEventListener('keydown', (e)=>{
@@ -4194,28 +4288,52 @@ function showResults(){
       rv += `<div class="miss">${q.q}<div class="ans">Réponse : <b>${good}</b>${q.exp?` — ${q.exp}`:''}${q.vig?` <span style="color:#fbbf24">⚠️ ${q.vig}</span>`:''}</div></div>`;
     });
   } else {
-    rv = `<h3>Sans faute 🎯</h3><div class="miss" style="border-left-color:#22c55e">Rien à revoir sur cette série. Augmente la longueur ou ajoute des chapitres.</div>`;
+    rv = (lastSessionKind === 'review')
+      ? `<h3>Sans faute 🎯</h3><div class="miss" style="border-left-color:#22c55e">Tout était correct sur cette session. Beau travail !</div>`
+      : `<h3>Sans faute 🎯</h3><div class="miss" style="border-left-color:#22c55e">Rien à revoir sur cette série. Augmente la longueur ou ajoute des chapitres.</div>`;
   }
   $('#review').innerHTML = rv;
+
+  // Bouton principal du bilan : contextuel.
+  //  · après une révision → « Continuer la révision » (relance une nouvelle session SRS)
+  //  · après un quiz personnalisé → « Recommencer » (rejoue la même série) — corrige l'ancien
+  //    bouton qui appelait startBtn et échouait en silence quand aucun chapitre n'était coché.
+  const again = $('#againBtn');
+  if(again){
+    again.textContent = (lastSessionKind === 'review') ? 'Continuer la révision →' : 'Recommencer';
+    again.onclick = ()=>{ if(typeof restartSession === 'function') restartSession(); else $('#startBtn').click(); };
+  }
+
   typeset($('#resultScreen'));
   $('#resultScreen').scrollIntoView({behavior:'smooth', block:'start'});
 }
 
-$('#againBtn').onclick = ()=> $('#startBtn').click();
-$('#homeBtn').onclick = ()=>{
+// Retour à l'accueil depuis le quiz/la révision (factorisé).
+function goHomeFromQuiz(){
+  reviewSession = null;
+  $('#quizScreen').classList.add('hidden');
   $('#resultScreen').classList.add('hidden');
   $('#startScreen').classList.remove('hidden');
   updateSrsBar(); updateHeaderStats(); buildFamilyAccordion(); updatePoolInfo(); renderJuryTip();
   $('#startScreen').scrollIntoView({behavior:'smooth', block:'start'});
-};
+}
+
+$('#homeBtn').onclick = goHomeFromQuiz;
 $('#resultStatsBtn').onclick = showStats;
 $('#abandonBtn').onclick = ()=>{
+  // En révision, « quitter » = terminer la session et afficher le bilan de ce qui a été fait.
+  if(reviewSession){
+    const answered = pool.filter(q=>q._answered).length;
+    if(answered === 0){ goHomeFromQuiz(); return; }   // rien de fait → simple retour accueil
+    if(confirm('Terminer la révision et voir le bilan ?')){
+      pool = pool.filter(q=>q._answered);   // le bilan ne porte que sur les cartes traitées
+      finishReview();
+    }
+    return;
+  }
   if(confirm('Abandonner ce quiz et revenir à l\'accueil ?')){
     flushSession('abandon');   // on conserve les questions déjà répondues
-    $('#quizScreen').classList.add('hidden');
-    $('#startScreen').classList.remove('hidden');
-    updateSrsBar(); updateHeaderStats(); buildFamilyAccordion(); updatePoolInfo(); renderJuryTip();
-    $('#startScreen').scrollIntoView({behavior:'smooth', block:'start'});
+    goHomeFromQuiz();
   }
 };
 
@@ -4853,6 +4971,7 @@ function startReviewForTopics(keys){
   shuffle(queue); queue = queue.slice(0, 40);
   pool = queue.map(q=>({...q, _choices: q.mode==='qcm'? shuffle(q.choices.map((c,i)=>({...c,orig:i}))) : undefined }));
   idx=0; score=0; streak=0; bestStreak=0;
+  reviewSession = null; lastSessionKind = 'review'; restartSession = ()=>startReviewForTopics(keys);
   updateHeaderStats();
   ['startScreen','resultScreen','statsScreen','adminScreen','juryScreen','examScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
   $('#quizScreen').classList.remove('hidden');
