@@ -190,6 +190,15 @@ window.MathJax = {
   .achv .an{font-size:11px; color:var(--muted); margin-top:6px}
   .achv .dots{margin-top:7px; font-size:12px; letter-spacing:2px}
 
+  /* ---- Examen blanc (chronométré) ---- */
+  .exam-top{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .exam-clock-wrap{font-size:15px; color:var(--muted); font-family:'JetBrains Mono',monospace}
+  #examClock{color:var(--ink); font-weight:700}
+  .exam-prog{font-size:13px; color:var(--muted); margin-left:auto}
+  .exam-score{text-align:center; margin:14px 0}
+  .exam-big{font-family:'Fraunces',serif; font-weight:800; font-size:52px; line-height:1}
+  .exam-sub{color:var(--muted); font-size:14px; margin-top:6px; font-family:'JetBrains Mono',monospace}
+
   /* ---- SRS barre ---- */
   .srs-dashboard{background:linear-gradient(135deg,color-mix(in srgb,#a78bfa 14%,#0d1320),color-mix(in srgb,#60a5fa 8%,#0d1320));
     border:1px solid color-mix(in srgb,#a78bfa 35%,transparent); border-radius:18px; padding:16px 18px; margin-bottom:22px}
@@ -696,6 +705,7 @@ window.MathJax = {
 
       <div class="actions" style="margin-top:18px">
         <button class="btn" id="startBtn">Commencer →</button>
+        <button class="btn ghost" id="examBtn" title="Mode concours : chronométré, corrigé à la fin">📝 Examen blanc</button>
         <span id="poolInfo" style="color:var(--muted); font-size:13px"></span>
       </div>
     </details>
@@ -757,6 +767,9 @@ window.MathJax = {
       <footer class="pq-author">— M. Sabatini, professeur de Mathématiques &nbsp;·&nbsp; <time datetime="2024-09-08">8 septembre 2024</time></footer>
     </blockquote>
   </div>
+
+  <!-- EXAMEN BLANC (chronométré) -->
+  <div class="card hidden" id="examScreen"></div>
 
   <!-- STATS -->
   <div class="card hidden" id="statsScreen">
@@ -3550,7 +3563,7 @@ function startSrsReviewForTopic(topicKey){
   pool=dueForTopic.map(q=>({...q, _choices:q.mode==='qcm'?shuffle(q.choices.map((c,i)=>({...c,orig:i}))):undefined}));
   idx=0; score=0; streak=0; bestStreak=0;
   updateHeaderStats();
-  ['startScreen','resultScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
+  ['startScreen','resultScreen','examScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
   $('#quizScreen').classList.remove('hidden');
   renderQuestion();
 }
@@ -4206,6 +4219,111 @@ $('#abandonBtn').onclick = ()=>{
   }
 };
 
+/* ====================== EXAMEN BLANC (chronométré) ====================== */
+/* Mode autonome : AUCUNE écriture SRS, aucun feedback par question, corrigé complet à la fin.
+   Réutilise QUESTIONS / TOPICS / shuffle / typeset / selected / advAllowed. QCM uniquement (auto-correction fiable). */
+let EXAM = null;
+let _examTimer = null;
+function examPool(){ return QUESTIONS.filter(q => selected.has(q.topic) && advAllowed(q) && q.mode==='qcm'); }
+function fmtClock(s){ s=Math.max(0,s|0); const m=(s/60)|0; return m+':'+String(s%60).padStart(2,'0'); }
+function startExam(){
+  if(!revisionAllowed()){ showAccessGate(); return; }
+  if(selected.size===0){
+    const pi=$('#poolInfo'); if(pi){ pi.textContent='Sélectionne au moins un chapitre pour l\'examen.'; pi.style.color='#f87171'; }
+    const fa=$('#famAccordion'); if(fa) fa.scrollIntoView({behavior:'smooth', block:'center'}); return;
+  }
+  let qs = examPool();
+  if(qs.length < 1){ alert('Aucun QCM pour cette sélection : l\'examen blanc se base sur les questions à choix multiple. Change de chapitres ou de réglages.'); return; }
+  shuffle(qs);
+  const N = chosenLen>0 ? Math.min(chosenLen, qs.length) : Math.min(20, qs.length);
+  qs = qs.slice(0, N).map(q => ({...q, _ch: shuffle(q.choices.map((c,i)=>({...c, orig:i}))), _pick:null }));
+  EXAM = { qs, i:0, total:N, dur:N*90, left:N*90, done:false };
+  document.querySelectorAll('.card').forEach(c=>c.classList.add('hidden'));
+  $('#examScreen').classList.remove('hidden');
+  $('#examScreen').scrollIntoView({behavior:'smooth', block:'start'});
+  clearInterval(_examTimer); _examTimer = setInterval(examTick, 1000);
+  renderExamQuestion();
+}
+function examTick(){
+  if(!EXAM || EXAM.done || $('#examScreen').classList.contains('hidden')){ clearInterval(_examTimer); return; }
+  EXAM.left--;
+  const t=$('#examClock'); if(t){ t.textContent=fmtClock(EXAM.left); if(EXAM.left<=30) t.style.color='#f87171'; }
+  if(EXAM.left<=0) finishExam(true);
+}
+function renderExamQuestion(){
+  const q = EXAM.qs[EXAM.i];
+  const pct = Math.round(EXAM.i/EXAM.total*100);
+  const last = EXAM.i===EXAM.total-1;
+  const choices = q._ch.map((c,i)=>`<button class="choice" data-i="${i}"${q._pick===i?' style="border-color:var(--accent)"':''}><span class="key">${i+1}</span><span>${c.t}</span></button>`).join('');
+  $('#examScreen').innerHTML = `
+    <div class="exam-top">
+      <span class="exam-clock-wrap">⏱ <span id="examClock">${fmtClock(EXAM.left)}</span></span>
+      <span class="exam-prog">Question ${EXAM.i+1} / ${EXAM.total}</span>
+      <button class="btn ghost mini" id="examQuit" type="button">✕ Quitter</button>
+    </div>
+    <div style="height:6px;border-radius:99px;background:#1f2937;overflow:hidden;margin:10px 0 16px"><i style="display:block;height:100%;width:${pct}%;background:var(--accent);transition:width .3s"></i></div>
+    <div class="question">${q.q}</div>
+    <div class="choices" id="examChoices">${choices}</div>
+    <div class="actions" style="margin-top:16px">
+      <button class="btn" id="examNext">${last?'Terminer l\'examen ✓':'Question suivante →'}</button>
+      <span style="color:var(--muted);font-size:13px">Corrigé complet à la fin.</span>
+    </div>`;
+  const cont = $('#examChoices');
+  cont.querySelectorAll('.choice').forEach(b=>{ b.onclick=()=>{ q._pick=+b.dataset.i; cont.querySelectorAll('.choice').forEach(x=>x.style.borderColor=''); b.style.borderColor='var(--accent)'; }; });
+  $('#examNext').onclick=()=>{ if(EXAM.i < EXAM.total-1){ EXAM.i++; renderExamQuestion(); } else finishExam(false); };
+  $('#examQuit').onclick=()=>{ if(confirm('Quitter l\'examen ? Ta copie ne sera pas corrigée.')){ goHomeFromExam(); } };
+  typeset($('#examScreen'));
+}
+function finishExam(timeUp){
+  if(!EXAM || EXAM.done) return; EXAM.done=true; clearInterval(_examTimer);
+  const correct = EXAM.qs.filter(q => q._pick!=null && q._ch[q._pick] && q._ch[q._pick].c).length;
+  const pct = Math.round(correct/EXAM.total*100);
+  const used = EXAM.dur - Math.max(0, EXAM.left);
+  const col = pct>=80?'#22c55e':pct>=50?'#f59e0b':'#ef4444';
+  const verdict = pct>=90?'Niveau concours. Solide.':pct>=70?'Bonne maîtrise — soigne les détails.':pct>=50?'Les bases sont là, à consolider.':'À retravailler sérieusement.';
+  let cor='';
+  EXAM.qs.forEach((q,n)=>{
+    const good = q._ch.find(c=>c.c);
+    const pick = q._pick!=null ? q._ch[q._pick] : null;
+    const ok = !!(pick && pick.c);
+    const t = TOPICS[q.topic];
+    const yours = pick ? pick.t : 'Non répondue';
+    cor += `<div class="miss" style="border-left-color:${ok?'#22c55e':'#ef4444'}"><b>Q${n+1}.</b> ${q.q}`
+      + `<div class="ans">${ok?'✓':'✗'} Ta réponse : ${ok?('<b style="color:#4ade80">'+yours+'</b>'):('<span style="color:#f87171">'+yours+'</span> · Bonne réponse : <b style="color:#4ade80">'+(good?good.t:'?')+'</b>')}${t?(' · <span style="color:'+t.raw+'">'+t.name+'</span>'):''}</div>`
+      + (q.exp?('<div class="exp" style="margin-top:8px">'+q.exp+'</div>'):'')
+      + (q.vig?('<div class="vig"><span class="ic">⚠️</span><span><b>Vigilance.</b> '+q.vig+'</span></div>'):'')
+      + `</div>`;
+  });
+  $('#examScreen').innerHTML = `
+    <p class="section-label">Examen blanc — résultat</p>
+    ${timeUp?'<div class="cloud-banner" style="margin-bottom:14px">⏱ Temps écoulé — copie ramassée automatiquement.</div>':''}
+    <div class="exam-score"><div class="exam-big" style="color:${col}">${pct}%</div><div class="exam-sub">${correct} / ${EXAM.total} bonnes réponses · ⏱ ${fmtClock(used)}</div><div class="verdict-line" style="margin-top:8px">${verdict}</div></div>
+    <p class="section-label" style="margin-top:22px">Corrigé détaillé</p>
+    <div class="review">${cor}</div>
+    <div class="actions" style="justify-content:center;flex-wrap:wrap;margin-top:18px">
+      <button class="btn" id="examAgain">Refaire un examen</button>
+      <button class="btn ghost" id="examHome">← Retour à l'accueil</button>
+    </div>`;
+  $('#examAgain').onclick = startExam;
+  $('#examHome').onclick = goHomeFromExam;
+  typeset($('#examScreen'));
+  $('#examScreen').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function goHomeFromExam(){
+  clearInterval(_examTimer); EXAM=null;
+  $('#examScreen').classList.add('hidden');
+  $('#startScreen').classList.remove('hidden');
+  try{ updateSrsBar(); updateHeaderStats(); buildFamilyAccordion(); updatePoolInfo(); renderJuryTip(); }catch(e){}
+  $('#startScreen').scrollIntoView({behavior:'smooth', block:'start'});
+}
+{ const _eb=$('#examBtn'); if(_eb) _eb.onclick = startExam; }
+document.addEventListener('keydown', e=>{
+  if(!EXAM || EXAM.done || $('#examScreen').classList.contains('hidden')) return;
+  const tag=(e.target.tagName||'').toLowerCase(); if(tag==='input'||tag==='textarea') return;
+  if(['1','2','3','4'].includes(e.key)){ const cont=$('#examChoices'); const b=cont&&cont.querySelector('.choice[data-i="'+(+e.key-1)+'"]'); if(b){ e.preventDefault(); b.click(); } }
+  else if(e.key==='Enter'){ const n=$('#examNext'); if(n){ e.preventDefault(); n.click(); } }
+});
+
 /* ====================== SIGNALEMENT D'ERREUR ====================== */
 let reportType = 'fausse';
 $('#reportBtn').onclick = ()=>{
@@ -4463,7 +4581,7 @@ async function renderStats(){
 }
 function showStats(){
   if(!revisionAllowed()){ showAccessGate(); return; }
-  ['startScreen','quizScreen','resultScreen','adminScreen','juryScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
+  ['startScreen','quizScreen','resultScreen','adminScreen','juryScreen','examScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
   $('#statsScreen').classList.remove('hidden');
   $('#statsBody').innerHTML = '<div class="empty-state">Chargement…</div>';
   $('#statsScreen').scrollIntoView({behavior:'smooth', block:'start'});
@@ -4706,7 +4824,7 @@ function renderJury(){
 }
 
 function showJury(){
-  ['startScreen','quizScreen','resultScreen','statsScreen','adminScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
+  ['startScreen','quizScreen','resultScreen','statsScreen','adminScreen','examScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
   $('#juryScreen').classList.remove('hidden');
   $('#juryScreen').scrollIntoView({behavior:'smooth', block:'start'});
   renderJury();
@@ -4736,7 +4854,7 @@ function startReviewForTopics(keys){
   pool = queue.map(q=>({...q, _choices: q.mode==='qcm'? shuffle(q.choices.map((c,i)=>({...c,orig:i}))) : undefined }));
   idx=0; score=0; streak=0; bestStreak=0;
   updateHeaderStats();
-  ['startScreen','resultScreen','statsScreen','adminScreen','juryScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
+  ['startScreen','resultScreen','statsScreen','adminScreen','juryScreen','examScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
   $('#quizScreen').classList.remove('hidden');
   renderQuestion();
 }
@@ -5489,7 +5607,7 @@ function admExportCSV(list){
   document.body.appendChild(link); link.click(); link.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 $('#adminBtn').onclick = ()=>{
-  ['startScreen','quizScreen','resultScreen','statsScreen','juryScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
+  ['startScreen','quizScreen','resultScreen','statsScreen','juryScreen','examScreen'].forEach(id=>$('#'+id).classList.add('hidden'));
   $('#adminScreen').classList.remove('hidden');
   $('#adminBody').innerHTML = '<div class="empty-state">Chargement des données de la classe…</div>';
   $('#adminScreen').scrollIntoView({behavior:'smooth',block:'start'});
