@@ -3417,6 +3417,11 @@ function updateSrsBar(){
   const sessionSize = totalDue + newAvail;
   const streakChip = streak>0
     ? `<span class="due-chip" style="margin:0">🔥 ${streak} jour${streak>1?'s':''} d'affilée</span>` : '';
+  // Bouton + sélecteur d'objectif : toujours visibles. Le bouton reflète l'OBJECTIF choisi (cohérence
+  // avec le sélecteur) et propose un entraînement libre même quand on est à jour (révision illimitée).
+  const _revTgt = getReviewTarget();
+  const _revGoalTxt = isFinite(_revTgt) ? ` (${_revTgt})` : '';
+  const _revStartLabel = (sessionSize>0 ? 'Réviser' : 'Entraînement libre') + _revGoalTxt + ' →';
 
   bar.innerHTML = `<div class="srs-dashboard">
     <div class="srs-dash-top">
@@ -3431,11 +3436,12 @@ function updateSrsBar(){
         <div class="srs-cnt"><span class="n" style="color:#fbbf24">${counts.learning+counts.young}</span><span class="l">En cours</span></div>
         <div class="srs-cnt"><span class="n" style="color:#4ade80">${counts.mature}</span><span class="l">Maîtrisées</span></div>
       </div>
-      ${sessionSize>0
-        ? `<button class="btn" id="srsStartBtn" style="margin-left:auto">Réviser (${sessionSize}) →</button>`
-        : `<span style="color:#4ade80;font-size:14px;font-weight:600;margin-left:auto">✓ Tout à jour !</span>`}
+      <div style="margin-left:auto; display:flex; flex-direction:column; align-items:flex-end; gap:4px">
+        ${sessionSize===0 ? `<span style="color:#4ade80;font-size:12px;font-weight:600">✓ Tout à jour !</span>` : ''}
+        <button class="btn" id="srsStartBtn">${_revStartLabel}</button>
+      </div>
     </div>
-    ${sessionSize>0 ? `<div class="rev-obj-row">
+    <div class="rev-obj-row">
       <span class="lbl">Objectif</span>
       <div class="obj-opts">
         <button class="obj-btn" data-t="10">10</button>
@@ -3443,7 +3449,7 @@ function updateSrsBar(){
         <button class="obj-btn" data-t="40">40</button>
         <button class="obj-btn" data-t="inf">∞ Illimité</button>
       </div>
-    </div>` : ''}
+    </div>
     <div class="mat-bar" title="Répartition par maturité">
       <div style="width:${seg(counts.mature)}%;background:#22c55e"></div>
       <div style="width:${seg(counts.young)}%;background:#84cc16"></div>
