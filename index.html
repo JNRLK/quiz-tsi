@@ -632,6 +632,18 @@ window.MathJax = {
     .adm-tools{justify-content:stretch} .adm-tools .adm-btn{flex:1}
   }
   .hidden{display:none}
+  /* ---- Sélecteur matière × année (nav-scope) + état « bientôt disponible » ---- */
+  .nav-scope{display:flex; flex-direction:column; gap:8px; margin:0 0 16px}
+  .scope-row{display:flex; gap:7px; flex-wrap:wrap; align-items:center}
+  .scope-lbl{font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:700; min-width:62px}
+  .scope-btn{background:#0d1320; border:1px solid var(--line); color:var(--muted); border-radius:999px; padding:6px 13px; font-size:13px; font-weight:600; cursor:pointer; transition:.15s; font-family:'Hanken Grotesk',system-ui,sans-serif; line-height:1.1}
+  .scope-btn:hover{border-color:#4b5563; color:var(--ink)}
+  .scope-btn.on{background:var(--ink); color:#0b0f17; border-color:var(--ink)}
+  .scope-btn.empty{opacity:.55}
+  .scope-soon{border:1px dashed var(--line); border-radius:18px; padding:26px 18px; text-align:center; color:var(--muted)}
+  .scope-soon .ss-emoji{font-size:30px; display:block; margin-bottom:8px}
+  .scope-soon .ss-t{font-family:'Fraunces',serif; font-weight:700; font-size:17px; color:var(--ink); margin-bottom:4px}
+  .scope-soon .ss-s{font-size:13px; line-height:1.5; max-width:340px; margin:0 auto}
 </style>
 </head>
 <body>
@@ -704,6 +716,9 @@ window.MathJax = {
         <button class="mode" data-mode="flash">Flashcard</button>
       </div>
       <p id="modeDesc" style="color:var(--muted); font-size:12.5px; line-height:1.4; margin:0 18px 20px"></p>
+
+      <!-- Sélecteur matière × année (infrastructure multi-matières ; masqué tant qu'1 seule matière/année a du contenu → révélation progressive) -->
+      <div id="navScope" class="nav-scope"></div>
 
       <!-- Familles accordéon -->
       <p class="section-label">Chapitres &amp; progression</p>
@@ -1340,6 +1355,45 @@ const TOPICS = {
     "raw": "#84cc16"
   }
 };
+
+/* ============== MATIÈRES & ANNÉES — socle infrastructure multi-matières (additif) ==============
+   Registres de la navigation (matière × année). Tant qu'aucune banque externe n'est déclarée,
+   tout le contenu reste (maths, TSI1) et le comportement est STRICTEMENT identique à l'existant.
+   On écrit « Informatique » (jamais « IPT »). TSI0 = année de transition du dispositif TSI en
+   3 ans réservé aux bacheliers professionnels (mise à niveau, en-deçà de TSI1).
+   SRS : les cartes sont clés par qHash(q.q) (hash du TEXTE), donc AJOUTER des questions
+   n'affecte jamais la progression existante — il suffit de ne pas modifier un énoncé existant. */
+const SUBJECTS = {
+  maths:    { name:"Mathématiques",           order:1 },
+  physique: { name:"Physique-Chimie",         order:2 },
+  si:       { name:"Sciences de l'Ingénieur", order:3 },
+  info:     { name:"Informatique",            order:4 },
+  anglais:  { name:"Anglais",                 order:5, transversal:true },
+  francais: { name:"Français-Philosophie",    order:6, transversal:true }
+};
+const LEVELS = {
+  tsi0: { name:"TSI0 · transition (bac pro)", short:"TSI0", order:0 },
+  tsi1: { name:"TSI1 · 1re année",            short:"TSI1", order:1 },
+  tsi2: { name:"TSI2 · 2e année",             short:"TSI2", order:2 },
+  tr:   { name:"Transversal",                 short:"Tr.",  order:3 }
+};
+/* Rétro-compat : les chapitres et familles maths historiques n'ont ni subject ni level.
+   On les rattache à (maths, tsi1) au runtime, SANS toucher à leurs déclarations. */
+for (const k in TOPICS){ if(!TOPICS[k].subject) TOPICS[k].subject = 'maths'; if(!TOPICS[k].level) TOPICS[k].level = 'tsi1'; }
+for (const k in FAMILIES){ if(!FAMILIES[k].subject) FAMILIES[k].subject = 'maths'; }
+/* État de navigation. Défauts = comportement actuel (maths / TSI1). Pas encore câblé à l'UI. */
+let activeSubject = 'maths';
+let activeLevel   = 'tsi1';
+/* Helpers de filtrage par (matière, année). Définis ici, câblés à l'UI dans une étape suivante. */
+function topicsFor(subject, level){ return Object.keys(TOPICS).filter(k => TOPICS[k].subject === subject && TOPICS[k].level === level); }
+function familiesFor(subject){ return Object.keys(FAMILIES).filter(k => FAMILIES[k].subject === subject); }
+function hasContent(subject, level){ return QUESTIONS.some(q => { const t = TOPICS[q.topic]; return t && t.subject === subject && t.level === level; }); }
+function isTransversal(subject){ return !!(SUBJECTS[subject] && SUBJECTS[subject].transversal); }
+function effLevel(){ return isTransversal(activeSubject) ? 'tr' : activeLevel; }       // matière transversale ⇒ niveau 'tr'
+function inActiveScope(topicKey){ const t = TOPICS[topicKey]; return !!t && t.subject === activeSubject && t.level === effLevel(); }
+function subjectsWithContent(){ return Object.keys(SUBJECTS).filter(s => isTransversal(s) ? hasContent(s,'tr') : ['tsi0','tsi1','tsi2'].some(l=>hasContent(s,l))).sort((a,b)=>SUBJECTS[a].order-SUBJECTS[b].order); }
+function levelsWithContent(subject){ if(isTransversal(subject)) return []; return ['tsi0','tsi1','tsi2'].filter(l=>hasContent(subject,l)).sort((a,b)=>LEVELS[a].order-LEVELS[b].order); }
+/* ============================================================================================ */
 
 // ====================== RENVOI AU COURS (page exacte de la notion) ======================
 // Chaque carte ouvre un PDF contenant UNIQUEMENT la page de sa notion (fiche découpée).
@@ -3481,17 +3535,58 @@ function updateSrsBar(){
   });
 }
 
+/* ====================== SÉLECTEUR MATIÈRE × ANNÉE ======================
+   Révélation progressive : on n'affiche que les matières / années qui ont du contenu.
+   Tant qu'une seule matière ET une seule année sont remplies (aujourd'hui : maths / TSI1),
+   le sélecteur reste MASQUÉ → l'élève ne voit aucun changement. Les onglets apparaissent
+   automatiquement dès qu'une banque est ajoutée (cf. subjectsWithContent / levelsWithContent). */
+function buildNavScope(){
+  const host=$('#navScope'); if(!host) return;
+  const subs=subjectsWithContent();
+  if(subs.length && !subs.includes(activeSubject)) activeSubject=subs[0];   // garde l'actif sur une matière remplie
+  const lvls=levelsWithContent(activeSubject);
+  if(lvls.length && !lvls.includes(activeLevel)) activeLevel=lvls[0];
+  const showSub=subs.length>=2, showLvl=lvls.length>=2;
+  if(!showSub && !showLvl){ host.style.display='none'; host.innerHTML=''; return; }  // dormant : rien à choisir
+  host.style.display='';
+  let html='';
+  if(showSub){
+    html+=`<div class="scope-row"><span class="scope-lbl">Matière</span>`;
+    for(const s of subs) html+=`<button class="scope-btn${s===activeSubject?' on':''}" data-sub="${s}">${SUBJECTS[s].name}</button>`;
+    html+=`</div>`;
+  }
+  if(showLvl){
+    html+=`<div class="scope-row"><span class="scope-lbl">Année</span>`;
+    for(const l of lvls) html+=`<button class="scope-btn${l===activeLevel?' on':''}" data-lvl="${l}">${LEVELS[l].short}</button>`;
+    html+=`</div>`;
+  }
+  host.innerHTML=html;
+  host.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>{ activeSubject=b.dataset.sub; const ls=levelsWithContent(activeSubject); if(ls.length&&!ls.includes(activeLevel)) activeLevel=ls[0]; buildFamilyAccordion(); updatePoolInfo(); updateSelectAllBtn(); });
+  host.querySelectorAll('[data-lvl]').forEach(b=>b.onclick=()=>{ activeLevel=b.dataset.lvl; buildFamilyAccordion(); updatePoolInfo(); updateSelectAllBtn(); });
+}
+
 /* ====================== ACCORDÉON FAMILLES ====================== */
 function buildFamilyAccordion(){
   const host=$('#famAccordion'); if(!host) return;
+  buildNavScope();
   host.innerHTML='';
+  const lvl=effLevel();
+  // Aucun chapitre pour cette (matière × année) → état « bientôt disponible »
+  const scopeTopics=Object.keys(TOPICS).filter(k=>TOPICS[k].subject===activeSubject && TOPICS[k].level===lvl);
+  if(scopeTopics.length===0){
+    host.innerHTML=`<div class="scope-soon"><span class="ss-emoji">🚧</span><div class="ss-t">${SUBJECTS[activeSubject].name} · ${isTransversal(activeSubject)?'Transversal':(LEVELS[activeLevel]?LEVELS[activeLevel].short:'')}</div><div class="ss-s">Contenu bientôt disponible. L'infrastructure est prête : les QCM seront ajoutés ici.</div></div>`;
+    updateSelectAllBtn();
+    return;
+  }
   const d=SRS._d(), now=Date.now();
   // état ouvert par famille (mémoriser entre rebuild)
   if(!buildFamilyAccordion._open) buildFamilyAccordion._open={};
   const openState=buildFamilyAccordion._open;
 
-  for(const [fkey,fam] of Object.entries(FAMILIES)){
-    const famTopics=Object.entries(TOPICS).filter(([,t])=>t.family===fkey);
+  for(const fkey of familiesFor(activeSubject)){
+    const fam=FAMILIES[fkey];
+    const famTopics=Object.entries(TOPICS).filter(([,t])=>t.family===fkey && t.subject===activeSubject && t.level===lvl);
+    if(famTopics.length===0) continue;
     // stats famille
     let famDue=0, famLearned=0, famTotal=0;
     famTopics.forEach(([key])=>{
@@ -3719,7 +3814,7 @@ function finishReview(){
 
 /* ====================== START SCREEN ====================== */
 function advAllowed(q){ return q.niveau!=='approfondissement' || includeAdv; }   // cartes d'approfondissement servies seulement si le toggle est actif
-function poolFilter(q){ return selected.has(q.topic) && (selectedMode==='all' || q.mode===selectedMode) && advAllowed(q); }
+function poolFilter(q){ return selected.has(q.topic) && inActiveScope(q.topic) && (selectedMode==='all' || q.mode===selectedMode) && advAllowed(q); }
 
 function poolSize(){ return QUESTIONS.filter(poolFilter).length; }
 function updatePoolInfo(){
@@ -3780,14 +3875,15 @@ function updateModeDesc(){ const el=$('#modeDesc'); if(el) el.textContent = MODE
 /* P1 — bouton global « Tout sélectionner / désélectionner » */
 function updateSelectAllBtn(){
   const b=$('#selectAllBtn'); if(!b) return;
-  const allOn=Object.keys(TOPICS).every(k=>selected.has(k));
+  const keys=topicsFor(activeSubject, effLevel());
+  const allOn=keys.length>0 && keys.every(k=>selected.has(k));
   b.textContent = allOn ? 'Tout désélectionner' : 'Tout sélectionner';
 }
 const _selectAllBtn=$('#selectAllBtn');
 if(_selectAllBtn) _selectAllBtn.onclick=()=>{
-  const allKeys=Object.keys(TOPICS);
-  const allOn=allKeys.every(k=>selected.has(k));
-  if(allOn) selected.clear(); else allKeys.forEach(k=>selected.add(k));
+  const allKeys=topicsFor(activeSubject, effLevel());
+  const allOn=allKeys.length>0 && allKeys.every(k=>selected.has(k));
+  if(allOn) allKeys.forEach(k=>selected.delete(k)); else allKeys.forEach(k=>selected.add(k));
   buildFamilyAccordion(); updatePoolInfo();
 };
 updateModeDesc();
@@ -4356,7 +4452,7 @@ $('#abandonBtn').onclick = ()=>{
    Réutilise QUESTIONS / TOPICS / shuffle / typeset / selected / advAllowed. QCM uniquement (auto-correction fiable). */
 let EXAM = null;
 let _examTimer = null;
-function examPool(){ return QUESTIONS.filter(q => selected.has(q.topic) && advAllowed(q) && q.mode==='qcm'); }
+function examPool(){ return QUESTIONS.filter(q => selected.has(q.topic) && inActiveScope(q.topic) && advAllowed(q) && q.mode==='qcm'); }
 function fmtClock(s){ s=Math.max(0,s|0); const m=(s/60)|0; return m+':'+String(s%60).padStart(2,'0'); }
 function startExam(){
   if(!revisionAllowed()){ showAccessGate(); return; }
