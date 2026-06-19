@@ -145,7 +145,7 @@ window.MathJax = {
     background:var(--grad-title); -webkit-background-clip:text; background-clip:text; color:transparent;
   }
   .brand h1 em{font-style:italic; color:var(--accent-bright); -webkit-text-fill-color:var(--accent-bright)}
-  .live-stats{display:flex; gap:10px; align-self:stretch; justify-content:flex-start}
+  .live-stats{display:flex; gap:10px; justify-content:flex-end}
   .stat{background:var(--glass); border:1px solid var(--line); border-radius:14px; padding:9px 14px; text-align:center; min-width:74px; backdrop-filter:blur(6px)}
   .stat .n{font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:700}
   .stat .l{font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)}
@@ -359,6 +359,27 @@ window.MathJax = {
   .actions{display:flex; gap:12px; align-items:center; margin-top:26px; flex-wrap:wrap}
 
   /* ---------- Quiz ---------- */
+  #quizScreen{position:relative}
+  /* Bouton plein écran — révision sans distraction */
+  .fs-toggle{position:absolute; top:16px; right:16px; z-index:5; width:40px; height:40px;
+    display:inline-flex; align-items:center; justify-content:center;
+    border:1.5px solid var(--line); background:var(--glass); color:var(--muted);
+    border-radius:11px; cursor:pointer; font-size:18px; line-height:1;
+    backdrop-filter:blur(6px); transition:border-color .16s, color .16s, background .16s}
+  .fs-toggle:hover{border-color:var(--accent); color:var(--accent-soft)}
+  .fs-toggle .fs-ic{transform:translateY(-1px)}
+  /* En plein écran : la carte remplit l'écran, contenu recentré et agrandi */
+  #quizScreen:fullscreen{background:var(--bg); border:none; border-radius:0; box-shadow:none;
+    max-width:none; width:100vw; min-height:100vh; margin:0; overflow:auto;
+    padding:max(5vh,28px) clamp(16px,5vw,40px);
+    display:flex; flex-direction:column; justify-content:safe center; font-size:1.06em}
+  #quizScreen:fullscreen > *{width:min(820px,100%); margin-left:auto; margin-right:auto}
+  #quizScreen:fullscreen .fs-toggle{position:fixed}
+  #quizScreen:-webkit-full-screen{background:var(--bg); border:none; border-radius:0; box-shadow:none;
+    max-width:none; width:100vw; min-height:100vh; margin:0; overflow:auto;
+    padding:max(5vh,28px) clamp(16px,5vw,40px);
+    display:flex; flex-direction:column; justify-content:center; font-size:1.06em}
+  #quizScreen:-webkit-full-screen > *{width:min(820px,100%); margin-left:auto; margin-right:auto}
   .progress-wrap{margin-bottom:18px}
   .progress-meta{display:flex; justify-content:space-between; font-size:12px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; margin-bottom:7px; font-family:'JetBrains Mono',monospace}
   .bar{height:7px; border-radius:99px; background:var(--bg-deep); overflow:hidden; border:1px solid var(--line)}
@@ -836,6 +857,7 @@ window.MathJax = {
 
   <!-- QUIZ -->
   <div class="card hidden" id="quizScreen">
+    <button class="fs-toggle" id="fsBtn" type="button" aria-label="Mode plein écran" title="Mode plein écran — révision sans distraction"><span class="fs-ic" aria-hidden="true">⛶</span></button>
     <div class="progress-wrap">
       <div class="progress-meta"><span id="qCounter">01 / 10</span><span id="qTopicTag"></span></div>
       <div class="bar"><i id="progBar"></i></div>
@@ -857,7 +879,7 @@ window.MathJax = {
     <div class="score-hero">
       <div class="ring">
         <svg width="170" height="170" viewBox="0 0 170 170">
-          <circle cx="85" cy="85" r="74" fill="none" stroke="#1f2937" stroke-width="13"/>
+          <circle cx="85" cy="85" r="74" fill="none" style="stroke:var(--panel-2)" stroke-width="13"/>
           <circle id="ringFill" cx="85" cy="85" r="74" fill="none" stroke="#a78bfa" stroke-width="13"
                   stroke-linecap="round" stroke-dasharray="465" stroke-dashoffset="465"
                   style="transition:stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1)"/>
@@ -1058,13 +1080,13 @@ window.MathJax = {
     <button class="modal-close" id="reportClose" aria-label="Fermer">✕</button>
     <h2 style="font-family:'Literata',serif; margin:0 0 6px">⚐ Signaler une erreur</h2>
     <p class="auth-sub">Sur la carte affichée. Le prof recevra ton signalement.</p>
-    <div id="reportQPreview" style="background:#0d1320;border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:13.5px;color:var(--muted);margin-bottom:14px;max-height:90px;overflow:auto"></div>
+    <div id="reportQPreview" style="background:var(--bg-deep);border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:13.5px;color:var(--muted);margin-bottom:14px;max-height:90px;overflow:auto"></div>
     <div class="mode-opts" id="reportType" style="margin-bottom:12px">
       <button class="mode on" data-type="fausse">Réponse fausse</button>
       <button class="mode" data-type="affichage">Bug d'affichage</button>
       <button class="mode" data-type="autre">Autre</button>
     </div>
-    <textarea id="reportComment" placeholder="Détail (optionnel) : qu'est-ce qui ne va pas ?" style="width:100%;min-height:80px;padding:11px 13px;border-radius:12px;border:1.5px solid var(--line);background:#0d1320;color:var(--ink);font-family:inherit;font-size:14px;resize:vertical"></textarea>
+    <textarea id="reportComment" placeholder="Détail (optionnel) : qu'est-ce qui ne va pas ?" style="width:100%;min-height:80px;padding:11px 13px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg-deep);color:var(--ink);font-family:inherit;font-size:14px;resize:vertical"></textarea>
     <div class="auth-err hidden" id="reportErr"></div>
     <button class="btn" id="reportSubmit" style="width:100%;margin-top:14px">Envoyer le signalement</button>
   </div>
@@ -4413,6 +4435,35 @@ function finalizeSelf(q, ok){
 
 $('#nextBtn').onclick = ()=> advanceCard();
 
+/* ====================== MODE PLEIN ÉCRAN (révision sans distraction) ====================== */
+(function(){
+  const card = $('#quizScreen'), btn = $('#fsBtn');
+  if(!card || !btn) return;
+  function fsElement(){ return document.fullscreenElement || document.webkitFullscreenElement || null; }
+  function enter(){
+    const fn = card.requestFullscreen || card.webkitRequestFullscreen;
+    if(fn){ try{ const p = fn.call(card); if(p && p.catch) p.catch(()=>{}); }catch(e){} }
+  }
+  function exit(){
+    const fn = document.exitFullscreen || document.webkitExitFullscreen;
+    if(fn){ try{ fn.call(document); }catch(e){} }
+  }
+  btn.onclick = ()=>{ fsElement() ? exit() : enter(); };
+  function sync(){
+    const on = fsElement() === card;
+    document.body.classList.toggle('fs-on', on);
+    btn.querySelector('.fs-ic').textContent = on ? '✕' : '⛶';
+    btn.title = on ? 'Quitter le plein écran (Échap)' : 'Mode plein écran — révision sans distraction';
+    btn.setAttribute('aria-label', btn.title);
+  }
+  document.addEventListener('fullscreenchange', sync);
+  document.addEventListener('webkitfullscreenchange', sync);
+  // Sécurité : si l'écran de quiz est masqué (bilan, accueil, abandon…) alors qu'on est
+  // en plein écran, on en sort automatiquement.
+  new MutationObserver(()=>{ if(card.classList.contains('hidden') && fsElement()) exit(); })
+    .observe(card, {attributes:true, attributeFilter:['class']});
+})();
+
 /* ====================== RACCOURCIS CLAVIER ====================== */
 document.addEventListener('keydown', (e)=>{
   // actif seulement pendant le quiz
@@ -4611,7 +4662,7 @@ function renderExamQuestion(){
       <span class="exam-prog">Question ${EXAM.i+1} / ${EXAM.total}</span>
       <button class="btn ghost mini" id="examQuit" type="button">✕ Quitter</button>
     </div>
-    <div style="height:6px;border-radius:99px;background:#1f2937;overflow:hidden;margin:10px 0 16px"><i style="display:block;height:100%;width:${pct}%;background:var(--accent);transition:width .3s"></i></div>
+    <div style="height:6px;border-radius:99px;background:var(--panel-2);overflow:hidden;margin:10px 0 16px"><i style="display:block;height:100%;width:${pct}%;background:var(--accent);transition:width .3s"></i></div>
     <div class="question">${q.q}</div>
     <div class="choices" id="examChoices">${choices}</div>
     <div class="actions" style="margin-top:16px">
@@ -5050,8 +5101,8 @@ const JURY_DATA = [
 
 const JURY_THEMES = ['Tous', 'Rédaction', 'Cours & théorèmes', 'Algèbre linéaire', 'Analyse', 'Probabilités', 'Erreurs fréquentes'];
 const JURY_THEME_COLORS = {
-  'Rédaction':'#f59e0b','Cours & théorèmes':'#a78bfa','Algèbre linéaire':'#3b82f6',
-  'Analyse':'#ef4444','Probabilités':'#ec4899','Erreurs fréquentes':'#6b7280'
+  'Rédaction':'#b45309','Cours & théorèmes':'#6d28d9','Algèbre linéaire':'#1d5fbf',
+  'Analyse':'#c2342e','Probabilités':'#b83a6b','Erreurs fréquentes':'#475569'
 };
 
 // Lien thème de jury → chapitres (clés TOPICS) pour la révision ciblée.
@@ -5120,22 +5171,22 @@ function renderJury(){
     const revTopics = JURY_THEME_TOPICS[e.theme] || [];
     const revBtn = revTopics.length
       ? `<button class="jury-rev" data-topics="${revTopics.join(',')}" style="margin-top:12px;
-          background:color-mix(in srgb,${themeCol} 16%,#0d1320);border:1px solid ${themeCol}66;
-          color:#e5e7eb;border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:700;
+          background:color-mix(in srgb,${themeCol} 14%,var(--bg-deep));border:1px solid ${themeCol}66;
+          color:var(--ink);border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:700;
           font-family:inherit;cursor:pointer">📚 S'entraîner sur ce thème →</button>`
       : '';
     return `<div style="
-      background:rgba(${isCitation?'31,41,55':'17,24,39'},.5);
+      background:${isCitation?'var(--panel-2)':'var(--bg-deep)'};
       border:1px solid ${isCitation?'var(--line)':themeCol+'44'};
       border-left:3px solid ${themeCol};
       border-radius:14px;padding:16px 18px;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-        <span style="font-size:11px;color:var(--muted);background:rgba(255,255,255,.05);
+        <span style="font-size:11px;color:var(--muted);background:color-mix(in srgb,var(--ink) 8%,transparent);
           padding:3px 8px;border-radius:20px">${concoursLabel[e.concours]||e.concours} ${e.year}</span>
         <span style="font-size:11px;color:var(--muted);margin-left:auto">${isCitation?'🗣 Citation directe':'📝 Synthèse'}</span>
       </div>
       <p style="margin:0;font-size:${isCitation?'14.5':'14'}px;line-height:1.65;
-        color:${isCitation?'var(--ink)':'#d1d5db'};
+        color:var(--ink);
         ${isCitation?'font-style:italic':''}">${e.text.replace(/\n/g,'<br>')}</p>
       ${revBtn}
     </div>`;
@@ -5231,7 +5282,7 @@ function renderJuryTip(){
     background:color-mix(in srgb,${col} 6%,transparent);border-radius:14px;padding:16px 18px">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
       <span style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:${col}">📋 Conseil du jury du jour</span>
-      <a id="juryTipMore" style="margin-left:auto;font-size:12px;color:#a78bfa;cursor:pointer;text-decoration:underline">Tout voir →</a>
+      <a id="juryTipMore" style="margin-left:auto;font-size:12px;color:var(--accent-soft);cursor:pointer;text-decoration:underline">Tout voir →</a>
     </div>
     <p style="margin:0;font-size:14px;line-height:1.6;color:var(--ink);${e.type==='citation'?'font-style:italic':''}">${e.text.replace(/\n/g,'<br>')}</p>
     <div style="font-size:11px;color:var(--muted);margin-top:8px">${e.theme} · ${lbl} ${e.year}</div>
