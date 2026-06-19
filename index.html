@@ -199,6 +199,14 @@ window.MathJax = {
   .exam-big{font-family:'Fraunces',serif; font-weight:800; font-size:52px; line-height:1}
   .exam-sub{color:var(--muted); font-size:14px; margin-top:6px; font-family:'JetBrains Mono',monospace}
 
+  /* ---- Sections repliables (Ma progression — mobile) ---- */
+  .stat-fold{margin:0 0 6px}
+  .stat-fold > summary{cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px}
+  .stat-fold > summary::-webkit-details-marker{display:none}
+  .stat-fold > summary::after{content:'▸'; margin-left:auto; color:var(--muted); transition:transform .2s; font-size:12px}
+  .stat-fold[open] > summary::after{transform:rotate(90deg)}
+  .stat-fold-n{font-size:11px; color:var(--muted); font-weight:400; font-family:'JetBrains Mono',monospace}
+
   /* ---- SRS barre ---- */
   .srs-dashboard{background:linear-gradient(135deg,color-mix(in srgb,#a78bfa 14%,#0d1320),color-mix(in srgb,#60a5fa 8%,#0d1320));
     border:1px solid color-mix(in srgb,#a78bfa 35%,transparent); border-radius:18px; padding:16px 18px; margin-bottom:22px}
@@ -4500,12 +4508,17 @@ $('#reportSubmit').onclick = async ()=>{
 // Grille type « contributions GitHub » + objectif hebdomadaire, à partir de l'activité locale
 // (journal de révisions + sessions de cet appareil).
 const WEEKLY_GOAL = 5; // jours actifs visés par semaine
-function activityHeatmap(){
-  const dd = SRS._d();
+function activityHeatmap(extDays){
   const days = {};
-  const add = (t,n)=>{ if(!t) return; const d=new Date(t); d.setHours(12,0,0,0); const k=d.toISOString().slice(0,10); days[k]=(days[k]||0)+n; };
-  (dd.reviewLog||[]).forEach(r=> add(r.t, 1));
-  (dd.sessions||[]).forEach(s=> add(typeof s.date==='number'? s.date : null, s.total||1));
+  if(extDays && Object.keys(extDays).length){
+    // Connecté : activité issue du CLOUD (agg.dayset + dates des sessions), au lieu du local souvent vide.
+    for(const k in extDays) days[k] = extDays[k];
+  } else {
+    const dd = SRS._d();
+    const add = (t,n)=>{ if(!t) return; const d=new Date(t); d.setHours(12,0,0,0); const k=d.toISOString().slice(0,10); days[k]=(days[k]||0)+n; };
+    (dd.reviewLog||[]).forEach(r=> add(r.t, 1));
+    (dd.sessions||[]).forEach(s=> add(typeof s.date==='number'? s.date : null, s.total||1));
+  }
 
   const WEEKS = 18;
   const today = new Date(); today.setHours(12,0,0,0);
@@ -4585,7 +4598,7 @@ async function renderStats(){
     : `<div class="cloud-banner">Stats locales à cet appareil. <a id="statsLogin">Connecte-toi</a> pour les synchroniser sur tous tes appareils.</div>`;
 
   let answered=0, correct=0, best=0, nSessions=0;
-  const byTopic={}; let sparkVals=[]; let history=[]; let missedList=[];
+  const byTopic={}; let sparkVals=[]; let history=[]; let missedList=[]; let cloudDays=null;
 
   if(currentUser){
     body.innerHTML = banner + '<div class="empty-state">Chargement de ta progression…</div>';
@@ -4593,7 +4606,11 @@ async function renderStats(){
     try{ agg = await Cloud.myAggregate(); sessions = await Cloud.mySessions(20); }
     catch(e){ body.innerHTML = banner + `<div class="empty-state">Lecture impossible.<br><span style="font-size:13px">${e.code||e.message}</span></div>`; return; }
     if(agg){ answered=agg.totalAnswered||0; correct=agg.totalCorrect||0; best=agg.bestStreak||0;
-      for(const k in (agg.byTopic||{})){ byTopic[k]={ok:agg.byTopic[k].c, n:agg.byTopic[k].a}; } }
+      for(const k in (agg.byTopic||{})){ byTopic[k]={ok:agg.byTopic[k].c, n:agg.byTopic[k].a}; }
+      // activité de la heatmap depuis le cloud : jours actifs (agg.dayset) + dates des sessions
+      cloudDays = {};
+      if(agg.dayset){ for(const k in agg.dayset) cloudDays[k] = agg.dayset[k]; }
+      sessions.forEach(s=>{ const _t = (s.date && s.date.toDate) ? s.date.toDate() : null; if(_t){ const _k=_t.getFullYear()+'-'+String(_t.getMonth()+1).padStart(2,'0')+'-'+String(_t.getDate()).padStart(2,'0'); cloudDays[_k]=(cloudDays[_k]||0)+(s.total||1); } }); }
     nSessions = sessions.length;
     const ordered = sessions.slice().reverse(); // ancien -> récent
     sparkVals = ordered.slice(-14).map(s=>Math.round(s.score/s.total*100));
@@ -4627,16 +4644,17 @@ async function renderStats(){
 
     // Rétention vraie — l'indicateur de santé de l'apprentissage
     html += `<p class="section-label">Rétention vraie <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">(30 derniers jours)</span></p>`;
-    html += `<div class="ret-cards">`;
     const retCard = (val,n,label,hint)=>{
       const color = val===null ? 'var(--muted)' : val>=90?'#4ade80':val>=80?'#84cc16':val>=70?'#fbbf24':'#f87171';
       const disp = val===null ? '—' : val+'%';
       return `<div class="ret-card"><div class="rv" style="color:${color}">${disp}</div><div class="rk">${label}</div><div class="rn">${n} révision${n!==1?'s':''}</div><div class="rh">${hint}</div></div>`;
     };
-    html += retCard(ret.global, ret.globalN, 'Toutes cartes', 'Réussite quand une carte revient');
-    html += retCard(ret.mature, ret.matureN, 'Cartes maîtrisées', 'Le vrai signal : ≥21 j d\'intervalle');
-    html += `</div>`;
-    html += `<p style="font-size:11.5px;color:var(--muted);margin:-6px 0 18px;line-height:1.5">Une rétention de <b style="color:#4ade80">85–95 %</b> sur les cartes maîtrisées indique des intervalles bien calibrés. Plus bas : tu oublies trop souvent (révise plus). Plus haut : tu pourrais espacer davantage.</p>`;
+    if((ret.globalN||0)===0 && (ret.matureN||0)===0){
+      html += `<div class="empty-state" style="padding:14px 16px;text-align:left;line-height:1.5">Pas encore mesurable : la rétention se calcule quand une carte <b>déjà vue</b> revient en révision. Lance « Réviser » sur quelques jours et l'indicateur s'affichera ici. <span style="color:var(--muted)">(Mesure locale à cet appareil pour l'instant.)</span></div>`;
+    } else {
+      html += `<div class="ret-cards">` + retCard(ret.global, ret.globalN, 'Toutes cartes', 'Réussite quand une carte revient') + retCard(ret.mature, ret.matureN, 'Cartes maîtrisées', 'Le vrai signal : ≥21 j d\'intervalle') + `</div>`;
+      html += `<p style="font-size:11.5px;color:var(--muted);margin:-6px 0 18px;line-height:1.5">Une rétention de <b style="color:#4ade80">85–95 %</b> sur les cartes maîtrisées indique des intervalles bien calibrés. Plus bas : tu oublies trop souvent (révise plus). Plus haut : tu pourrais espacer davantage.</p>`;
+    }
 
     // Répartition par maturité
     html += `<p class="section-label">Maturité du programme — <b style="color:#4ade80">${pctMature}%</b> maîtrisé</p>`;
@@ -4664,7 +4682,7 @@ async function renderStats(){
      <div class="stat-card"><div class="v">${nSessions}</div><div class="k">Sessions</div></div>
    </div>`;
 
-  html += activityHeatmap();
+  html += activityHeatmap(cloudDays);
   html += progressBadges(answered);
 
   if(sparkVals.length){
@@ -4676,11 +4694,11 @@ async function renderStats(){
 
   const rows = Object.entries(byTopic).map(([k,s])=>({k,ok:s.ok,n:s.n,r:s.ok/s.n})).sort((a,b)=>a.r-b.r);
   if(rows.length){
-    html += `<p class="section-label">Par chapitre (points faibles en tête)</p><div class="breakdown">`;
+    html += `<details class="stat-fold"><summary class="section-label">Par chapitre (points faibles en tête) <span class="stat-fold-n">${rows.length}</span></summary><div class="breakdown">`;
     rows.forEach(({k,ok,n})=>{ const t=TOPICS[k]; if(!t) return; const r=Math.round(ok/n*100);
       html += `<div class="brk-row"><div class="name" style="color:${t.raw}">${t.name}</div>
         <div class="track"><i style="width:${r}%;background:${t.raw}"></i></div><div class="frac">${ok}/${n}</div></div>`; });
-    html += `</div>`;
+    html += `</div></details>`;
   }
 
   if(missedList.length){
@@ -4690,14 +4708,14 @@ async function renderStats(){
     html += `</div>`;
   }
 
-  html += `<p class="section-label" style="margin-top:22px">Historique récent</p><div class="hist">`;
+  html += `<details class="stat-fold"><summary class="section-label" style="margin-top:22px">Historique récent <span class="stat-fold-n">${history.length}</span></summary><div class="hist">`;
   history.forEach(s=>{ const p=Math.round(s.score/s.total*100);
     const dt=new Date(s.date);
     const ds=dt.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})+' '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
     const ml=({all:'Tous',qcm:'QCM',trou:'À trou',saisie:'Libre',flash:'Flash'})[s.mode]||s.mode;
     const c=p>=80?'#4ade80':p>=50?'#fbbf24':'#f87171';
     html += `<div class="h-row"><span class="d">${ds}</span><span>${ml}</span><span class="m" style="color:${c}">${s.score}/${s.total}</span></div>`; });
-  html += `</div>`;
+  html += `</div></details>`;
 
   body.innerHTML = html;
   const lg=$('#statsLogin'); if(lg) lg.onclick=openAuth;
