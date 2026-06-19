@@ -1204,6 +1204,7 @@ onAuthStateChanged(auth, async (user)=>{
       }
       myClassStatus = (readOk && udoc && udoc.profile && udoc.profile.classStatus) || null;
       mySubStatus = (readOk && udoc && udoc.entitlement && udoc.entitlement.subStatus) || null;
+      if(readOk && udoc && udoc.profile) applyPreferredLevel(udoc.profile);   // Phase 2 : nav par défaut = année de l'élève
       let needs;
       if(readOk){
         needs = (typeof needsProfile==='function') && needsProfile(udoc, user);
@@ -1393,6 +1394,9 @@ function effLevel(){ return isTransversal(activeSubject) ? 'tr' : activeLevel; }
 function inActiveScope(topicKey){ const t = TOPICS[topicKey]; return !!t && t.subject === activeSubject && t.level === effLevel(); }
 function subjectsWithContent(){ return Object.keys(SUBJECTS).filter(s => isTransversal(s) ? hasContent(s,'tr') : ['tsi0','tsi1','tsi2'].some(l=>hasContent(s,l))).sort((a,b)=>SUBJECTS[a].order-SUBJECTS[b].order); }
 function levelsWithContent(subject){ if(isTransversal(subject)) return []; return ['tsi0','tsi1','tsi2'].filter(l=>hasContent(subject,l)).sort((a,b)=>LEVELS[a].order-LEVELS[b].order); }
+/* Phase 2 : l'élève atterrit sur SON année. filiere==='TSI' + annee 0/1/2 → activeLevel.
+   Si l'année visée n'a pas (encore) de contenu, buildNavScope la corrige (révélation progressive). */
+function applyPreferredLevel(p){ if(p && p.filiere==='TSI' && ['0','1','2'].includes(String(p.annee))) activeLevel = 'tsi'+p.annee; }
 /* ============================================================================================ */
 
 // ====================== RENVOI AU COURS (page exacte de la notion) ======================
@@ -5794,7 +5798,13 @@ function paintAdmin(){
   // Approuvés dans l'ANCIEN roster mais sans classStatus → le verrou élève les bloquerait : à réparer.
   const needBackfill = (ADM.users||[]).filter(u=> roster[u.uid]==='approved' && !(u.profile && u.profile.classStatus));
   const _nm = u => admEsc((u.profile&&u.profile.nom) || u.displayName || u.email || '—');
-  html += `<details class="adm-sec"><summary class="adm-sec-h"><span class="cq-ic">🎓</span><span class="cq-title">Classe TSI Chaptal — ${approvedC.length} membre(s)${pendingC.length?` · ${pendingC.length} demande(s)`:''}</span><span class="cq-chev">▸</span></summary><div class="adm-sec-b">`;
+  // Phase 2 — vue par classe (TSI0/1/2). L'accès reste binaire ; on ne fait que regrouper/étiqueter.
+  const _yrKey = u => (u.profile && u.profile.filiere==='TSI' && ['0','1','2'].includes(String(u.profile.annee))) ? ('tsi'+u.profile.annee) : 'autre';
+  const _yrLabel = {tsi0:'TSI0', tsi1:'TSI1', tsi2:'TSI2', autre:'Autre / non renseignée'};
+  const _yrTag = u => { const k=_yrKey(u); return k==='autre' ? ((u.profile&&u.profile.classe)?admEsc(u.profile.classe):'') : _yrLabel[k]; };
+  const _yc = {tsi0:0,tsi1:0,tsi2:0}; approvedC.forEach(u=>{ const k=_yrKey(u); if(k!=='autre') _yc[k]++; });
+  html += `<details class="adm-sec"><summary class="adm-sec-h"><span class="cq-ic">🎓</span><span class="cq-title">Classes TSI — ${approvedC.length} membre(s)${pendingC.length?` · ${pendingC.length} demande(s)`:''}</span><span class="cq-chev">▸</span></summary><div class="adm-sec-b">`;
+  if(approvedC.length){ html += `<p class="footer-note" style="text-align:left;margin:0 0 10px">TSI0 · ${_yc.tsi0}&nbsp;&nbsp;|&nbsp;&nbsp;TSI1 · ${_yc.tsi1}&nbsp;&nbsp;|&nbsp;&nbsp;TSI2 · ${_yc.tsi2}</p>`; }
   if(pendingC.length || needBackfill.length){
     html += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px">`;
     if(pendingC.length){ html += `<button class="btn mini" type="button" id="admApproveAll">✓ Approuver les ${pendingC.length} demande(s)</button>`; }
@@ -5803,13 +5813,17 @@ function paintAdmin(){
   }
   if(pendingC.length){
     html += `<p class="footer-note" style="text-align:left;margin:0 0 10px">Demandes en attente</p><div class="adm-list">`;
-    pendingC.forEach(u=>{ html += `<div class="miss" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="flex:1;min-width:150px">${_nm(u)} <span style="color:var(--muted);font-size:12px">${admEsc(u.email||'')}</span></span><button class="btn mini" type="button" data-approve-uid="${admEsc(u.uid)}">✓ Approuver</button><button class="btn ghost mini" type="button" data-reject-uid="${admEsc(u.uid)}">✗ Refuser</button></div>`; });
+    pendingC.forEach(u=>{ const tag=_yrTag(u); html += `<div class="miss" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="flex:1;min-width:150px">${_nm(u)}${tag?` <span class="adm-chip" style="font-size:11px">${tag}</span>`:''} <span style="color:var(--muted);font-size:12px">${admEsc(u.email||'')}</span></span><button class="btn mini" type="button" data-approve-uid="${admEsc(u.uid)}">✓ Approuver</button><button class="btn ghost mini" type="button" data-reject-uid="${admEsc(u.uid)}">✗ Refuser</button></div>`; });
     html += `</div>`;
   }
   if(approvedC.length){
-    html += `<p class="footer-note" style="text-align:left;margin:${pendingC.length?'14px':'0'} 0 8px">Membres (${approvedC.length})</p><div class="adm-weak">`+approvedC.map(u=>`<span class="adm-chip">${_nm(u)}</span>`).join('')+`</div>`;
+    const _groups={tsi0:[],tsi1:[],tsi2:[],autre:[]}; approvedC.forEach(u=>_groups[_yrKey(u)].push(u));
+    html += `<p class="footer-note" style="text-align:left;margin:${pendingC.length?'14px':'0'} 0 8px">Membres par classe (${approvedC.length})</p>`;
+    ['tsi0','tsi1','tsi2','autre'].forEach(g=>{ if(!_groups[g].length) return;
+      html += `<div style="margin:0 0 9px"><div style="font-size:12px;color:var(--muted);font-weight:700;margin:0 0 5px">${_yrLabel[g]} · ${_groups[g].length}</div><div class="adm-weak">`+_groups[g].map(u=>`<span class="adm-chip">${_nm(u)}</span>`).join('')+`</div></div>`;
+    });
   }
-  if(!pendingC.length && !approvedC.length){ html += `<div class="empty-state" style="padding:18px">Aucune demande pour l'instant. Les élèves rejoignent la classe depuis l'écran d'accueil.</div>`; }
+  if(!pendingC.length && !approvedC.length){ html += `<div class="empty-state" style="padding:18px">Aucune demande pour l'instant. Les élèves rejoignent leur classe depuis l'écran d'accueil.</div>`; }
   html += `</div></details>`;
   html += `<details class="adm-sec"><summary class="adm-sec-h"><span class="cq-ic">⚐</span><span class="cq-title">Signalements${reports&&reports.length?` (${reports.length})`:''}</span><span class="cq-chev">▸</span></summary><div class="adm-sec-b">`;
   if(reports === null){ html += `<div class="empty-state" style="padding:18px">Lecture des signalements impossible — autorise la lecture de la collection <code>reports</code> dans les règles Firestore.</div>`; }
