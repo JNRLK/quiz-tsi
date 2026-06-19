@@ -3015,8 +3015,9 @@ const SRS = {
   _save(d){ try{ localStorage.setItem(STATS_KEY, JSON.stringify(d)); }catch(e){} },
 
   // ---- Helpers de date (streak + quota quotidien de nouvelles cartes) ----
-  _today(){ return new Date().toISOString().slice(0,10); },
-  _dayBefore(dayStr){ const x=new Date(dayStr+'T12:00:00'); x.setDate(x.getDate()-1); return x.toISOString().slice(0,10); },
+  // Jour courant en heure LOCALE (et non UTC) : sinon le « jour » bascule vers 2h du matin l'été (UTC+2) et casse des streaks pourtant continus.
+  _today(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
+  _dayBefore(dayStr){ const x=new Date(dayStr+'T12:00:00'); x.setDate(x.getDate()-1); return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0'); },
   // Nouvelles cartes déjà introduites aujourd'hui
   dailyNewCount(){ const d=this._d(); const t=this._today(); return (d.daily && d.daily.day===t) ? (d.daily.newSeen||0) : 0; },
   // Streak : jours consécutifs avec au moins une révision (0 si la chaîne est rompue)
