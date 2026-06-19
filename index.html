@@ -179,6 +179,17 @@ window.MathJax = {
   .goal-bar{flex:1; min-width:140px; height:8px; border-radius:99px; background:#1f2937; overflow:hidden}
   .goal-bar>i{display:block; height:100%; transition:width .6s}
 
+  /* ---- Paliers / badges de progression ---- */
+  .achv-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(148px,1fr)); gap:10px; margin:6px 0 20px}
+  .achv{background:#0d1320; border:1px solid var(--line); border-radius:14px; padding:12px 14px}
+  .achv.locked{opacity:.55}
+  .achv .ah{font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px}
+  .achv .av{font-size:21px; font-weight:800; font-family:'Fraunces',serif; margin:3px 0 8px; line-height:1}
+  .achv .abar{height:6px; border-radius:99px; background:#1f2937; overflow:hidden}
+  .achv .abar>i{display:block; height:100%; transition:width .6s}
+  .achv .an{font-size:11px; color:var(--muted); margin-top:6px}
+  .achv .dots{margin-top:7px; font-size:12px; letter-spacing:2px}
+
   /* ---- SRS barre ---- */
   .srs-dashboard{background:linear-gradient(135deg,color-mix(in srgb,#a78bfa 14%,#0d1320),color-mix(in srgb,#60a5fa 8%,#0d1320));
     border:1px solid color-mix(in srgb,#a78bfa 35%,transparent); border-radius:18px; padding:16px 18px; margin-bottom:22px}
@@ -4291,6 +4302,37 @@ function activityHeatmap(){
   return html;
 }
 
+/* ---- Paliers / badges de progression (additif, lecture seule des stats) ---- */
+function progressBadges(answered){
+  const streak = (typeof SRS!=='undefined' && SRS.streakCount) ? SRS.streakCount() : 0;
+  let mature = 0;
+  try{ mature = SRS.maturityCounts(allQuestionHashes()).mature || 0; }catch(e){}
+  const totalCards = (typeof QUESTIONS!=='undefined') ? QUESTIONS.length : 0;
+  const pctMature = totalCards ? Math.round(mature/totalCards*100) : 0;
+  const tracks = [
+    {ic:'🔥', name:"Jours d'affilée",   val:streak,    unit:'',  col:'#fb923c', tiers:[3,7,14,30]},
+    {ic:'🎯', name:'Cartes maîtrisées', val:mature,    unit:'',  col:'#22c55e', tiers:[10,25,50,100]},
+    {ic:'📚', name:'Réponses',          val:answered,  unit:'',  col:'#60a5fa', tiers:[50,200,500,1000]},
+    {ic:'🏆', name:'Programme',         val:pctMature, unit:'%', col:'#a78bfa', tiers:[25,50,75,100]},
+  ];
+  let cards='';
+  tracks.forEach(t=>{
+    const reached = t.tiers.filter(x=> t.val>=x).length;       // paliers atteints (0..4)
+    const next = t.tiers.find(x=> t.val<x);                    // prochain palier (ou undefined si max)
+    const prev = reached>0 ? t.tiers[reached-1] : 0;
+    const pct = next ? Math.max(4, Math.round((t.val-prev)/(next-prev)*100)) : 100;
+    const dots = t.tiers.map((x,i)=> i<reached ? `<span style="color:${t.col}">●</span>` : '<span style="color:#374151">○</span>').join(' ');
+    cards += `<div class="achv ${reached?'':'locked'}">
+        <div class="ah">${t.ic} ${t.name}</div>
+        <div class="av" style="color:${reached?t.col:'var(--muted)'}">${t.val}${t.unit}</div>
+        <div class="abar"><i style="width:${pct}%;background:${t.col}"></i></div>
+        <div class="an">${next ? ('Prochain palier : '+next+t.unit) : 'Palier max atteint ✓'}</div>
+        <div class="dots">${dots}</div>
+      </div>`;
+  });
+  return `<p class="section-label" style="margin-top:22px">Paliers</p><div class="achv-grid">${cards}</div>`;
+}
+
 /* ====================== TABLEAU DE BORD ====================== */
 async function renderStats(){
   const body = $('#statsBody');
@@ -4381,6 +4423,7 @@ async function renderStats(){
    </div>`;
 
   html += activityHeatmap();
+  html += progressBadges(answered);
 
   if(sparkVals.length){
     html += `<p class="section-label">Progression (derniers quiz)</p><div class="spark">`;
