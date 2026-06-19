@@ -3017,6 +3017,45 @@ const QUESTIONS = [
    exp:"Il est orthogonal aux deux normales, donc parallèle aux deux plans."},
 ];
 
+/* ===================== DÉMO BÉTA — 1 carte par matière (allume le sélecteur de matières) =====================
+   Bloc ISOLÉ, facile à retirer en entier quand le vrai contenu arrivera. 5 matières × (1 famille + 1 topic + 1 QCM EXACT).
+   Ajouté après la définition de FAMILIES / TOPICS / QUESTIONS : la boucle de rétro-compat (plus haut) a déjà tourné. */
+Object.assign(FAMILIES, {
+  "fpc":   { name:"Électricité",   raw:"#22d3ee", subject:"physique" },
+  "fsi":   { name:"Mécanique",     raw:"#38bdf8", subject:"si" },
+  "finfo": { name:"Programmation", raw:"#a3e635", subject:"info" },
+  "fang":  { name:"Grammaire",     raw:"#f472b6", subject:"anglais" },
+  "ffr":   { name:"Méthode",       raw:"#fb923c", subject:"francais" }
+});
+Object.assign(TOPICS, {
+  "pc_electro":  { name:"Électrocinétique", subject:"physique", level:"tsi1", family:"fpc",   raw:"#06b6d4" },
+  "si_statique": { name:"Statique",         subject:"si",       level:"tsi1", family:"fsi",   raw:"#3b82f6" },
+  "info_python": { name:"Python — bases",   subject:"info",     level:"tsi1", family:"finfo", raw:"#84cc16" },
+  "ang_gram":    { name:"Grammaire",        subject:"anglais",  level:"tr",   family:"fang",  raw:"#ec4899" },
+  "fr_method":   { name:"Méthode",          subject:"francais", level:"tr",   family:"ffr",   raw:"#fb923c" }
+});
+QUESTIONS.push(
+  {topic:'pc_electro', mode:'qcm', q:"Deux résistances de valeur $R$ sont associées en série. La résistance équivalente vaut :",
+   choices:[{t:"$2R$", c:true},{t:"$R/2$", c:false},{t:"$R$", c:false},{t:"$R^2$", c:false}],
+   exp:"En série les résistances s'ajoutent : $R_{eq}=R+R=2R$.",
+   vig:"Série = somme des résistances ; parallèle = somme des inverses (on aurait $R/2$)."},
+  {topic:'si_statique', mode:'qcm', q:"Un solide en équilibre n'est soumis qu'à deux forces. Ces forces sont :",
+   choices:[{t:"de même norme, opposées et de même droite d'action", c:true},{t:"perpendiculaires entre elles", c:false},{t:"de même sens", c:false},{t:"de normes différentes", c:false}],
+   exp:"Théorème des deux forces : à l'équilibre elles sont égales en norme, directement opposées et portées par la même droite d'action.",
+   vig:"« Opposées » ne suffit pas : il faut aussi la même droite d'action (sinon couple)."},
+  {topic:'info_python', mode:'qcm', q:"En Python, que vaut l'expression len([1, 2, 3]) ?",
+   choices:[{t:"3", c:true},{t:"2", c:false},{t:"4", c:false},{t:"une erreur", c:false}],
+   exp:"len renvoie le nombre d'éléments de la liste, ici 3."},
+  {topic:'ang_gram', mode:'qcm', q:"Choose the correct form: « He ___ to school every day. »",
+   choices:[{t:"goes", c:true},{t:"go", c:false},{t:"going", c:false},{t:"gone", c:false}],
+   exp:"Present simple, 3rd person singular: add -s → « he goes ».",
+   vig:"The -s ending is only for the 3rd person singular (he / she / it)."},
+  {topic:'fr_method', mode:'qcm', q:"Dans un résumé de texte, on doit :",
+   choices:[{t:"respecter l'ordre des idées et le système d'énonciation de l'auteur", c:true},{t:"donner son opinion personnelle", c:false},{t:"ajouter de nouveaux exemples", c:false},{t:"citer le texte entre guillemets", c:false}],
+   exp:"Le résumé reformule fidèlement le texte (mêmes idées, même ordre, même énonciation), sans avis personnel ni citation."}
+);
+/* ===================== fin DÉMO BÉTA ===================== */
+
 /* ====================== ÉTAT ====================== */
 let selected = new Set(); // P1 : opt-in — aucun chapitre coché par défaut
 let selectedMode = 'all';
