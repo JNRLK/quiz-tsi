@@ -395,6 +395,8 @@ window.MathJax = {
   #quizScreen.fs-active .feedback{font-size:1.04em}
   /* bouton plein écran : épinglé en haut à droite, au-dessus de tout, hors encoche */
   #quizScreen.fs-active .fs-toggle{position:fixed; top:max(env(safe-area-inset-top,0px),14px); right:16px; width:46px; height:46px; z-index:1002}
+  /* fiche de cours ouverte en plein écran : au-dessus de la carte ET du bouton plein écran */
+  #quizScreen.fs-active #courseModal{z-index:1003}
   /* fond verrouillé pendant le plein écran applicatif */
   body.fs-on{overflow:hidden}
   .progress-wrap{margin-bottom:18px}
@@ -930,7 +932,7 @@ window.MathJax = {
       <button class="btn ghost" id="abandonBtn" style="font-size:13px; padding:9px 14px">✕ Abandonner</button>
       <button class="btn hidden" id="nextBtn">Suivant →</button>
     </div>
-    <p class="kbd-hint">Raccourcis : <kbd>1</kbd>–<kbd>4</kbd> répondre · <kbd>Espace</kbd> révéler · <kbd>Entrée</kbd> suivant</p>
+    <p class="kbd-hint">Raccourcis : <kbd>1</kbd>–<kbd>4</kbd> répondre / noter · <kbd>Espace</kbd> révéler · <kbd>Entrée</kbd> suivant</p>
   </div>
 
   <!-- RESULTS -->
@@ -1602,12 +1604,19 @@ function openCourse(h,v){
   } else return true;
   const sc=document.getElementById('courseScroll'); if(sc) sc.scrollTop=0;
   m.classList.remove('hidden');
+  // En plein écran (natif OU mode focus .fs-active), seul le sous-arbre de #quizScreen est
+  // peint/au-dessus : on déplace la fiche DEDANS pour qu'elle s'ouvre vraiment (sinon elle
+  // n'apparaît qu'une fois sorti du plein écran). Remise dans le body à la fermeture.
+  var qs=document.getElementById('quizScreen');
+  var _fsEl=document.fullscreenElement||document.webkitFullscreenElement||((qs&&qs.classList.contains('fs-active'))?qs:null);
+  if(_fsEl && m.parentElement!==_fsEl){ _fsEl.appendChild(m); }
   try{ history.pushState({cv:1},''); }catch(e){}   // pour que le « retour » du téléphone ferme la fiche
   return false;
 }
 function closeCourse(){
   const m=document.getElementById('courseModal'); if(!m) return;
   m.classList.add('hidden');
+  if(m.parentElement!==document.body){ document.body.appendChild(m); } // remise en place si déplacée en plein écran
   const img=document.getElementById('courseImg'); if(img) img.removeAttribute('src');
   const htmlEl=document.getElementById('courseHtml'); if(htmlEl) htmlEl.innerHTML='';
 }
@@ -4519,9 +4528,11 @@ $('#nextBtn').onclick = ()=> advanceCard();
     card.classList.remove('fs-active');
     paintBtn(false);
     if(fsElement()){ const fn = document.exitFullscreen || document.webkitExitFullscreen; if(fn){ try{ fn.call(document); }catch(e){} } }
-    // rapatrier la modale signalement si elle avait été déplacée dans la carte
+    // rapatrier les overlays éventuellement déplacés dans la carte
     const rm = document.getElementById('reportModal');
     if(rm && rm.parentElement !== document.body){ rm.classList.add('hidden'); document.body.appendChild(rm); }
+    const cm = document.getElementById('courseModal');
+    if(cm && cm.parentElement !== document.body){ cm.classList.add('hidden'); document.body.appendChild(cm); }
   }
   btn.onclick = ()=>{ isActive() ? exit() : enter(); };
   // Sortie du vrai plein écran via Échap/geste (desktop) : refléter l'état applicatif.
@@ -4545,9 +4556,15 @@ document.addEventListener('keydown', (e)=>{
   const typing = tag==='input' || tag==='textarea';
   const q = pool[idx]; if(!q) return;
 
-  // Entrée → question suivante (si déjà répondu)
-  if(e.key==='Enter' && answeredFlag && !$('#nextBtn').classList.contains('hidden')){
-    e.preventDefault(); $('#nextBtn').click(); return;
+  // Entrée → avancer une fois répondu : bouton « Suivant » s'il est présent (QCM faux / saisie),
+  // sinon on valide la note par défaut « Correct » (g2) pour passer à la carte suivante (flash,
+  // confiance QCM…). Ainsi « Entrée = suivant » fonctionne dans TOUS les modes.
+  if(e.key==='Enter' && answeredFlag){
+    const nb=$('#nextBtn');
+    if(nb && !nb.classList.contains('hidden')){ e.preventDefault(); nb.click(); return; }
+    const g2=document.querySelector('#feedback .srs-grade .sg2.g2');
+    if(g2 && !g2.disabled){ e.preventDefault(); g2.click(); return; }
+    return;
   }
 
   if(typing) return; // dans les modes saisie/trou, on laisse taper
@@ -4564,11 +4581,15 @@ document.addEventListener('keydown', (e)=>{
     const rb = $('#revealBtn'); if(rb){ e.preventDefault(); rb.click(); }
     return;
   }
-  // 1-4 → choisir un niveau d'évaluation (Oubli/Difficile/Correct/Facile) une fois la réponse révélée
-  if(answeredFlag && ['1','2','3','4'].includes(e.key)){
+  // 1-N → choisir un niveau d'évaluation une fois la réponse révélée. Fonctionne pour les
+  // 4 niveaux (Oubli/Difficile/Correct/Facile) ET pour les 2 boutons de confiance affichés
+  // après une bonne réponse QCM (« Oui sûr » / « Au pifomètre ») — bug précédent : exigeait
+  // exactement 4 boutons, donc les touches ne marchaient pas sur l'étape de confiance.
+  if(answeredFlag && ['1','2','3','4','5'].includes(e.key)){
     const gBtns = document.querySelectorAll('#feedback .sg2');
-    if(gBtns.length===4 && !gBtns[0].disabled){
-      e.preventDefault(); gBtns[+e.key-1].click();
+    const i = +e.key - 1;
+    if(gBtns.length && i < gBtns.length && !gBtns[0].disabled){
+      e.preventDefault(); gBtns[i].click();
     }
     return;
   }

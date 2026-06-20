@@ -3,7 +3,7 @@
    quand on a du réseau), "cache-first" pour MathJax/polices (gros fichiers
    externes qui ne changent jamais). Fonctionne hors ligne après 1ère visite. */
 
-const CACHE = 'quiz-tsi-v71';  /* plein écran refondu : mode « focus » piloté par classe .fs-active (marche sur iOS/mobile, plus seulement via l'API native), cartes nettement agrandies, bouton sorti de la barre de progression */
+const CACHE = 'quiz-tsi-v72';  /* plein écran : la fiche de cours s'ouvre maintenant DANS le plein écran (avant : visible seulement en sortant) ; raccourcis clavier : 1-N notent aussi l'étape de confiance QCM (2 boutons) et Entrée avance dans tous les modes */
 const CORE = [
   './',
   './index.html',
