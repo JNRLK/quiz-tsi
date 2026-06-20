@@ -382,17 +382,17 @@ window.MathJax = {
     padding-top:calc(max(env(safe-area-inset-top,0px),14px) + 54px);
     padding-left:clamp(18px,5vw,48px); padding-right:clamp(18px,5vw,48px);
     padding-bottom:max(env(safe-area-inset-bottom,0px),40px);
-    font-size:1.18em;
+    font-size:1.34em;
   }
   /* colonne lisible centrée (exclut le bouton flottant et les modales) */
-  #quizScreen.fs-active > *:not(.fs-toggle):not(.modal-overlay){width:min(960px,100%); margin-left:auto; margin-right:auto}
+  #quizScreen.fs-active > *:not(.fs-toggle):not(.modal-overlay){width:min(1180px,100%); margin-left:auto; margin-right:auto}
   /* AGRANDISSEMENT des cartes — énoncé, choix et rendu MathJax (qui suit la taille de police) */
-  #quizScreen.fs-active .question{font-size:clamp(26px,3.4vw,40px); line-height:1.3; margin-bottom:26px}
+  #quizScreen.fs-active .question{font-size:clamp(28px,4.3vw,52px); line-height:1.28; margin-bottom:28px}
   #quizScreen.fs-active .choices{gap:14px}
-  #quizScreen.fs-active .choice{font-size:clamp(18px,1.6vw,22px); padding:20px 24px; border-radius:16px}
+  #quizScreen.fs-active .choice{font-size:clamp(19px,2vw,25px); padding:22px 28px; border-radius:16px}
   #quizScreen.fs-active .choice .key{width:26px}
   #quizScreen.fs-active .badge{font-size:14px}
-  #quizScreen.fs-active .feedback{font-size:1.04em}
+  #quizScreen.fs-active .feedback{font-size:1.1em}
   /* bouton plein écran : épinglé en haut à droite, au-dessus de tout, hors encoche */
   #quizScreen.fs-active .fs-toggle{position:fixed; top:max(env(safe-area-inset-top,0px),14px); right:16px; width:46px; height:46px; z-index:1002}
   /* fiche de cours ouverte en plein écran : au-dessus de la carte ET du bouton plein écran */
@@ -408,6 +408,10 @@ window.MathJax = {
   #qTopicTag{text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .bar{height:7px; border-radius:99px; background:var(--bg-deep); overflow:hidden; border:1px solid var(--line)}
   .bar > i{display:block; height:100%; width:0; border-radius:99px; background:var(--grad-accent-h); transition:width .45s cubic-bezier(.2,.8,.2,1)}
+  /* Transition douce entre cartes : énoncé + réponses masqués le temps du typeset MathJax
+     (supprime le flash de $...$ brut), puis fondu d'apparition. */
+  #qText, #answerZone{transition:opacity .22s ease}
+  .mj-pending{opacity:0 !important; transition:none !important}
 
   .badge{display:inline-block; padding:6px 12px; border-radius:999px; color:#fff; font-weight:700; font-size:12.5px; letter-spacing:.03em; margin-bottom:16px}
   .mtag{display:inline-block; margin-left:8px; padding:5px 10px; border-radius:999px; font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; border:1px solid var(--line); color:var(--muted); vertical-align:middle}
@@ -3313,6 +3317,30 @@ function _doTypeset(el){
   }
 }
 function typeset(el){ _doTypeset(el); }
+/* Typeset MathJax PUIS révèle en fondu — supprime le flash de LaTeX brut ($...$ visible
+   un instant avant le rendu) et donne une vraie transition entre cartes. Les éléments de
+   `fadeEls` restent masqués (.mj-pending) jusqu'à la fin du typeset, puis apparaissent en fondu. */
+function renderReveal(typesetEl, fadeEls){
+  fadeEls.forEach(e=>{ if(e) e.classList.add('mj-pending'); });
+  let shown=false;
+  const reveal=()=>{ if(shown) return; shown=true; requestAnimationFrame(()=>{ fadeEls.forEach(e=>{ if(e) e.classList.remove('mj-pending'); }); }); };
+  _pendingEls.add(typesetEl);
+  const run=()=>{
+    if(window.MathJax && window.MathJax.typesetPromise){
+      window.MathJax.typesetPromise([typesetEl]).then(()=>{ _pendingEls.delete(typesetEl); reveal(); }).catch(reveal);
+    } else reveal();
+  };
+  if(window.MathJax && window.MathJax.startup && window.MathJax.startup.promise){ window.MathJax.startup.promise.then(run).catch(run); }
+  else run();
+  setTimeout(reveal, 700);   // filet : on révèle même si MathJax tarde/échoue
+}
+/* Remonte en haut de la carte sans à-coup (plus de smooth-scroll → plus de sensation de
+   « rafraîchissement »). En plein écran .fs-active on défile le conteneur lui-même. */
+function scrollQuizTop(){
+  const qs=$('#quizScreen');
+  if(qs && qs.classList.contains('fs-active')){ qs.scrollTop=0; }
+  else if(qs){ try{ qs.scrollIntoView({block:'start'}); }catch(e){ try{ window.scrollTo(0,0); }catch(_){} } }
+}
 
 // Filet de sécurité : tant que des éléments restent non rendus, on retente
 // dès que MathJax devient disponible (couvre tous les cas de timing).
@@ -4197,8 +4225,8 @@ function renderQuestion(){
   $('#nextBtn').classList.add('hidden');
   $('#nextBtn').textContent = (!reviewSession && idx===pool.length-1) ? 'Voir le bilan →' : 'Suivant →';
 
-  typeset($('#quizScreen'));
-  $('#quizScreen').scrollIntoView({behavior:'smooth', block:'start'});
+  renderReveal($('#quizScreen'), [$('#qText'), $('#answerZone')]);
+  scrollQuizTop();
 }
 
 /* ---- QCM ---- */
