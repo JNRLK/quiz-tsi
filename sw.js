@@ -3,7 +3,7 @@
    quand on a du réseau), "cache-first" pour MathJax/polices (gros fichiers
    externes qui ne changent jamais). Fonctionne hors ligne après 1ère visite. */
 
-const CACHE = 'quiz-tsi-v73';  /* re-déploiement (forçage publication GitHub Pages) — contenu identique à v72 : fiche de cours ouverte DANS le plein écran + raccourcis clavier 1-N/Entrée robustes */
+const CACHE = 'quiz-tsi-v74';  /* nouveau chapitre « Variables aléatoires » (TSI1, univers fini) : +24 cartes QCM/flash/trou/saisie + 4 fiches de cours 📖 (loi, espérance/transfert, variance/Bienaymé-Tchebychev, lois usuelles), périmètre programme officiel TSI1 */
 const CORE = [
   './',
   './index.html',
