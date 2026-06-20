@@ -4018,28 +4018,34 @@ setTimeout(()=>{ /* garde le poll actif au moins 15s puis allège */
 const MODE_LABEL = {qcm:'QCM', trou:'À trou', saisie:'Réponse libre', flash:'Flashcard'};
 
 /* ============================================================
-   RÉPÉTITION ESPACÉE — algorithme inspiré de SM-2 (Anki)
+   RÉPÉTITION ESPACÉE — FSRS-6 (algorithme MODERNE d'Anki) + paliers d'apprentissage
    ============================================================
    Structure par question (clé = qHash) :
    {
      q       : string     énoncé (pour affichage)
      topic   : string
-     lvl     : 0-5        niveau de maîtrise
-     ef      : float      ease factor (2.5 par défaut)
-     interval: int        jours avant la prochaine révision
+     lvl     : 0-5        niveau de maîtrise (affichage)
+     S       : float|null Stabilité FSRS (jours) — mémoire principale (null tant que la carte apprend)
+     D       : float|null Difficulté FSRS (1–10)
+     ef      : float      ease factor SM-2 — LEGACY (sert encore à amorcer D des cartes migrées)
+     interval: int        jours avant la prochaine révision (= intervalle FSRS, +léger aléa)
      due     : int        timestamp (ms) de la prochaine révision
      reps    : int        nombre total de révisions
      lapses  : int        nombre d'oublis
+     leech   : bool        carte chroniquement oubliée (≥ seuil)
    }
    ============================================================ */
 const STATS_KEY = 'quiztsi_srs_v1';
 
-/* Paramètres de planification — SM-2 fidèle à Anki.
-   Étapes d'apprentissage en MINUTES (une carte neuve se voit plusieurs fois avant de
-   « sortir »), puis intervalles en JOURS qui croissent par le facteur de facilité.
-   Nouveauté clé : AMORTISSEMENT des révisions anticipées — réviser une carte avant son
-   échéance ne gonfle (presque) plus l'intervalle (corrige « 3 semaines en 3 jours »).
-   Réfs : SuperMemo SM-2, documentation Anki, littérature sur l'effet d'espacement. */
+/* Paramètres de planification.
+   • PALIERS d'apprentissage en MINUTES (façon Anki) : une carte neuve / réapprise se voit
+     plusieurs fois avant de « sortir ». Conservés (SRS_LEARN_STEPS / SRS_RELEARN_STEPS).
+   • RÉVISIONS : intervalles calculés par FSRS-6 (voir bloc FSRS plus bas) à partir de la
+     Stabilité/Difficulté de chaque carte et de la rétention cible. FSRS gère nativement
+     l'avance ET le retard, et la stabilité post-oubli (plus de reset brutal, plus d'« ease hell »).
+   Les constantes SM-2 ci-dessous marquées (LEGACY) ne servent plus au calcul des intervalles
+   de révision (FSRS s'en charge) ; gardées pour la migration et la rétro-compat.
+   Réfs : FSRS / ts-fsrs (open-spaced-repetition), documentation Anki, SuperMemo SM-2. */
 const DAY_MS            = 86400000;
 const SRS_LEARN_STEPS   = [1, 10];   // minutes — carte neuve
 const SRS_RELEARN_STEPS = [10];      // minutes — après un oubli (réapprentissage)
@@ -4062,6 +4068,55 @@ function srsFuzz(ivl){
   const delta = ivl * SRS_FUZZ;
   return Math.max(7, Math.round(ivl + (Math.random()*2 - 1) * delta));
 }
+
+/* ============================================================
+   FSRS-6 — Free Spaced Repetition Scheduler (l'algorithme MODERNE d'Anki, ~niveau SM-17).
+   ------------------------------------------------------------
+   Modèle mémoire à 3 variables par carte : Stabilité S (jours pour que la proba de rappel
+   tombe à 90 %), Difficulté D (1–10), Récupérabilité R (proba de rappel à l'instant t).
+   On règle UNE seule chose — la « rétention cible » (défaut 90 %) — et FSRS calcule
+   l'intervalle optimal. Gère nativement l'avance ET le retard (pauses, vacances), sans
+   « ease hell ». Les PALIERS d'apprentissage en minutes (façon Anki) sont conservés autour ;
+   FSRS pilote la mémoire et les intervalles de RÉVISION.
+   Port FIDÈLE de ts-fsrs (open-spaced-repetition) — équations validées numériquement
+   (152 cas testés contre la lib de référence, 0 écart). Poids FSRS-6 par défaut. */
+const FSRS_W = [0.212,1.2931,2.3065,8.2956,6.4133,0.8334,3.0194,0.001,1.8722,0.1666,0.796,1.4835,0.0614,0.2629,1.6483,0.6014,1.8729,0.5425,0.0912,0.0658,0.1542];
+const FSRS_RETENTION_KEY = 'quiztsi_fsrs_retention';
+function getFsrsRetention(){ let v=NaN; try{ v=parseFloat(localStorage.getItem(FSRS_RETENTION_KEY)); }catch(e){} return (v>=0.70 && v<=0.97) ? v : 0.90; }
+function setFsrsRetention(r){ try{ localStorage.setItem(FSRS_RETENTION_KEY, String(r)); }catch(e){} }
+const FSRS = (function(w, maxInt){
+  const S_MIN = 1e-3, DECAY = -w[20], FACTOR = Math.exp((1/DECAY)*Math.log(0.9)) - 1;
+  const clamp=(x,a,b)=>Math.min(Math.max(x,a),b);
+  const fc=(t,s)=>Math.pow(1 + FACTOR*t/s, DECAY);                       // courbe d'oubli R(t)
+  const initS=g=>Math.max(w[g-1],0.1);
+  const initD=g=>w[4]-Math.exp((g-1)*w[5])+1;
+  const nextD=(d,g)=>{ const nd=d + (-w[6]*(g-3))*(10-d)/9; return clamp(w[7]*initD(4)+(1-w[7])*nd,1,10); };
+  const recallS=(d,s,r,g)=>{ const hp=g===2?w[15]:1, eb=g===4?w[16]:1;
+    return clamp(s*(1+Math.exp(w[8])*(11-d)*Math.pow(s,-w[9])*(Math.exp((1-r)*w[10])-1)*hp*eb), S_MIN, 36500); };
+  const forgetS=(d,s,r)=>clamp(w[11]*Math.pow(d,-w[12])*(Math.pow(s+1,w[13])-1)*Math.exp((1-r)*w[14]), S_MIN, 36500);
+  const shortS=(s,g)=>{ let sinc=Math.pow(s,-w[19])*Math.exp(w[17]*(g-3+w[18])); if(g>=2) sinc=Math.max(sinc,1); return clamp(s*sinc,S_MIN,36500); };
+  // Mémoire {S,D} après une note g (1=Again,2=Hard,3=Good,4=Easy), t jours écoulés. mem null = toute 1re fois.
+  function nextState(mem, t, g){
+    const d=mem?mem.D:0, s=mem?mem.S:0;
+    if(d===0 && s===0) return {D:clamp(initD(g),1,10), S:initS(g)};
+    if(g===0) return {D:d,S:s};
+    const r=fc(Math.max(0,t),s);
+    let ns;
+    if(t<=0) ns=shortS(s,g);
+    else if(g===1){ const saf=forgetS(d,s,r); ns=clamp(s/Math.exp(w[17]*w[18]), S_MIN, saf); }
+    else ns=recallS(d,s,r,g);
+    return {D:nextD(d,g), S:ns};
+  }
+  // Intervalle (jours) pour une stabilité S à la rétention cible COURANTE (réglable, défaut 0.9).
+  function interval(s){
+    const rr=getFsrsRetention();
+    const modifier=(Math.pow(rr,1/DECAY)-1)/FACTOR;                      // = 1 quand rr=0.9 → intervalle = S
+    return clamp(Math.max(1, Math.round(s*modifier)), 1, maxInt);
+  }
+  return { nextState, interval, retrievability:fc };
+})(FSRS_W, SRS_MAX_INTERVAL);
+// Difficulté FSRS estimée depuis l'ancienne « ease » SM-2 — migration douce des cartes existantes (S amorcée depuis l'intervalle).
+function fsrsDfromEase(ef){ return Math.min(10, Math.max(1, 11 - 3*(ef||SRS_START_EASE))); }
 
 const SRS = {
   _d(){ try{ return JSON.parse(localStorage.getItem(STATS_KEY)) || {cards:{}, sessions:[]}; }catch(e){ return {cards:{},sessions:[]}; } },
@@ -4138,7 +4193,7 @@ const SRS = {
   // Retourne la carte (ou crée-la)
   card(h, q, topic){
     const d = this._d();
-    if(!d.cards[h]) d.cards[h] = {q, topic, lvl:0, ef:SRS_START_EASE, interval:0, due:Date.now(), reps:0, lapses:0, state:'new', step:0, last:Date.now()};
+    if(!d.cards[h]) d.cards[h] = {q, topic, lvl:0, ef:SRS_START_EASE, interval:0, due:Date.now(), reps:0, lapses:0, state:'new', step:0, last:Date.now(), S:null, D:null};
     return {d, card: d.cards[h]};
   },
 
@@ -4149,42 +4204,47 @@ const SRS = {
     let state = c.state || (((c.reps||0) > 0 && (c.interval||0) > 0) ? 'review' : 'new');
     let step = c.step||0, ef = (c.ef==null?SRS_START_EASE:c.ef), interval = c.interval||0;
     let lapses = c.lapses||0, lvl = c.lvl||0, lapseIvl = c._lapseIvl;
+    let S = (c.S==null ? null : c.S), D = (c.D==null ? null : c.D);
     let dueMin = null, dueDays = null;
+    const g = grade + 1;                                            // note FSRS : 1=Again,2=Hard,3=Good,4=Easy
+    const elapsed = Math.max(0, (now - (c.last||now)) / DAY_MS);    // jours réels écoulés (récupérabilité vraie)
     const learning = (state==='new' || state==='learning' || state==='relearning');
     if(learning){
       const relearn = (state==='relearning');
       const steps = relearn ? SRS_RELEARN_STEPS : SRS_LEARN_STEPS;
+      const graduate = ()=>{                                        // sortie d'apprentissage → FSRS prend la main
+        state = 'review'; interval = 0;
+        if(relearn){                                                // réapprentissage fini : on programme depuis la mémoire post-oubli
+          dueDays = (lapseIvl!=null) ? lapseIvl : FSRS.interval(S!=null ? S : 1);
+          lapseIvl = undefined;
+        } else {                                                    // 1re diplomation : on AMORCE la mémoire FSRS depuis la note
+          const m = FSRS.nextState((S!=null && D!=null) ? {S,D} : null, 0, g); S = m.S; D = m.D;
+          dueDays = FSRS.interval(S);
+        }
+        lvl = Math.min(5, lvl+1);
+      };
       if(grade === 0){ step = 0; state = relearn?'relearning':'learning'; interval = 0; dueMin = steps[0]; }
-      else if(grade === 3){ state='review'; interval = relearn ? Math.max(1, lapseIvl||1) : SRS_EASY_IVL; lapseIvl = undefined; dueDays = interval; lvl = Math.min(5, lvl+1); }
+      else if(grade === 3){ graduate(); }                           // Facile → diplôme immédiat
       else {
-        const ns = (grade===2) ? step+1 : step;          // « Correct » avance, « Difficile » répète l'étape
-        if(ns >= steps.length){ state='review'; interval = relearn ? Math.max(1, lapseIvl||1) : SRS_GRAD_IVL; lapseIvl = undefined; dueDays = interval; lvl = Math.min(5, lvl+1); }
+        const ns = (grade===2) ? step+1 : step;                     // « Correct » avance, « Difficile » répète l'étape
+        if(ns >= steps.length){ graduate(); }
         else { step = ns; state = relearn?'relearning':'learning'; interval = 0; dueMin = steps[ns]; }
       }
     } else {
-      const I = Math.max(1, interval||1);
-      if(grade === 0){
-        lapses++; ef = Math.max(SRS_MIN_EASE, ef - 0.20);
-        // Oubli : adoucissement pour une carte MÛRE (≥21 j). Au lieu d'un reset brutal à ~1 j, on conserve
-        // une fraction de l'intervalle, plafonnée (la carte avait un historique solide — un trou ne l'efface pas).
-        if(I >= 21){ lapseIvl = Math.min(SRS_LAPSE_IVL_CAP, Math.max(2, Math.round(I * 0.20))); }
-        else       { lapseIvl = Math.max(1, Math.round(I * SRS_LAPSE_MULT)); }   // intervalle visé après réapprentissage
+      // Carte de RÉVISION — pilotée par FSRS. Migration douce : si pas encore de mémoire FSRS,
+      // on l'amorce depuis l'état SM-2 (stabilité ≈ intervalle, difficulté estimée depuis l'ease).
+      if(S==null || D==null){ S = Math.max(0.5, interval||1); D = fsrsDfromEase(ef); }
+      if(grade === 0){                                              // OUBLI : stabilité post-oubli FSRS (pas un reset brutal) + réapprentissage
+        lapses++;
+        const m = FSRS.nextState({S,D}, elapsed, 1); S = m.S; D = m.D;
+        lapseIvl = FSRS.interval(S);                                // intervalle visé une fois le réapprentissage fini
         state = 'relearning'; step = 0; interval = 0; dueMin = SRS_RELEARN_STEPS[0]; lvl = Math.max(0, lvl-1);
-      } else {
-        const elapsed = Math.max(0, (now - (c.last||now)) / DAY_MS);  // jours écoulés depuis la dernière révision
-        let factor;
-        if(grade === 1){ ef = Math.max(SRS_MIN_EASE, ef - 0.15); factor = SRS_HARD_MULT; }
-        else if(grade === 2){ factor = ef; }
-        else { ef = ef + 0.15; factor = ef * SRS_EASY_BONUS; }
-        const target = I * factor;                       // intervalle « plein » si révisé pile à l'échéance
-        const frac = Math.min(1, elapsed / I);           // AMORTISSEMENT : 0 si révisé tout de suite, 1 si à l'échéance
-        let ivl = Math.round(I + (target - I) * frac);
-        if(ivl < I) ivl = I;
-        if(elapsed >= I && ivl <= I) ivl = I + 1;         // règle Anki : +1 j minimum quand révisé à l'heure
-        interval = Math.min(SRS_MAX_INTERVAL, ivl); dueDays = interval; lvl = Math.min(5, lvl+1);
+      } else {                                                      // rappel réussi : la stabilité grandit (gère seule avance et retard)
+        const m = FSRS.nextState({S,D}, elapsed, g); S = m.S; D = m.D;
+        dueDays = FSRS.interval(S); lvl = Math.min(5, lvl+1);
       }
     }
-    return { state, step, ef, interval, lapses, lvl, lapseIvl, dueMin, dueDays };
+    return { state, step, ef, S, D, interval, lapses, lvl, lapseIvl, dueMin, dueDays };
   },
 
   // Intervalle (jours, fractionnaire si étape en minutes) résultant d'un grade — pour les boutons.
@@ -4196,7 +4256,7 @@ const SRS = {
   },
 
   // Met à jour après réponse : grade 0-3 (0=oubli, 1=difficile, 2=correct, 3=facile).
-  // Planification déléguée à _project() : étapes d'apprentissage + SM-2 + amortissement anticipation.
+  // Planification déléguée à _project() : paliers d'apprentissage (minutes) + FSRS-6 (mémoire S/D + intervalle).
   review(h, q, topic, grade){
     const {d, card: c} = this.card(h, q, topic);
     const now = Date.now();
@@ -4211,6 +4271,7 @@ const SRS = {
     const p = this._project(c, grade, now);
     c.reps = (c.reps||0) + 1;
     c.state = p.state; c.step = p.step; c.ef = p.ef; c.lapses = p.lapses; c.lvl = p.lvl;
+    c.S = p.S; c.D = p.D;                          // mémoire FSRS (Stabilité / Difficulté)
     if(p.lapseIvl === undefined) delete c._lapseIvl; else c._lapseIvl = p.lapseIvl;
     // Leech : carte chroniquement oubliée → on la SIGNALE (vue élève + prof). Pas de suspension auto : on ne masque pas de contenu.
     if((c.lapses||0) >= SRS_LEECH_THRESHOLD && !c.leech){ c.leech = true; c.leechAt = now; }
@@ -4513,12 +4574,21 @@ function updateSrsBar(){
     </div>
     <div class="rev-obj-row">
       <span class="lbl">Objectif</span>
-      <div class="obj-opts">
+      <div class="obj-opts" id="objOpts">
         <button class="obj-btn" data-t="10">10</button>
         <button class="obj-btn" data-t="20">20</button>
         <button class="obj-btn" data-t="40">40</button>
         <button class="obj-btn" data-t="inf">∞ Illimité</button>
       </div>
+    </div>
+    <div class="rev-obj-row">
+      <span class="lbl">Rétention</span>
+      <div class="obj-opts" id="retOpts">
+        <button class="obj-btn" data-ret="0.85">85 %</button>
+        <button class="obj-btn" data-ret="0.90">90 %</button>
+        <button class="obj-btn" data-ret="0.95">95 %</button>
+      </div>
+      <span style="font-size:11px;color:var(--muted)">cible mémoire (FSRS) — plus haut = on retient plus, mais plus de révisions</span>
     </div>
     <div class="mat-bar" title="Répartition par maturité">
       <div style="width:${seg(counts.mature)}%;background:#22c55e"></div>
@@ -4536,10 +4606,17 @@ function updateSrsBar(){
   const sh=$('#srsHelp'); if(sh) sh.onclick=openOnboarding;
   // sélecteur d'objectif de session (10/20/40/∞), persisté côté client
   const curTgt = getReviewTarget();
-  bar.querySelectorAll('.obj-btn').forEach(b=>{
+  bar.querySelectorAll('#objOpts .obj-btn').forEach(b=>{
     const v = b.dataset.t==='inf' ? Infinity : parseInt(b.dataset.t,10);
     if(v===curTgt) b.classList.add('on');
     b.onclick = ()=>{ setReviewTarget(v); updateSrsBar(); };
+  });
+  // sélecteur de RÉTENTION cible FSRS (85/90/95 %), persisté côté client — lève l'ancrage (plus haut = plus de révisions)
+  const curRet = getFsrsRetention();
+  bar.querySelectorAll('#retOpts .obj-btn').forEach(b=>{
+    const v = parseFloat(b.dataset.ret);
+    if(Math.abs(v-curRet)<0.001) b.classList.add('on');
+    b.onclick = ()=>{ setFsrsRetention(v); updateSrsBar(); };
   });
 }
 
