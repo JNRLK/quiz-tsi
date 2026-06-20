@@ -368,28 +368,41 @@ window.MathJax = {
     backdrop-filter:blur(6px); transition:border-color .16s, color .16s, background .16s}
   .fs-toggle:hover{border-color:var(--accent); color:var(--accent-soft)}
   .fs-toggle .fs-ic{transform:translateY(-1px)}
-  /* En plein écran : la carte remplit l'écran, contenu recentré et agrandi.
-     NB : exclure .fs-toggle du dimensionnement (sinon le bouton, enfant direct,
-     est étiré à la largeur de colonne → longue barre en haut). */
-  #quizScreen:fullscreen{background:var(--bg); border:none; border-radius:0; box-shadow:none;
-    max-width:none; width:100vw; min-height:100vh; margin:0; overflow:auto;
-    padding:max(7vh,40px) clamp(20px,5vw,48px);
-    display:flex; flex-direction:column; justify-content:safe center; font-size:1.18em}
-  #quizScreen:fullscreen > *:not(.fs-toggle):not(.modal-overlay){width:min(940px,100%); margin-left:auto; margin-right:auto}
-  #quizScreen:fullscreen .question{font-size:clamp(26px,3.6vw,38px)}
-  #quizScreen:fullscreen .choice{font-size:19px; padding:18px 22px}
-  #quizScreen:fullscreen .fs-toggle{position:fixed; width:44px; height:44px}
-  #quizScreen:-webkit-full-screen{background:var(--bg); border:none; border-radius:0; box-shadow:none;
-    max-width:none; width:100vw; min-height:100vh; margin:0; overflow:auto;
-    padding:max(7vh,40px) clamp(20px,5vw,48px);
-    display:flex; flex-direction:column; justify-content:center; font-size:1.18em}
-  #quizScreen:-webkit-full-screen > *:not(.fs-toggle):not(.modal-overlay){width:min(940px,100%); margin-left:auto; margin-right:auto}
-  #quizScreen:-webkit-full-screen .question{font-size:clamp(26px,3.6vw,38px)}
-  #quizScreen:-webkit-full-screen .choice{font-size:19px; padding:18px 22px}
-  #quizScreen:-webkit-full-screen .fs-toggle{position:fixed; width:44px; height:44px}
+  /* Mode plein écran « focus » — piloté par la classe .fs-active (ajoutée au clic).
+     Indépendant de l'API Fullscreen native (absente pour les éléments non-vidéo sur
+     iOS Safari) → fonctionne donc AUSSI sur mobile. Sur desktop/Android on demande
+     EN PLUS le vrai plein écran natif (masque la barre du navigateur) : l'UA remplit
+     l'écran et ces styles .fs-active s'appliquent par-dessus. */
+  #quizScreen.fs-active{
+    position:fixed; top:0; left:0; width:100vw; height:100vh; height:100dvh;
+    max-width:none; min-height:0; margin:0; z-index:1000;
+    background:var(--bg); border:none; border-radius:0; box-shadow:none;
+    overflow:auto; -webkit-overflow-scrolling:touch;
+    display:flex; flex-direction:column; justify-content:safe center; align-items:stretch;
+    padding-top:calc(max(env(safe-area-inset-top,0px),14px) + 54px);
+    padding-left:clamp(18px,5vw,48px); padding-right:clamp(18px,5vw,48px);
+    padding-bottom:max(env(safe-area-inset-bottom,0px),40px);
+    font-size:1.18em;
+  }
+  /* colonne lisible centrée (exclut le bouton flottant et les modales) */
+  #quizScreen.fs-active > *:not(.fs-toggle):not(.modal-overlay){width:min(960px,100%); margin-left:auto; margin-right:auto}
+  /* AGRANDISSEMENT des cartes — énoncé, choix et rendu MathJax (qui suit la taille de police) */
+  #quizScreen.fs-active .question{font-size:clamp(26px,3.4vw,40px); line-height:1.3; margin-bottom:26px}
+  #quizScreen.fs-active .choices{gap:14px}
+  #quizScreen.fs-active .choice{font-size:clamp(18px,1.6vw,22px); padding:20px 24px; border-radius:16px}
+  #quizScreen.fs-active .choice .key{width:26px}
+  #quizScreen.fs-active .badge{font-size:14px}
+  #quizScreen.fs-active .feedback{font-size:1.04em}
+  /* bouton plein écran : épinglé en haut à droite, au-dessus de tout, hors encoche */
+  #quizScreen.fs-active .fs-toggle{position:fixed; top:max(env(safe-area-inset-top,0px),14px); right:16px; width:46px; height:46px; z-index:1002}
+  /* fond verrouillé pendant le plein écran applicatif */
+  body.fs-on{overflow:hidden}
   .progress-wrap{margin-bottom:18px}
   .progress-meta{display:flex; justify-content:space-between; gap:12px; font-size:12px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; margin-bottom:7px; font-family:'JetBrains Mono',monospace; padding-right:48px}
-  #quizScreen:fullscreen .progress-meta, #quizScreen:-webkit-full-screen .progress-meta{padding-right:0}
+  /* en plein écran, le contenu démarre SOUS le bouton (padding-top) : plus besoin de réserver
+     d'espace à droite, et la barre de progression ne passe plus sous le bouton */
+  #quizScreen.fs-active .progress-meta{padding-right:0}
+  #quizScreen.fs-active .progress-wrap{margin-bottom:22px}
   #qTopicTag{text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .bar{height:7px; border-radius:99px; background:var(--bg-deep); overflow:hidden; border:1px solid var(--line)}
   .bar > i{display:block; height:100%; width:0; border-radius:99px; background:var(--grad-accent-h); transition:width .45s cubic-bezier(.2,.8,.2,1)}
@@ -4486,32 +4499,40 @@ $('#nextBtn').onclick = ()=> advanceCard();
   const card = $('#quizScreen'), btn = $('#fsBtn');
   if(!card || !btn) return;
   function fsElement(){ return document.fullscreenElement || document.webkitFullscreenElement || null; }
+  function isActive(){ return card.classList.contains('fs-active'); }
+  function paintBtn(on){
+    document.body.classList.toggle('fs-on', on);
+    const ic = btn.querySelector('.fs-ic'); if(ic) ic.textContent = on ? '✕' : '⛶';
+    btn.title = on ? 'Quitter le plein écran (Échap)' : 'Mode plein écran — révision sans distraction';
+    btn.setAttribute('aria-label', btn.title);
+  }
   function enter(){
+    // Plein écran « applicatif » garanti partout (la classe suffit, y compris iOS).
+    card.classList.add('fs-active');
+    paintBtn(true);
+    // Bonus desktop/Android : vrai plein écran natif (masque la barre du navigateur).
+    // Sur iOS l'API est absente pour les éléments non-vidéo → on ignore l'échec.
     const fn = card.requestFullscreen || card.webkitRequestFullscreen;
     if(fn){ try{ const p = fn.call(card); if(p && p.catch) p.catch(()=>{}); }catch(e){} }
   }
   function exit(){
-    const fn = document.exitFullscreen || document.webkitExitFullscreen;
-    if(fn){ try{ fn.call(document); }catch(e){} }
+    card.classList.remove('fs-active');
+    paintBtn(false);
+    if(fsElement()){ const fn = document.exitFullscreen || document.webkitExitFullscreen; if(fn){ try{ fn.call(document); }catch(e){} } }
+    // rapatrier la modale signalement si elle avait été déplacée dans la carte
+    const rm = document.getElementById('reportModal');
+    if(rm && rm.parentElement !== document.body){ rm.classList.add('hidden'); document.body.appendChild(rm); }
   }
-  btn.onclick = ()=>{ fsElement() ? exit() : enter(); };
-  function sync(){
-    const on = fsElement() === card;
-    document.body.classList.toggle('fs-on', on);
-    btn.querySelector('.fs-ic').textContent = on ? '✕' : '⛶';
-    btn.title = on ? 'Quitter le plein écran (Échap)' : 'Mode plein écran — révision sans distraction';
-    btn.setAttribute('aria-label', btn.title);
-    // En sortie de plein écran, rapatrier une modale éventuellement déplacée dans la carte.
-    if(!on){
-      const rm = document.getElementById('reportModal');
-      if(rm && rm.parentElement !== document.body){ rm.classList.add('hidden'); document.body.appendChild(rm); }
-    }
-  }
-  document.addEventListener('fullscreenchange', sync);
-  document.addEventListener('webkitfullscreenchange', sync);
+  btn.onclick = ()=>{ isActive() ? exit() : enter(); };
+  // Sortie du vrai plein écran via Échap/geste (desktop) : refléter l'état applicatif.
+  function onNativeChange(){ if(!fsElement() && isActive()) exit(); }
+  document.addEventListener('fullscreenchange', onNativeChange);
+  document.addEventListener('webkitfullscreenchange', onNativeChange);
+  // Échap en plein écran applicatif (mobile/desktop sans API native) → sortir.
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && isActive() && !fsElement()) exit(); });
   // Sécurité : si l'écran de quiz est masqué (bilan, accueil, abandon…) alors qu'on est
   // en plein écran, on en sort automatiquement.
-  new MutationObserver(()=>{ if(card.classList.contains('hidden') && fsElement()) exit(); })
+  new MutationObserver(()=>{ if(card.classList.contains('hidden') && isActive()) exit(); })
     .observe(card, {attributes:true, attributeFilter:['class']});
 })();
 
@@ -4792,7 +4813,8 @@ $('#reportBtn').onclick = ()=>{
   $('#reportModal').classList.remove('hidden');
   // En plein écran, seul le sous-arbre de #quizScreen est peint : on déplace la modale
   // DANS l'élément plein écran pour qu'elle soit visible et cliquable (remise en place à la fermeture).
-  var _fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+  var _fsEl = document.fullscreenElement || document.webkitFullscreenElement
+              || ($('#quizScreen').classList.contains('fs-active') ? $('#quizScreen') : null);
   if(_fsEl){ _fsEl.appendChild($('#reportModal')); }
   typeset($('#reportQPreview'));
 };
