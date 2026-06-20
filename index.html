@@ -4053,6 +4053,10 @@ const SRS_LAPSE_MULT    = 0.0;       // oubli : part d'intervalle conservée (0 
 const SRS_MAX_INTERVAL  = 365;       // plafond d'intervalle (jours)
 const SRS_FUZZ          = 0.05;      // léger aléa anti-avalanche sur les longs intervalles
 const NEW_PER_DAY       = 20;        // nouvelles cartes introduites au maximum par jour
+const MAX_REVIEWS_PER_DAY = 120;     // plafond de révisions DUES servies par jour (lissage du backlog après une absence — les plus en retard d'abord, le reste attend)
+const SRS_LEECH_THRESHOLD = 8;       // nb d'oublis à partir duquel une carte est signalée « problème » (leech, façon Anki)
+const SRS_LAPSE_IVL_CAP   = 7;       // jours — intervalle MAX après oubli d'une carte MÛRE (≥21 j) : évite le reset brutal à 1 j
+const SRS_LEARN_HORIZON_MS = 20*60000; // fenêtre de re-présentation EN SESSION des cartes d'apprentissage (collapse façon Anki)
 function srsFuzz(ivl){
   if(ivl < 7) return ivl;            // pas d'aléa sur les courts intervalles
   const delta = ivl * SRS_FUZZ;
@@ -4082,7 +4086,7 @@ const SRS = {
       try{
         cloudSync('↑ Synchronisation…');
         const dd = this._d();
-        await Cloud.saveSRS({ cards: dd.cards, streak: dd.streak || null, daily: dd.daily || null });
+        await Cloud.saveSRS({ cards: dd.cards, streak: dd.streak || null, daily: dd.daily || null, reviewLog: (dd.reviewLog||[]).slice(-1000) });
         cloudOk('☁️ SRS sauvegardé');
       }catch(e){
         console.warn('SRS cloud sync', e);
@@ -4119,6 +4123,15 @@ const SRS = {
         d.daily = cloud.daily;
       }
     }
+    // reviewLog : union locale ∪ cloud, dédupliquée par timestamp, triée, plafonnée.
+    // → rétention vraie + heatmap d'activité cohérentes entre appareils, et base d'agrégation pour la vue prof.
+    if(Array.isArray(cloud.reviewLog) && cloud.reviewLog.length){
+      const seen = new Set((d.reviewLog||[]).map(r=>r.t));
+      const merged = (d.reviewLog||[]).slice();
+      cloud.reviewLog.forEach(r=>{ if(r && typeof r.t==='number' && !seen.has(r.t)){ merged.push(r); seen.add(r.t); } });
+      merged.sort((a,b)=>a.t-b.t);
+      d.reviewLog = merged.slice(-2000);
+    }
     this._save(d);
   },
 
@@ -4152,7 +4165,10 @@ const SRS = {
       const I = Math.max(1, interval||1);
       if(grade === 0){
         lapses++; ef = Math.max(SRS_MIN_EASE, ef - 0.20);
-        lapseIvl = Math.max(1, Math.round(I * SRS_LAPSE_MULT));   // intervalle visé après réapprentissage
+        // Oubli : adoucissement pour une carte MÛRE (≥21 j). Au lieu d'un reset brutal à ~1 j, on conserve
+        // une fraction de l'intervalle, plafonnée (la carte avait un historique solide — un trou ne l'efface pas).
+        if(I >= 21){ lapseIvl = Math.min(SRS_LAPSE_IVL_CAP, Math.max(2, Math.round(I * 0.20))); }
+        else       { lapseIvl = Math.max(1, Math.round(I * SRS_LAPSE_MULT)); }   // intervalle visé après réapprentissage
         state = 'relearning'; step = 0; interval = 0; dueMin = SRS_RELEARN_STEPS[0]; lvl = Math.max(0, lvl-1);
       } else {
         const elapsed = Math.max(0, (now - (c.last||now)) / DAY_MS);  // jours écoulés depuis la dernière révision
@@ -4196,6 +4212,8 @@ const SRS = {
     c.reps = (c.reps||0) + 1;
     c.state = p.state; c.step = p.step; c.ef = p.ef; c.lapses = p.lapses; c.lvl = p.lvl;
     if(p.lapseIvl === undefined) delete c._lapseIvl; else c._lapseIvl = p.lapseIvl;
+    // Leech : carte chroniquement oubliée → on la SIGNALE (vue élève + prof). Pas de suspension auto : on ne masque pas de contenu.
+    if((c.lapses||0) >= SRS_LEECH_THRESHOLD && !c.leech){ c.leech = true; c.leechAt = now; }
     if(p.dueMin != null){            // encore en apprentissage : prochaine vue dans quelques minutes
       c.interval = 0;
       c.due = now + p.dueMin * 60000;
@@ -4292,6 +4310,20 @@ const SRS = {
       .map(([h,c]) => ({h,...c}));
   },
 
+  // Cartes d'apprentissage/réapprentissage de la session en cours redevenues « dues » (étapes en minutes),
+  // dans une fenêtre de « collapse » → réinjection intra-session (#1) pour faire vivre les paliers d'apprentissage.
+  dueLearning(seenSet, horizonMs){
+    const d = this._d(), now = Date.now(), lim = now + (horizonMs||0);
+    const out = [];
+    seenSet.forEach(h=>{
+      const c = d.cards[h]; if(!c) return;
+      const learning = c.state==='learning' || c.state==='relearning' || ((c.interval||0)===0 && (c.reps||0)>0);
+      if(learning && c.due <= lim) out.push([h, c.due]);
+    });
+    out.sort((a,b)=>a[1]-b[1]);
+    return out.map(x=>x[0]);
+  },
+
   // Supprime les cartes orphelines (hash ne correspondant plus à aucune question).
   // Renvoie le nombre de cartes nettoyées.
   gc(){
@@ -4309,17 +4341,27 @@ const SRS = {
   // Total cartes vues
   total(){ const d=this._d(); return Object.keys(d.cards).length; },
 
-  // Stats globales
+  // Cartes-problème (leech) : oubliées ≥ seuil — signalement élève + base pour la vue prof (le flag `leech` voyage avec la carte synchronisée).
+  leeches(){
+    const d=this._d(); const valid=new Set(allQuestionHashes());
+    return Object.entries(d.cards)
+      .filter(([h,c]) => valid.has(h) && c.leech)
+      .map(([h,c]) => ({h, q:c.q, topic:c.topic, lapses:c.lapses||0, ef:c.ef}));
+  },
+
+  // Stats globales (cartes VALIDES uniquement — pas d'orphelines, pour rester cohérent avec due())
   globalStats(){
     const d=this._d();
-    const cards=Object.values(d.cards);
+    const valid=new Set(allQuestionHashes());
+    const cards=Object.entries(d.cards).filter(([h])=>valid.has(h)).map(([,c])=>c);
     const total=cards.length, learned=cards.filter(c=>c.lvl>0).length;
-    const reps=cards.reduce((s,c)=>s+c.reps,0), lapses=cards.reduce((s,c)=>s+c.lapses,0);
-    const byLvl=[0,0,0,0,0,0]; cards.forEach(c=>byLvl[c.lvl]++);
+    const reps=cards.reduce((s,c)=>s+(c.reps||0),0), lapses=cards.reduce((s,c)=>s+(c.lapses||0),0);
+    const byLvl=[0,0,0,0,0,0]; cards.forEach(c=>byLvl[c.lvl||0]++);
     const now=Date.now();
     const due=cards.filter(c=>c.due<=now).length;
     const dueIn7=cards.filter(c=>c.due<=now+7*86400000).length;
-    return {total,learned,reps,lapses,due,dueIn7,byLvl, sessions:d.sessions};
+    const leeches=cards.filter(c=>c.leech).length;
+    return {total,learned,reps,lapses,due,dueIn7,leeches,byLvl, sessions:d.sessions};
   },
 
   // Historique des sessions
@@ -4371,7 +4413,7 @@ function updateHeaderStats(){
   const total = QUESTIONS.length || 1;
   // « À réviser » = travail réel du jour = révisions dues + nouvelles cartes du jour
   // (identique au bouton « Réviser (N) ») ; les nouvelles cartes n'étaient pas comptées avant.
-  const totalDue = SRS.due().length;
+  const totalDue = Math.min(SRS.due().length, MAX_REVIEWS_PER_DAY);   // #5 plafond/jour : compteur header = travail réellement atteignable
   const newRemaining = Math.max(0, NEW_PER_DAY - SRS.dailyNewCount());
   const newAvail = Math.min(newRemaining, counts.new);
   const sessionSize = totalDue + newAvail;
@@ -4424,7 +4466,9 @@ function srsStatsForTopic(key, d, now){
 function updateSrsBar(){
   const bar = $('#srsBar'); if(!bar) return;
   const allCards = Object.values(SRS._d().cards);
-  const totalDue = SRS.due().length;
+  const dueReal = SRS.due().length;
+  const totalDue = Math.min(dueReal, MAX_REVIEWS_PER_DAY);     // #5 plafond/jour servi (lissage du backlog)
+  const backlog = Math.max(0, dueReal - totalDue);             // reste du backlog → affiché en « +N en attente »
   const totalCards = QUESTIONS.length;
   const counts = SRS.maturityCounts(allQuestionHashes());  // {new,learning,young,mature}
   const help = `<a id="srsHelp" style="color:#a78bfa;cursor:pointer;font-size:12px;text-decoration:underline">Comment ça marche ?</a>`;
@@ -4457,7 +4501,7 @@ function updateSrsBar(){
     </div>
     <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap">
       <div class="srs-counters">
-        <div class="srs-cnt"><span class="n" style="color:${dueColor}">${totalDue}</span><span class="l">À réviser</span></div>
+        <div class="srs-cnt"><span class="n" style="color:${dueColor}">${totalDue}</span><span class="l">À réviser${backlog>0?` <span style="opacity:.7" title="${backlog} carte(s) de plus en attente — lissées sur les jours suivants">+${backlog}</span>`:''}</span></div>
         <div class="srs-cnt"><span class="n" style="color:#60a5fa">${newAvail}</span><span class="l">Nouvelles / jour</span></div>
         <div class="srs-cnt"><span class="n" style="color:#fbbf24">${counts.learning+counts.young}</span><span class="l">En cours</span></div>
         <div class="srs-cnt"><span class="n" style="color:#4ade80">${counts.mature}</span><span class="l">Maîtrisées</span></div>
@@ -4712,20 +4756,33 @@ function toFlashCard(q){ const ans = q.answer || (q.choices ? ((q.choices.find(c
 function makeReviewSource(){
   const d = SRS._d();
   const hMap = {}; QUESTIONS.forEach(q => { hMap[qHash(q.q)] = q; });
-  const due = SRS.due().map(c => hMap[c.h]).filter(Boolean);
+  // #5 LISSAGE : on ne sert qu'un plafond de révisions dues par jour (les plus en retard d'abord, SRS.due() étant trié) ;
+  // le reste du backlog attend le lendemain → pas de mur « 187 à réviser » inatteignable après une absence.
+  const due = SRS.due().slice(0, MAX_REVIEWS_PER_DAY).map(c => hMap[c.h]).filter(Boolean);
   const remaining = Math.max(0, NEW_PER_DAY - SRS.dailyNewCount());
   let fresh = QUESTIONS.filter(q => !d.cards[qHash(q.q)] && advAllowed(q));
   shuffle(fresh); fresh = fresh.slice(0, remaining);
   const primary = shuffle([...due, ...fresh]);          // travail du jour, entrelacé
   const freeAll = QUESTIONS.filter(advAllowed);          // réservoir d'entraînement libre
   let freeBag = [];
-  let pi = 0;
+  let pi = 0, lastH = null;
+  const seen = new Set();                                 // cartes déjà servies cette session (pour la réinjection d'apprentissage)
+  primary.forEach(q => seen.add(qHash(q.q)));
   return {
     primaryCount: primary.length,
     next(){
-      if(pi < primary.length) return primary[pi++];
-      if(!freeBag.length) freeBag = shuffle(freeAll.slice());   // recycle le programme à l'infini
-      return freeBag.shift() || null;
+      // 1) travail du jour (cartes dues + nouvelles), entrelacé
+      if(pi < primary.length){ const q = primary[pi++]; lastH = qHash(q.q); return q; }
+      // 2) #1 RÉINJECTION : cartes d'apprentissage/réapprentissage de CETTE session redevenues dues (paliers 1/10 min).
+      //    C'est ce qui fait RÉELLEMENT vivre les étapes d'apprentissage en séance (avant : jamais re-servies).
+      //    On évite la répétition immédiate de la carte qu'on vient de voir (lastH).
+      const learn = SRS.dueLearning(seen, SRS_LEARN_HORIZON_MS).filter(h => h !== lastH);
+      if(learn.length){ const h = learn[0]; lastH = h; return hMap[h] || null; }
+      // 3) entraînement libre : tout le programme, mélangé, recyclé à l'infini
+      if(!freeBag.length) freeBag = shuffle(freeAll.slice());
+      const q = freeBag.shift() || null;
+      if(q){ const h = qHash(q.q); seen.add(h); lastH = h; }
+      return q;
     }
   };
 }
@@ -5761,7 +5818,11 @@ async function renderStats(){
     const pctMature = Math.round(counts.mature/totalCards*100);
     const ret = SRS.trueRetention(30);
 
-    html += `<div class="due-chip">📅 ${g.due} carte${g.due!==1?'s':''} à réviser aujourd'hui · ${g.dueIn7} d'ici 7 jours</div>`;
+    const dueCap = Math.min(g.due, MAX_REVIEWS_PER_DAY), backlog = Math.max(0, g.due - dueCap);
+    html += `<div class="due-chip">📅 ${dueCap} carte${dueCap!==1?'s':''} à réviser aujourd'hui${backlog>0?` <span style="opacity:.85">(+${backlog} en attente — lissé)</span>`:''} · ${g.dueIn7} d'ici 7 jours</div>`;
+    if(g.leeches>0){
+      html += `<div class="due-chip" style="background:rgba(248,113,113,.13);color:#f87171">🪤 ${g.leeches} carte${g.leeches!==1?'s':''}-problème — oubliée${g.leeches!==1?'s':''} ≥ ${SRS_LEECH_THRESHOLD}× : à retravailler autrement (relire la fiche, reformuler) ou signaler</div>`;
+    }
 
     // Rétention vraie — l'indicateur de santé de l'apprentissage
     html += `<p class="section-label">Rétention vraie <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">(30 derniers jours)</span></p>`;
@@ -5771,7 +5832,7 @@ async function renderStats(){
       return `<div class="ret-card"><div class="rv" style="color:${color}">${disp}</div><div class="rk">${label}</div><div class="rn">${n} révision${n!==1?'s':''}</div><div class="rh">${hint}</div></div>`;
     };
     if((ret.globalN||0)===0 && (ret.matureN||0)===0){
-      html += `<div class="empty-state" style="padding:14px 16px;text-align:left;line-height:1.5">Pas encore mesurable : la rétention se calcule quand une carte <b>déjà vue</b> revient en révision. Lance « Réviser » sur quelques jours et l'indicateur s'affichera ici. <span style="color:var(--muted)">(Mesure locale à cet appareil pour l'instant.)</span></div>`;
+      html += `<div class="empty-state" style="padding:14px 16px;text-align:left;line-height:1.5">Pas encore mesurable : la rétention se calcule quand une carte <b>déjà vue</b> revient en révision. Lance « Réviser » sur quelques jours et l'indicateur s'affichera ici. <span style="color:var(--muted)">(La rétention se synchronise désormais entre tes appareils.)</span></div>`;
     } else {
       html += `<div class="ret-cards">` + retCard(ret.global, ret.globalN, 'Toutes cartes', 'Réussite quand une carte revient') + retCard(ret.mature, ret.matureN, 'Cartes maîtrisées', 'Le vrai signal : ≥21 j d\'intervalle') + `</div>`;
       html += `<p style="font-size:11.5px;color:var(--muted);margin:-6px 0 18px;line-height:1.5">Une rétention de <b style="color:#4ade80">85–95 %</b> sur les cartes maîtrisées indique des intervalles bien calibrés. Plus bas : tu oublies trop souvent (révise plus). Plus haut : tu pourrais espacer davantage.</p>`;
@@ -6182,7 +6243,7 @@ async function manualSync(){
   try{
     cloudSync('↑ Synchronisation…');
     const dd = SRS._d();
-    await Cloud.saveSRS({ cards: dd.cards, streak: dd.streak || null, daily: dd.daily || null });
+    await Cloud.saveSRS({ cards: dd.cards, streak: dd.streak || null, daily: dd.daily || null, reviewLog: (dd.reviewLog||[]).slice(-1000) });
     const cloud = await Cloud.loadSRS();
     if(cloud){ SRS.mergeCloud(cloud); SRS.gc(); }
     cloudOk('☁️ Synchronisé');
