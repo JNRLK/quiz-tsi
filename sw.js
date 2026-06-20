@@ -3,7 +3,7 @@
    quand on a du réseau), "cache-first" pour MathJax/polices (gros fichiers
    externes qui ne changent jamais). Fonctionne hors ligne après 1ère visite. */
 
-const CACHE = 'quiz-tsi-v69';  /* modifs style : plein écran révision + couleurs thème + nettoyage artefact Cloudflare */
+const CACHE = 'quiz-tsi-v70';  /* fix thème Nuit (variables --panel/--muted… en dur), plein écran agrandi + modale signalement, refonte CSS modales compte/inscription, re-nettoyage artefact Cloudflare */
 const CORE = [
   './',
   './index.html',
