@@ -79,14 +79,14 @@ window.MathJax = { tex:{inlineMath:[['$','$'],['\\(','\\)']], macros:{R:"\\mathb
   }
   var produitVectoriel = ['O=(0,0,0)','u=Vector(O,(2,1,0))','v=Vector(O,(-1,2,0))','w=Cross(u,v)',
     'A=O+u','B=O+u+v','C=O+v','par=Polygon(O,A,B,C)',
-    'SetLabelVisible(A,false)','SetLabelVisible(B,false)','SetLabelVisible(C,false)','SetLabelVisible(O,false)',
+    'ShowLabel(A,false)','ShowLabel(B,false)','ShowLabel(C,false)','ShowLabel(O,false)',
     'SetColor(u,40,150,80)','SetColor(v,40,150,80)','SetLineThickness(u,5)','SetLineThickness(v,5)',
     'SetColor(par,80,120,230)','SetFilling(par,0.28)','SetColor(w,210,50,50)','SetLineThickness(w,6)'];
   var produitMixte = ['O=(0,0,0)','u=Vector(O,(2.4,0.5,0))','v=Vector(O,(0.6,2.2,0))','w=Vector(O,(0.6,0.9,2.2))',
     'base=Polygon(O,O+u,O+u+v,O+v)','pp=Prism(base,O+w)',
     'SetColor(pp,90,130,230)','SetFilling(pp,0.16)',
     'SetColor(u,210,60,60)','SetColor(v,40,150,80)','SetColor(w,60,90,210)',
-    'SetLineThickness(u,5)','SetLineThickness(v,5)','SetLineThickness(w,5)','SetLabelVisible(O,false)'];
+    'SetLineThickness(u,5)','SetLineThickness(v,5)','SetLineThickness(w,5)','ShowLabel(O,false)'];
 
   if (window.GGBApplet){ build('ggb1', produitVectoriel, [28,-18]); build('ggb2', produitMixte, [26,-20]); }
   else { document.getElementById('ggb1').textContent='deployggb.js non chargé (réseau ?)'; }
