@@ -1349,7 +1349,7 @@ const Cloud = {
   // --- Classe TSI Chaptal : demande d'adhésion (élève) + roster d'approbation (admin) ---
   // Aucune règle Firestore à changer : la demande est écrite dans le profil de l'élève (clé 'profile'
   // autorisée), l'approbation dans le profil de l'admin (son propre doc). Fusion profonde des maps.
-  async requestClass(){ if(!currentUser) return; await setDoc(doc(db,'users',currentUser.uid), {profile:{classRequest:'tsi-chaptal', classRequestedAt:Date.now()}}, {merge:true}); },
+  async requestClass(year){ if(!currentUser) return; const _p={classRequest:'tsi-chaptal', classRequestedAt:Date.now()}; if(['0','1','2'].includes(String(year))){ _p.filiere='TSI'; _p.annee=Number(year); } await setDoc(doc(db,'users',currentUser.uid), {profile:_p}, {merge:true}); },
   async setApproval(uid, status){ if(!currentUser) return; await setDoc(doc(db,'users',currentUser.uid), {profile:{classRoster:{[uid]:status}}}, {merge:true}); },
   // --- Unicité des pseudos (collection 'usernames') ---
   async usernameTaken(pseudo){
@@ -1947,6 +1947,7 @@ const QUESTIONS = [
    answer:"Une famille à la fois libre et génératrice (tout vecteur s'écrit de façon unique).",
    exp:"Libre + génératrice."},
   {topic:'ev', mode:'flash', q:"Lien entre $\\mathrm{Im}(p)$ et $\\ker(p-\\mathrm{Id})$ pour un projecteur $p$.",
+   fig:{window:[-0.7,3.3,-0.7,2.2],items:[{segment:[[-0.5,-0.09],[3.05,0.549]]},{segment:[[-0.2,-0.5],[0.76,1.9]]},{label:'F=\\mathrm{Im}\\,p',at:[2.85,0.5],place:'below'},{label:'G=\\ker p',at:[0.72,1.9],place:'right'},{point:[2.66,1.546],label:'x',at:'aboveright'},{point:[2.2,0.396],label:'p(x)',at:'belowright'},{segment:[[2.66,1.546],[2.2,0.396]],dash:true},{point:[0,0],dot:true,label:'O',at:'belowleft'}]},
    answer:"$\\mathrm{Im}(p)=\\ker(p-\\mathrm{Id})$ (vecteurs invariants), et $E=\\ker p\\oplus\\mathrm{Im}\\,p$.",
    exp:"$x\\in\\mathrm{Im}(p)\\iff p(x)=x$."},
 
@@ -3174,6 +3175,7 @@ const QUESTIONS = [
    answer:"$n+1$", accept:["n+1"],
    exp:"Base $(1,X,\\dots,X^n)$ : $n+1$ vecteurs."},
   {topic:'ev', mode:'qcm', q:"Si $F$ et $G$ sont supplémentaires dans $E$ ($E=F\\oplus G$) :",
+   fig:{window:[-0.7,3.3,-0.7,2.4],items:[{segment:[[-0.5,-0.09],[3.05,0.549]]},{segment:[[-0.4,-1.0],[0.78,1.95]]},{label:'F',at:[2.9,0.52],place:'below'},{label:'G',at:[0.72,1.9],place:'right'},{point:[2.66,1.546],label:'x',at:'aboveright'},{vector:[[0,0],[2.2,0.396]],label:'x_F',at:'below'},{vector:[[0,0],[0.46,1.15]],label:'x_G',at:'left'},{segment:[[2.2,0.396],[2.66,1.546]],dash:true},{segment:[[0.46,1.15],[2.66,1.546]],dash:true},{point:[0,0],dot:true,label:'O',at:'belowleft'}]},
    choices:[{t:"$\\dim F+\\dim G=\\dim E$ et $F\\cap G=\\{0\\}$", c:true},{t:"$F\\cap G\\ne\\{0\\}$", c:false},{t:"$F=G$", c:false},{t:"$\\dim F=\\dim G$", c:false}],
    exp:"Tout vecteur s'écrit de façon unique $x=x_F+x_G$."},
   {topic:'ev', mode:'qcm', q:"$\\mathrm{rg}(u)$ d'une application linéaire est :",
@@ -3194,6 +3196,7 @@ const QUESTIONS = [
    answer:"L'ensemble des combinaisons linéaires $\\sum_i\\lambda_i v_i$ ; c'est le plus petit sous-espace vectoriel contenant les $v_i$.",
    exp:"Sous-espace engendré par la famille."},
   {topic:'ev', mode:'flash', q:"Définis : $F$ et $G$ sont supplémentaires dans $E$ ($E=F\\oplus G$).",
+   fig:{window:[-0.7,3.3,-0.7,2.4],items:[{segment:[[-0.5,-0.09],[3.05,0.549]]},{segment:[[-0.4,-1.0],[0.78,1.95]]},{label:'F',at:[2.9,0.52],place:'below'},{label:'G',at:[0.72,1.9],place:'right'},{point:[2.66,1.546],label:'x',at:'aboveright'},{vector:[[0,0],[2.2,0.396]],label:'x_F',at:'below'},{vector:[[0,0],[0.46,1.15]],label:'x_G',at:'left'},{segment:[[2.2,0.396],[2.66,1.546]],dash:true},{segment:[[0.46,1.15],[2.66,1.546]],dash:true},{point:[0,0],dot:true,label:'O',at:'belowleft'}]},
    answer:"$F\\cap G=\\{0_E\\}$ et $F+G=E$ ; alors tout $x\\in E$ s'écrit de façon UNIQUE $x=f+g$ avec $f\\in F,\\ g\\in G$.",
    exp:"Somme directe qui remplit $E$ : existence et unicité de la décomposition."},
   {topic:'ev', mode:'flash', q:"Qu'est-ce qu'une combinaison linéaire de $v_1,\\dots,v_p$ ?",
@@ -3969,9 +3972,11 @@ const QUESTIONS = [
    answer:"Par les images $f(e_1),\\dots,f(e_n)$ des vecteurs d'une base de $E$ (choisies librement dans $F$).",
    exp:"D'où $\\mathcal{L}(E,F)\\simeq\\mathcal{M}_{n,p}(\\mathbb{K})$."},
   {topic:'applications_lineaires', mode:'flash', q:"Définis un projecteur $p\\in\\mathcal{L}(E)$ et donne sa décomposition.",
+   fig:{window:[-0.7,3.3,-0.7,2.2],items:[{segment:[[-0.5,-0.09],[3.05,0.549]]},{segment:[[-0.2,-0.5],[0.76,1.9]]},{label:'F=\\mathrm{Im}\\,p',at:[2.85,0.5],place:'below'},{label:'G=\\ker p',at:[0.72,1.9],place:'right'},{point:[2.66,1.546],label:'x',at:'aboveright'},{point:[2.2,0.396],label:'p(x)',at:'belowright'},{segment:[[2.66,1.546],[2.2,0.396]],dash:true},{point:[0,0],dot:true,label:'O',at:'belowleft'}]},
    answer:"$p$ linéaire avec $p\\circ p=p$ ; alors $E=\\ker p\\oplus\\mathrm{Im}\\,p$.",
    exp:"Projection sur $\\mathrm{Im}\\,p$ parallèlement à $\\ker p$ ; $\\mathrm{Im}\\,p=\\ker(p-\\mathrm{id})$."},
   {topic:'applications_lineaires', mode:'flash', q:"Définis une symétrie $s\\in\\mathcal{L}(E)$.",
+   fig:{window:[-0.7,3.3,-1.1,2.2],items:[{segment:[[-0.5,-0.09],[3.05,0.549]]},{segment:[[-0.25,-0.62],[0.5,1.25]]},{label:'F',at:[2.9,0.52],place:'below'},{label:'G',at:[0.47,1.25],place:'right'},{point:[2.66,1.546],label:'x',at:'aboveright'},{point:[1.74,-0.754],label:'s(x)',at:'belowright'},{point:[2.2,0.396],dot:true,label:'p(x)',at:'aboveleft'},{segment:[[2.66,1.546],[1.74,-0.754]],dash:true},{point:[0,0],dot:true,label:'O',at:'belowleft'}]},
    answer:"$s$ linéaire avec $s\\circ s=\\mathrm{id}_E$ ; alors $E=\\ker(s-\\mathrm{id})\\oplus\\ker(s+\\mathrm{id})$.",
    exp:"Symétrie par rapport à $\\ker(s-\\mathrm{id})$."},
 
@@ -6648,18 +6653,26 @@ function updateClassJoinUI(){
     host.innerHTML = `<div style="border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;font-size:14px">
       <span>⏳</span><span>Demande envoyée à la <b>classe TSI Chaptal</b> — en attente de validation par ton professeur.</span></div>`;
   } else {
-    host.innerHTML = `<div style="border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:14px">
-      <span style="flex:1;min-width:180px">🎓 Rejoins la <b>classe TSI Chaptal</b> pour que ton professeur suive ta progression.</span>
-      <button class="btn mini" id="classJoinBtn" type="button">Rejoindre la classe</button></div>`;
-    const b = $('#classJoinBtn');
-    if(b) b.onclick = async ()=>{
-      b.disabled = true; b.textContent = 'Envoi…';
-      try{
-        await Cloud.requestClass();
-        try{ const p = JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); p.classRequest='tsi-chaptal'; localStorage.setItem('quiztsi_profile', JSON.stringify(p)); }catch(e){}
-        updateClassJoinUI();
-      }catch(e){ console.warn('requestClass', e); b.disabled=false; b.textContent='Rejoindre la classe'; alert('Demande impossible pour le moment. Réessaie.'); }
-    };
+    host.innerHTML = `<div style="border:1.5px solid var(--line);border-radius:14px;padding:14px;font-size:14px">
+      <div style="margin-bottom:10px">🎓 Rejoins ta <b>classe</b> au lycée Chaptal pour que ton professeur suive ta progression.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn mini" data-join-year="0" type="button">Rejoindre TSI0</button>
+        <button class="btn mini" data-join-year="1" type="button">Rejoindre TSI1</button>
+        <button class="btn mini" data-join-year="2" type="button">Rejoindre TSI2</button>
+      </div></div>`;
+    host.querySelectorAll('[data-join-year]').forEach(btn=>{
+      btn.onclick = async ()=>{
+        const yr = btn.dataset.joinYear;
+        host.querySelectorAll('[data-join-year]').forEach(x=>{ x.disabled=true; });
+        btn.textContent = 'Envoi…';
+        try{
+          await Cloud.requestClass(yr);
+          try{ const p = JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); p.classRequest='tsi-chaptal'; p.filiere='TSI'; p.annee=Number(yr); localStorage.setItem('quiztsi_profile', JSON.stringify(p)); }catch(e){}
+          myClassStatus = 'pending';
+          updateClassJoinUI();
+        }catch(e){ console.warn('requestClass', e); host.querySelectorAll('[data-join-year]').forEach(x=>{ x.disabled=false; }); btn.textContent='Rejoindre TSI'+yr; alert('Demande impossible pour le moment. Réessaie.'); }
+      };
+    });
   }
 }
 // Écran bloquant : un non-membre tente d'ouvrir le mode révision (les QCM, eux, restent libres).
@@ -6672,14 +6685,16 @@ function showAccessGate(){
   } else if(requested){
     body.innerHTML = `<p class="auth-sub">Le <b>mode révision</b> et le suivi de progression sont réservés aux membres de la <b>classe TSI Chaptal</b>.</p><div style="border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;font-size:14px;margin-top:12px"><span>⏳</span><span>Demande envoyée — en attente de validation par ton professeur.</span></div><p style="color:var(--muted);font-size:13px;margin:14px 0 0">Les <b>QCM restent en accès libre</b> depuis l'accueil.</p>`;
   } else {
-    body.innerHTML = `<p class="auth-sub">Le <b>mode révision</b> (répétition espacée) et le suivi de progression sont réservés aux membres de la <b>classe TSI Chaptal</b>. Les <b>QCM restent en accès libre</b> pour tout le monde.</p><button class="btn" id="accessJoinBtn" type="button" style="width:100%;margin-top:16px">🎓 Demander l'accès à la classe</button>${SUBSCRIBE_ON ? `<button class="btn ghost" id="accessSubBtn" type="button" style="width:100%;margin-top:10px">💳 Ou s'abonner (0,99 €/mois · 9,99 €/an)</button>` : ''}`;
-    const b=$('#accessJoinBtn');
-    if(b) b.onclick = async ()=>{ b.disabled=true; b.textContent='Envoi…';
-      try{ await Cloud.requestClass(); myClassStatus='pending';
-        try{ const p=JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); p.classRequest='tsi-chaptal'; localStorage.setItem('quiztsi_profile', JSON.stringify(p)); }catch(e){}
+    body.innerHTML = `<p class="auth-sub">Le <b>mode révision</b> (répétition espacée) et le suivi de progression sont réservés aux membres d'une <b>classe TSI Chaptal</b>. Les <b>QCM restent en accès libre</b> pour tout le monde.</p><p style="font-size:13px;color:var(--muted);margin:14px 0 8px">Choisis ta classe :</p><div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" data-gate-year="0" type="button" style="flex:1;min-width:90px">TSI0</button>
+      <button class="btn" data-gate-year="1" type="button" style="flex:1;min-width:90px">TSI1</button>
+      <button class="btn" data-gate-year="2" type="button" style="flex:1;min-width:90px">TSI2</button></div>${SUBSCRIBE_ON ? `<button class="btn ghost" id="accessSubBtn" type="button" style="width:100%;margin-top:10px">💳 Ou s'abonner (0,99 €/mois · 9,99 €/an)</button>` : ''}`;
+    body.querySelectorAll('[data-gate-year]').forEach(b=>{ b.onclick = async ()=>{ const yr=b.dataset.gateYear; body.querySelectorAll('[data-gate-year]').forEach(x=>{ x.disabled=true; }); b.textContent='Envoi…';
+      try{ await Cloud.requestClass(yr); myClassStatus='pending';
+        try{ const p=JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); p.classRequest='tsi-chaptal'; p.filiere='TSI'; p.annee=Number(yr); localStorage.setItem('quiztsi_profile', JSON.stringify(p)); }catch(e){}
         if(typeof updateClassJoinUI==='function') updateClassJoinUI(); showAccessGate();
-      }catch(e){ console.warn('requestClass', e); b.disabled=false; b.textContent='🎓 Demander l\'accès à la classe'; alert('Demande impossible pour le moment. Réessaie.'); }
-    };
+      }catch(e){ console.warn('requestClass', e); body.querySelectorAll('[data-gate-year]').forEach(x=>{ x.disabled=false; }); b.textContent='TSI'+yr; alert('Demande impossible pour le moment. Réessaie.'); }
+    }; });
     const sb=$('#accessSubBtn'); if(sb) sb.onclick=()=>{ closeAccessGate(); openSubscribe(); };
   }
   m.classList.remove('hidden');
@@ -7091,14 +7106,45 @@ async function admBackfillUsernames(users){
     catch(e){ /* best-effort : nécessite la règle admin sur 'usernames' */ }
   }
 }
+// ── Adhésion de classe & suppression : robustes même si les Cloud Functions sont HS ──
+// Les règles Firestore autorisent un compte enseignant (isTeacher) à écrire profile.classStatus
+// et à supprimer users/{uid}, ses sessions et ses pseudos. On s'appuie dessus en repli quand la
+// fonction serveur renvoie « internal » (non déployée / plantée).
+
+// Statut d'adhésion d'un élève (approved / rejected). Tente la Cloud Function (qui pourra poser un
+// custom claim plus tard) PUIS écrit toujours le doc élève (autoritatif pour le verrou côté élève).
+// classDecidedAt = maintenant : un membre retiré ne réapparaît pas en « demande en attente »
+// (le filtre pendingC exige reqAt >= decAt).
+async function setMemberStatus(uid, status){
+  if(!uid) return;
+  try{ await setClassApprovalFn({ uid, status }); }catch(e){ console.warn('setClassApproval CF indisponible → repli client', e); }
+  await setDoc(doc(db,'users',uid), { profile:{ classStatus:status, classDecidedAt:Date.now(), classDecidedBy:(currentUser&&currentUser.email)||null } }, { merge:true });
+}
+// Affecte / déplace un élève dans une classe TSI0/1/2 (écrit son année — teacher-allowed).
+async function setMemberClass(uid, year){
+  if(!uid || !['0','1','2'].includes(String(year))) return;
+  await setDoc(doc(db,'users',uid), { profile:{ filiere:'TSI', annee:Number(year) } }, { merge:true });
+}
+// Suppression des DONNÉES d'un élève côté client (repli quand la Cloud Function est HS).
+// Supprime sessions + pseudos + doc users/{uid}. NE retire PAS le login Firebase (Admin SDK requis).
+async function clientPurgeUser(uid){
+  const out = { sessions:0, usernames:0 };
+  try{ const ss = await getDocs(collection(db,'users',uid,'sessions')); for(const d of ss.docs){ try{ await deleteDoc(d.ref); out.sessions++; }catch(_){} } }catch(_){}
+  try{ const us = await getDocs(collection(db,'usernames')); for(const d of us.docs){ const v=d.data(); if(v && v.uid===uid){ try{ await deleteDoc(d.ref); out.usernames++; }catch(_){} } } }catch(_){}
+  await deleteDoc(doc(db,'users',uid));
+  return out;
+}
 async function admDeleteDuplicates(){
   const dups = ADM.discarded || [];
   if(!dups.length) return;
   if(!confirm(`Supprimer définitivement ${dups.length} compte(s) en double (même e-mail) ?\n\nCette action est irréversible.`)) return;
   const btn=$('#admDelDup'); if(btn){ btn.disabled=true; btn.textContent='Suppression…'; }
-  let okN=0, errN=0;
-  for(const u of dups){ try{ await deleteAccountFn({ uid:u.uid }); okN++; }catch(e){ errN++; console.warn('delete', u.uid, e); } }
-  if(errN) alert(`${okN} compte(s) supprimé(s), ${errN} échec(s). Si la fonction vient d'être déployée, réessaie dans un instant.`);
+  let okN=0; const failed=[];
+  for(const u of dups){ try{ await deleteAccountFn({ uid:u.uid }); okN++; }catch(e){ failed.push(u); console.warn('delete', u.uid, e); } }
+  if(failed.length && confirm(`${okN} compte(s) supprimé(s) via le serveur, ${failed.length} échec(s) (fonction « deleteAccount » indisponible).\n\nSupprimer les DONNÉES de ces ${failed.length} compte(s) côté client ?\n\n⚠️ Le login Firebase restera à retirer via la console Authentication (ou en redéployant la fonction).`)){
+    let dOk=0; for(const u of failed){ try{ await clientPurgeUser(u.uid); dOk++; }catch(_){} }
+    alert(`Données supprimées pour ${dOk} compte(s). Logins Firebase à retirer via la console / redéploiement de la fonction.`);
+  }
   renderAdmin();
 }
 async function admDeleteOne(uid, label){
@@ -7108,8 +7154,22 @@ async function admDeleteOne(uid, label){
     const res = await deleteAccountFn({ uid });
     const d = (res && res.data) || {};
     if(d.authError){ alert("Données supprimées, mais le login Firebase n'a pas pu être retiré :\n"+d.authError); }
+    renderAdmin();
+    return;
   }
-  catch(e){ alert('Suppression impossible : '+(e.message||e.code||e)); return; }
+  catch(e){
+    const msg = (e && (e.message||e.code)) || e;
+    // Cloud Function indisponible (souvent « internal » = non déployée / plantée). Repli :
+    // suppression des DONNÉES côté client (teacher-allowed). Seul le login Firebase reste.
+    if(!confirm(`La fonction serveur de suppression est indisponible (${msg}).\n\nSupprimer maintenant les DONNÉES de l'élève (profil, progression, demandes, pseudo) ?\n\n⚠️ Le LOGIN Firebase ne pourra PAS être retiré tant que la Cloud Function « deleteAccount » n'est pas redéployée — l'élève n'aura toutefois plus aucun accès ni donnée.`)) return;
+    try{
+      const r = await clientPurgeUser(uid);
+      alert(`Données supprimées (doc + ${r.sessions} session(s) + ${r.usernames} pseudo(s)).\n\nIl reste à retirer le login Firebase via la console (Authentication) ou en redéployant la Cloud Function.`);
+    }catch(e2){
+      alert('Suppression impossible, même côté données : '+((e2&&(e2.message||e2.code))||e2)+'\n\n(Vérifie que tu es connecté avec un compte enseignant et que les règles Firestore sont publiées.)');
+      return;
+    }
+  }
   renderAdmin();
 }
 
@@ -7296,7 +7356,11 @@ function paintAdmin(){
     const _groups={tsi0:[],tsi1:[],tsi2:[],autre:[]}; approvedC.forEach(u=>_groups[_yrKey(u)].push(u));
     html += `<p class="footer-note" style="text-align:left;margin:${pendingC.length?'14px':'0'} 0 8px">Membres par classe (${approvedC.length})</p>`;
     ['tsi0','tsi1','tsi2','autre'].forEach(g=>{ if(!_groups[g].length) return;
-      html += `<div style="margin:0 0 9px"><div style="font-size:12px;color:var(--muted);font-weight:700;margin:0 0 5px">${_yrLabel[g]} · ${_groups[g].length}</div><div class="adm-weak">`+_groups[g].map(u=>`<span class="adm-chip">${_nm(u)}</span>`).join('')+`</div></div>`;
+      html += `<div style="margin:0 0 9px"><div style="font-size:12px;color:var(--muted);font-weight:700;margin:0 0 5px">${_yrLabel[g]} · ${_groups[g].length}</div><div class="adm-list">`+_groups[g].map(u=>{
+        const _cur = _yrKey(u)==='autre' ? '' : _yrKey(u).replace('tsi','');
+        const _opts = ['0','1','2'].map(y=>`<option value="${y}"${y===_cur?' selected':''}>TSI${y}</option>`).join('');
+        return `<div class="miss" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="flex:1;min-width:140px">${_nm(u)} <span style="color:var(--muted);font-size:12px">${admEsc(u.email||'')}</span></span><select data-move-uid="${admEsc(u.uid)}" title="Changer de classe" style="font-size:12px;padding:4px 6px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink)"><option value="">Classe…</option>${_opts}</select><button class="btn ghost mini" type="button" data-remove-uid="${admEsc(u.uid)}" data-remove-label="${_nm(u)}">✗ Retirer</button></div>`;
+      }).join('')+`</div></div>`;
     });
   }
   if(!pendingC.length && !approvedC.length){ html += `<div class="empty-state" style="padding:18px">Aucune demande pour l'instant. Les élèves rejoignent leur classe depuis l'écran d'accueil.</div>`; }
@@ -7314,20 +7378,22 @@ function paintAdmin(){
 
   box.innerHTML = html;
   box.querySelectorAll('[data-del-uid]').forEach(b=>{ b.onclick=(e)=>{ e.preventDefault(); e.stopPropagation(); admDeleteOne(b.dataset.delUid, b.dataset.delLabel); }; });
-  const _approve = async (uid,status,btn)=>{ btn.disabled=true; try{ await setClassApprovalFn({uid, status}); renderAdmin(); }catch(e){ console.warn('approbation classe', e); btn.disabled=false; alert('Action impossible. La Cloud Function setClassApproval est-elle déployée ?'); } };
+  const _approve = async (uid,status,btn)=>{ btn.disabled=true; try{ await setMemberStatus(uid, status); renderAdmin(); }catch(e){ console.warn('approbation classe', e); btn.disabled=false; alert('Action impossible : '+((e&&(e.message||e.code))||e)); } };
   box.querySelectorAll('[data-approve-uid]').forEach(b=>{ b.onclick=()=>_approve(b.dataset.approveUid,'approved',b); });
   box.querySelectorAll('[data-reject-uid]').forEach(b=>{ b.onclick=()=>_approve(b.dataset.rejectUid,'rejected',b); });
+  box.querySelectorAll('[data-remove-uid]').forEach(b=>{ b.onclick=async ()=>{ const lbl=b.dataset.removeLabel||'cet élève'; if(!confirm(`Retirer « ${lbl} » de la classe ?\n\nIl perdra l'accès à la révision et au suivi (son compte et sa progression sont conservés).`)) return; b.disabled=true; b.textContent='Retrait…'; try{ await setMemberStatus(b.dataset.removeUid, 'rejected'); renderAdmin(); }catch(e){ console.warn('retrait', e); b.disabled=false; b.textContent='✗ Retirer'; alert('Retrait impossible : '+((e&&(e.message||e.code))||e)); } }; });
+  box.querySelectorAll('[data-move-uid]').forEach(s=>{ s.onchange=async ()=>{ const y=s.value; if(!['0','1','2'].includes(y)) return; s.disabled=true; try{ await setMemberClass(s.dataset.moveUid, y); renderAdmin(); }catch(e){ console.warn('déplacement classe', e); s.disabled=false; alert('Déplacement impossible : '+((e&&(e.message||e.code))||e)); } }; });
   const _aa = box.querySelector('#admApproveAll');
-  if(_aa) _aa.onclick = async ()=>{ _aa.disabled=true; _aa.textContent='Approbation…'; for(const u of pendingC){ try{ await setClassApprovalFn({uid:u.uid, status:'approved'}); }catch(e){ console.warn('approve all', u.uid, e); } } renderAdmin(); };
+  if(_aa) _aa.onclick = async ()=>{ _aa.disabled=true; _aa.textContent='Approbation…'; for(const u of pendingC){ try{ await setMemberStatus(u.uid, 'approved'); }catch(e){ console.warn('approve all', u.uid, e); } } renderAdmin(); };
   const _bf = box.querySelector('#admBackfill');
-  if(_bf) _bf.onclick = async ()=>{ _bf.disabled=true; _bf.textContent='Réparation…'; for(const u of needBackfill){ try{ await setClassApprovalFn({uid:u.uid, status:'approved'}); }catch(e){ console.warn('backfill', u.uid, e); } } renderAdmin(); };
+  if(_bf) _bf.onclick = async ()=>{ _bf.disabled=true; _bf.textContent='Réparation…'; for(const u of needBackfill){ try{ await setMemberStatus(u.uid, 'approved'); }catch(e){ console.warn('backfill', u.uid, e); } } renderAdmin(); };
   // Auto-réparation silencieuse : tout membre approuvé dans l'ANCIEN roster mais sans
   // classStatus sur son doc serait bloqué par son propre verrou (et ses re-demandes avalées).
   // On écrit le statut canonique une fois, à l'ouverture de la console, pour que ça ne se
   // reproduise plus. (N'approuve QUE des élèves DÉJÀ approuvés dans le roster : sans risque.)
   if(needBackfill.length && !ADM._healing){
     ADM._healing = true;
-    Promise.all(needBackfill.map(u=> setClassApprovalFn({uid:u.uid, status:'approved'}).catch(e=>console.warn('auto-heal', u.uid, e))))
+    Promise.all(needBackfill.map(u=> setMemberStatus(u.uid, 'approved').catch(e=>console.warn('auto-heal', u.uid, e))))
       .then(()=>{ ADM._healing = false; renderAdmin(); })
       .catch(()=>{ ADM._healing = false; });
   }
