@@ -1189,7 +1189,7 @@ window.MathJax = {
   </div>
 </div>
 
-<!-- ACCÈS RÉVISION RÉSERVÉ (freemium : QCM libres, révision réservée à la classe / aux abonnés) -->
+<!-- ACCÈS RÉVISION RÉSERVÉ (révision réservée à la classe) -->
 <div class="modal-overlay hidden" id="accessModal">
   <div class="modal">
     <button class="modal-close" id="accessClose" aria-label="Fermer">✕</button>
@@ -1198,14 +1198,6 @@ window.MathJax = {
   </div>
 </div>
 
-<!-- ABONNEMENT (phase 2 — DORMANT tant que SUBSCRIBE_ON=false) -->
-<div class="modal-overlay hidden" id="subscribeModal">
-  <div class="modal">
-    <button class="modal-close" id="subscribeClose" aria-label="Fermer">✕</button>
-    <h2 style="font-family:'Literata',serif; margin:0 0 6px">💳 S'abonner à la révision</h2>
-    <div id="subscribeBody"></div>
-  </div>
-</div>
 
 <!-- SIGNALEMENT D'ERREUR -->
 <div class="modal-overlay hidden" id="reportModal">
@@ -1280,12 +1272,7 @@ let isAdmin = false;
 // les accès dans la console admin, puis repasser à true.
 const ACCESS_GATE_ON = true;    // Verrou ACTIF : révision (SRS) + suivi réservés aux membres approuvés (classStatus==='approved') ou admin ; QCM libres pour tous
 let myClassStatus = null;                 // 'approved' | 'pending' | 'rejected' | null (lu sur le doc de l'élève)
-// --- Abonnement (phase 2) : DORMANT tant que SUBSCRIBE_ON=false. Aucun paiement possible. ---
-const SUBSCRIBE_ON = false;               // true UNIQUEMENT après : extension Stripe installée + STRIPE_PRICES renseignés + cadre légal OK
-const STRIPE_PRICES = { monthly: '', yearly: '' };  // IDs de prix Stripe (price_...) — à remplir lors de l'activation
-let mySubStatus = null;                    // 'active' | 'trialing' | 'past_due' | 'canceled' | null (lu sur le doc élève, écrit par l'extension Stripe)
-function subActive(){ return mySubStatus === 'active' || mySubStatus === 'trialing'; }
-function revisionAllowed(){ return !ACCESS_GATE_ON || isAdmin || myClassStatus === 'approved' || subActive(); }
+function revisionAllowed(){ return !ACCESS_GATE_ON || isAdmin || myClassStatus === 'approved'; }
 
 // Clé de réservation d'un pseudo (unicité insensible à la casse, ID Firestore valide)
 function normUsername(s){
@@ -1447,7 +1434,6 @@ onAuthStateChanged(auth, async (user)=>{
           myClassStatus = 'approved';
         }
       }catch(e){}
-      mySubStatus = (readOk && udoc && udoc.entitlement && udoc.entitlement.subStatus) || null;
       if(readOk && udoc && udoc.profile) applyPreferredLevel(udoc.profile);   // Phase 2 : nav par défaut = année de l'élève
       let needs;
       if(readOk){
@@ -1470,7 +1456,6 @@ onAuthStateChanged(auth, async (user)=>{
     if(typeof SRS!=='undefined') SRS.clear();
     try{ localStorage.removeItem(SRS_OWNER_KEY); }catch(e){}
     myClassStatus = null;
-    mySubStatus = null;
     // Connexion obligatoire : ouvrir la modale, non fermable
     if(typeof openAuth === 'function') openAuth();
   }
@@ -6795,14 +6780,13 @@ function showAccessGate(){
     body.innerHTML = `<p class="auth-sub">Le <b>mode révision</b> (répétition espacée) et le suivi de progression sont réservés aux membres d'une <b>classe TSI Chaptal</b>. Les <b>QCM restent en accès libre</b> pour tout le monde.</p><p style="font-size:13px;color:var(--muted);margin:14px 0 8px">Choisis ta classe :</p><div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn" data-gate-year="0" type="button" style="flex:1;min-width:90px">TSI0</button>
       <button class="btn" data-gate-year="1" type="button" style="flex:1;min-width:90px">TSI1</button>
-      <button class="btn" data-gate-year="2" type="button" style="flex:1;min-width:90px">TSI2</button></div>${SUBSCRIBE_ON ? `<button class="btn ghost" id="accessSubBtn" type="button" style="width:100%;margin-top:10px">💳 Ou s'abonner (0,99 €/mois · 9,99 €/an)</button>` : ''}`;
+      <button class="btn" data-gate-year="2" type="button" style="flex:1;min-width:90px">TSI2</button></div>`;
     body.querySelectorAll('[data-gate-year]').forEach(b=>{ b.onclick = async ()=>{ const yr=b.dataset.gateYear; body.querySelectorAll('[data-gate-year]').forEach(x=>{ x.disabled=true; }); b.textContent='Envoi…';
       try{ await Cloud.requestClass(yr); myClassStatus='pending';
         try{ const p=JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); p.classRequest='tsi-chaptal'; p.filiere='TSI'; p.annee=Number(yr); localStorage.setItem('quiztsi_profile', JSON.stringify(p)); }catch(e){}
         if(typeof updateClassJoinUI==='function') updateClassJoinUI(); showAccessGate();
       }catch(e){ console.warn('requestClass', e); body.querySelectorAll('[data-gate-year]').forEach(x=>{ x.disabled=false; }); b.textContent='TSI'+yr; alert('Demande impossible pour le moment. Réessaie.'); }
     }; });
-    const sb=$('#accessSubBtn'); if(sb) sb.onclick=()=>{ closeAccessGate(); openSubscribe(); };
   }
   m.classList.remove('hidden');
 }
@@ -6818,49 +6802,6 @@ function maybeAccessNotice(){
   try{ localStorage.setItem('quiztsi_notice_accessgate_v1','1'); }catch(e){}
   showAccessGate();
 }
-// --- Abonnement (phase 2) : UI + tunnel Stripe. DORMANT tant que SUBSCRIBE_ON=false / STRIPE_PRICES vides → aucun paiement. ---
-function openSubscribe(){
-  const m=$('#subscribeModal'), body=$('#subscribeBody'); if(!m||!body) return;
-  if(subActive()){
-    body.innerHTML = `<p class="auth-sub">Ton abonnement est <b>actif</b> — tu as accès à toute la révision. Merci ! 🙏</p><button class="btn ghost" id="subPortalBtn" type="button" style="width:100%;margin-top:14px">Gérer / résilier mon abonnement</button>`;
-    const p=$('#subPortalBtn'); if(p) p.onclick=openBillingPortal;
-  } else {
-    body.innerHTML = `<p class="auth-sub">Débloque le <b>mode révision</b> (répétition espacée) + le suivi de progression. Sans engagement, résiliable à tout moment.</p>
-      <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px">
-        <button class="btn" id="subYear" type="button" style="width:100%">Annuel — <b>9,99 €/an</b> <span style="opacity:.85">· le plus avantageux</span></button>
-        <button class="btn ghost" id="subMonth" type="button" style="width:100%">Mensuel — <b>0,99 €/mois</b></button>
-      </div>
-      <p style="color:var(--muted);font-size:12px;margin:12px 0 0;text-align:center">Paiement sécurisé par Stripe. Si tu fais partie de la classe TSI Chaptal, l'accès est gratuit — demande-le plutôt.</p>`;
-    const y=$('#subYear'), mo=$('#subMonth');
-    if(y) y.onclick=()=>startCheckout('yearly');
-    if(mo) mo.onclick=()=>startCheckout('monthly');
-  }
-  m.classList.remove('hidden');
-}
-function closeSubscribe(){ const m=$('#subscribeModal'); if(m) m.classList.add('hidden'); }
-async function startCheckout(plan){
-  const priceId = STRIPE_PRICES[plan];
-  if(!SUBSCRIBE_ON || !priceId){ alert("L'abonnement en ligne arrive bientôt 🚧"); return; }
-  if(!currentUser){ if(typeof openAuth==='function') openAuth(); return; }
-  // ===== ACTIVATION (à dé-commenter une fois l'extension « invertase/firestore-stripe-payments » installée,
-  //        et après avoir ajouté `addDoc, collection, onSnapshot` à l'import firebase-firestore en haut du fichier) =====
-  // try{
-  //   const ref = await addDoc(collection(db,'customers',currentUser.uid,'checkout_sessions'), {
-  //     price: priceId, mode:'subscription', allow_promotion_codes:true,
-  //     success_url: location.origin, cancel_url: location.origin
-  //   });
-  //   onSnapshot(ref, (snap)=>{ const d=snap.data()||{}; if(d.error) alert('Erreur paiement : '+d.error.message); if(d.url) location.assign(d.url); });
-  // }catch(e){ console.warn('checkout', e); alert('Paiement indisponible pour le moment.'); }
-}
-async function openBillingPortal(){
-  if(!SUBSCRIBE_ON){ alert('Bientôt disponible 🚧'); return; }
-  // ===== ACTIVATION : portail client fourni par l'extension Stripe =====
-  // try{ const fn = httpsCallable(fbFunctions, 'ext-firestore-stripe-payments-createPortalLink');
-  //   const { data } = await fn({ returnUrl: location.origin }); location.assign(data.url);
-  // }catch(e){ console.warn('portal', e); alert('Indisponible pour le moment.'); }
-}
-$('#subscribeClose').onclick = closeSubscribe;
-$('#subscribeModal').addEventListener('click', e=>{ if(e.target.id==='subscribeModal') closeSubscribe(); });
 function updateAccountUI(){
   const btn = $('#accountBtn');
   if(currentUser){
@@ -7615,7 +7556,7 @@ if ('serviceWorker' in navigator) {
       <b>Finalités :</b> fournir l'outil de révision et la progression personnalisée ; permettre au professeur un suivi pédagogique ; améliorer le contenu.<br>
       <b>Bases légales :</b> exécution du service demandé ; intérêt légitime (suivi pédagogique) ; consentement (mesure d'audience le cas échéant).<br>
       <b>Mineurs :</b> information adaptée ; pour les moins de 15 ans, consentement d'un titulaire de l'autorité parentale ; aucune utilisation à des fins de prospection.<br>
-      <b>Destinataires / sous-traitants :</b> Google (Firebase — authentification, base de données, fonctions), OVH (e-mails de service, domaine), GitHub / Microsoft (hébergement), Cloudflare (diffusion technique — CDN), Google reCAPTCHA (protection anti-robots / App Check). Stripe en cas d'abonnement ultérieur.<br>
+      <b>Destinataires / sous-traitants :</b> Google (Firebase — authentification, base de données, fonctions), OVH (e-mails de service, domaine), GitHub / Microsoft (hébergement), Cloudflare (diffusion technique — CDN), Google reCAPTCHA (protection anti-robots / App Check).<br>
       <b>Transferts hors UE :</b> certains traitements (fonctions serveur) sont opérés aux États-Unis, encadrés par les clauses contractuelles types de la Commission européenne.<br>
       <b>Conservation :</b> données conservées tant que le compte est actif ; suppression automatique après 24 mois sans connexion, ou immédiatement à la demande.<br>
       <b>Vos droits :</b> accès, rectification, effacement (bouton « supprimer mon compte » dans l'application), portabilité, opposition. Demandes : arthur.lesage05@gmail.com (réponse sous 1 mois). Réclamation possible auprès de la CNIL — cnil.fr.<br>
