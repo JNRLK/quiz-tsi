@@ -1682,7 +1682,8 @@ const QUESTIONS = [
    vig:"Une inégalité stricte ne donne qu'une inégalité LARGE à la limite ($\\tfrac1n>0$ mais $\\to0$)."},
   {topic:'limites', mode:'qcm', q:"$f$ continue sur $[a,b]$ avec $f(a) < 0 < f(b)$. Le TVI garantit :",
    choices:[{t:"$\\exists c\\in\\,]a,b[,\\ f(c)=0$", c:true},{t:"$f$ strictement croissante", c:false},{t:"un tel $c$ unique", c:false},{t:"$f$ dérivable", c:false}],
-   exp:"Le TVI donne l'EXISTENCE d'un zéro ; l'unicité exige la stricte monotonie."},
+   exp:"Le TVI donne l'EXISTENCE d'un zéro ; l'unicité exige la stricte monotonie.",
+   fig:{window:[-0.3,3.6,-1.1,1.2],items:[{axes:{O:true}},{plot:x=>0.8*Math.sin(0.7*(x-1.6)),from:0.3,to:3.2,label:'\\mathcal{C}_f',labelAt:[3.25,0.95]},{segment:[[0.3,0],[0.3,0.8*Math.sin(0.7*(0.3-1.6))]],dash:true},{segment:[[3.2,0],[3.2,0.8*Math.sin(0.7*(3.2-1.6))]],dash:true},{point:[0.3,0.8*Math.sin(0.7*(0.3-1.6))]},{point:[3.2,0.8*Math.sin(0.7*(3.2-1.6))]},{point:[1.6,0],label:'c',at:'belowright'},{label:'a',at:[0.3,0],place:'above'},{label:'b',at:[3.2,0],place:'below'}]}},
   {topic:'limites', mode:'saisie', q:"$\\displaystyle\\lim_{x\\to 0}\\frac{\\sin x}{x} = ?$",
    answer:"$1$", accept:["1"],
    exp:"Limite de référence : $\\frac{\\sin x}{x}\\to 1$ en $0$."},
@@ -1762,7 +1763,8 @@ const QUESTIONS = [
    exp:"La valeur absolue de l'intégrale est majorée par l'intégrale de la valeur absolue."},
   {topic:'integration', mode:'flash', q:"Somme de Riemann : $S_n(f)=\\dfrac{b-a}{n}\\sum_{k=0}^{n-1} f\\!\\left(a+k\\tfrac{b-a}{n}\\right)$. Vers quoi tend-elle ?",
    answer:"$\\displaystyle\\lim_{n\\to+\\infty}S_n(f)=\\int_a^b f(t)\\,dt$ ($f$ continue).",
-   exp:"Convergence des sommes de Riemann vers l'intégrale."},
+   exp:"Convergence des sommes de Riemann vers l'intégrale.",
+   fig:{window:[-0.3,3.5,-0.3,2.4],items:[{axes:{O:true}},{polygon:[[0.4,0],[0.4,0.432],[1.05,0.432],[1.05,0]]},{polygon:[[1.05,0],[1.05,0.6205],[1.7,0.6205],[1.7,0]]},{polygon:[[1.7,0],[1.7,0.978],[2.35,0.978],[2.35,0]]},{polygon:[[2.35,0],[2.35,1.5045],[3.0,1.5045],[3.0,0]]},{plot:x=>0.2*x*x+0.4,from:0,to:3.35,label:'\\mathcal{C}_f',labelAt:[3.15,2.05]},{label:'a',at:[0.4,0],place:'below'},{label:'b',at:[3.0,0],place:'below'}]}},
 
   /* ---- Développements limités ---- */
   {topic:'dl', mode:'trou', q:"DL en $0$ : $e^{x}=1+x+\\square+\\dfrac{x^3}{6}+o(x^3)$.",
@@ -2089,7 +2091,8 @@ const QUESTIONS = [
    exp:"$\\cos\\theta=0\\Rightarrow$ orthogonalité."},
   {topic:'geoplan', mode:'saisie', q:"Al-Kashi : $a^2=b^2+c^2-\\square$ (côté $a$ opposé à l'angle $A$).",
    answer:"$2bc\\cos A$", accept:["2bccos(a)","2bccosa","2*b*c*cos(a)","2 bc cos a"],
-   exp:"Généralise Pythagore ; si $A=\\frac\\pi2$, terme nul."},
+   exp:"Généralise Pythagore ; si $A=\\frac\\pi2$, terme nul.",
+   fig:{window:[-0.5,3.4,-0.5,2.3],items:[{polygon:[[0,0],[3,0],[1.1,1.9]]},{label:'A',at:[0,0],place:'belowleft'},{label:'B',at:[3,0],place:'belowright'},{label:'C',at:[1.1,1.9],place:'above'},{angle:{at:[0,0],from:0,to:60,r:30}},{label:'c',at:[1.5,0],place:'below'},{label:'b',at:[0.55,0.95],place:'left'},{label:'a',at:[2.05,0.95],place:'right'}]}},
   {topic:'geoplan', mode:'flash', q:"Comment savoir si trois points $A,B,C$ sont alignés (vecteurs) ?",
    answer:"$\\overrightarrow{AB}$ et $\\overrightarrow{AC}$ colinéaires (déterminant nul).",
    exp:"Alignement $\\iff$ colinéarité des vecteurs."},
@@ -2191,7 +2194,8 @@ const QUESTIONS = [
    exp:"$\\mathcal{C}^\\infty$ : de classe $\\mathcal{C}^k$ pour tout $k$."},
   {topic:'derivation', mode:'trou', q:"Équation de la tangente à $\\mathcal{C}_f$ au point d'abscisse $a$ : $y=\\square$.",
    answer:"$f(a)+f'(a)(x-a)$", accept:["f(a)+f'(a)(x-a)","f(a)+f’(a)(x-a)"],
-   exp:"Tangente : $y=f'(a)(x-a)+f(a)$."},
+   exp:"Tangente : $y=f'(a)(x-a)+f(a)$.",
+   fig:{window:[-0.4,3.4,-0.3,2.6],items:[{axes:{O:true}},{plot:x=>0.18*x*x+0.3,from:0,to:3.2,label:'\\mathcal{C}_f',labelAt:[3.0,2.2]},{segment:[[0.3,0.012],[2.9,1.5096]]},{point:[1.6,0.7608]},{segment:[[1.6,0],[1.6,0.7608]],dash:true},{label:'a',at:[1.6,0],place:'below'}]}},
   {topic:'derivation', mode:'flash', q:"Dérivée d'une composée $f\\circ u$ ?",
    answer:"$(f\\circ u)'=u'\\times(f'\\circ u)$, i.e. $\\frac{d}{dx}f(u(x))=u'(x)\\,f'(u(x))$.",
    exp:"Règle de la chaîne."},
@@ -2789,7 +2793,8 @@ const QUESTIONS = [
    vig:"$\\arccos(\\cos x)\\ne x$ hors de $[0,\\pi]$ : attention au domaine de validité."},
   {topic:'fonctions', mode:'flash', q:"Donne les variations et limites de $x\\mapsto\\ln x$.",
    answer:"Strictement croissante sur $]0,+\\infty[$, $\\ln x\\to-\\infty$ en $0^+$ et $\\to+\\infty$ en $+\\infty$.",
-   exp:"$\\ln 1=0$, $\\ln e=1$."},
+   exp:"$\\ln 1=0$, $\\ln e=1$.",
+   fig:{window:[-0.6,4,-2.4,1.7],items:[{axes:{O:true}},{plot:x=>Math.log(x),from:0.07,to:3.9,label:'\\ln',labelAt:[3.2,1.5]},{point:[1,0],label:'1',at:'belowright'}]}},
   {topic:'fonctions', mode:'flash', q:"Énonce les limites de croissance comparée à connaître.",
    answer:"En $+\\infty$ : $\\frac{\\ln x}{x^\\alpha}\\to0$, $\\frac{x^\\alpha}{e^x}\\to0$. En $0^+$ : $x^\\alpha\\ln x\\to0$ ($\\alpha>0$).",
    exp:"Hiérarchie $\\ln\\ll$ puissances $\\ll\\exp$."},
@@ -2811,7 +2816,8 @@ const QUESTIONS = [
   {topic:'suites', mode:'qcm', q:"Suite récurrente $u_{n+1}=f(u_n)$ avec $f$ croissante : $(u_n)$ est :",
    choices:[{t:"monotone (sens donné par $u_1-u_0$)", c:true},{t:"toujours croissante", c:false},{t:"alternée", c:false},{t:"constante", c:false}],
    exp:"$f$ croissante $\\Rightarrow$ monotonie ; le signe de $u_1-u_0$ donne le sens.",
-   vig:"Si $f$ est DÉcroissante, ce sont les sous-suites paires/impaires qui sont monotones."},
+   vig:"Si $f$ est DÉcroissante, ce sont les sous-suites paires/impaires qui sont monotones.",
+   fig:{window:[0,2.5,0,2.5],items:[{axes:{O:false}},{segment:[[0,0],[2.5,2.5]]},{plot:x=>0.5*x+0.9,from:0,to:2.5},{segment:[[0.3,0],[0.3,1.05]]},{segment:[[0.3,1.05],[1.05,1.05]]},{segment:[[1.05,1.05],[1.05,1.425]]},{segment:[[1.05,1.425],[1.425,1.425]]},{segment:[[1.425,1.425],[1.425,1.6125]]},{segment:[[1.425,1.6125],[1.6125,1.6125]]},{point:[1.8,1.8],label:'\\ell',at:'aboveleft'},{label:'y=x',at:[2.2,2.3],place:'left'},{label:'y=f(x)',at:[2.2,1.7],place:'left'},{label:'u_0',at:[0.3,0],place:'below'}]}},
   {topic:'suites', mode:'qcm', q:"$\\displaystyle\\lim_{n\\to\\infty}\\left(1+\\frac1n\\right)^n=$ ?",
    choices:[{t:"$e$", c:true},{t:"$1$", c:false},{t:"$+\\infty$", c:false},{t:"$2$", c:false}],
    exp:"Limite classique définissant $e$."},
@@ -3300,7 +3306,8 @@ const QUESTIONS = [
    exp:"Produit scalaire canonique ; $xy'-x'y$ est le déterminant."},
   {topic:'geoplan', mode:'saisie', q:"Mesure de l'angle entre $\\vec u$ et $\\vec v$ via le produit scalaire : $\\cos\\theta=$ ?",
    answer:"$\\dfrac{\\vec u\\cdot\\vec v}{\\|\\vec u\\|\\,\\|\\vec v\\|}$", accept:["u.v/(||u|| ||v||)","(u·v)/(|u||v|)","produit scalaire / produit des normes"],
-   exp:"Définition de l'angle non orienté à partir du produit scalaire."},
+   exp:"Définition de l'angle non orienté à partir du produit scalaire.",
+   fig:{window:[-0.3,2.5,-0.3,2.0],items:[{vector:[[0,0],[2.2,0.45]],label:'\\vec u',at:'belowright'},{vector:[[0,0],[1.0,1.7]],label:'\\vec v',at:'aboveleft'},{angle:{at:[0,0],from:11.6,to:59.5,r:32},label:'\\theta'},{label:'O',at:[0,0],place:'belowleft'}]}},
   {topic:'geoplan', mode:'qcm', q:"Représentation paramétrique d'une droite passant par $A$ de vecteur directeur $\\vec u$ :",
    choices:[{t:"$M=A+t\\vec u,\\ t\\in\\mathbb{R}$", c:true},{t:"$M=t\\vec u$", c:false},{t:"$M=A+\\vec u$", c:false},{t:"$\\vec{AM}\\cdot\\vec u=0$", c:false}],
    exp:"$\\vec{AM}=t\\vec u$ : tous les points alignés avec $A$ selon $\\vec u$.<br><span style='position:relative;display:block;width:200px;height:124px;margin:10px auto 2px'><svg viewBox='0 0 210 130' style='position:absolute;inset:0;width:100%;height:100%;overflow:visible' fill='none' stroke='currentColor' stroke-width='1.7' stroke-linecap='round'><line x1='20' y1='100' x2='190' y2='40'/><circle cx='70' cy='82.4' r='2.8' fill='currentColor'/><line x1='70' y1='82.4' x2='108' y2='69'/><polygon points='114,66 104,67 107,74' fill='currentColor' stroke='none'/><circle cx='140' cy='57.6' r='2.8' fill='currentColor'/></svg><span style='position:absolute;left:31%;top:72%;transform:translate(-50%,-50%)'>$A$</span><span style='position:absolute;left:66%;top:34%;transform:translate(-50%,-50%)'>$M$</span><span style='position:absolute;left:41%;top:49%;transform:translate(-50%,-50%)'>$\\vec u$</span></span>"},
@@ -4476,6 +4483,88 @@ function qHash(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h*31 + s.charCodeAt(
     if(!ch && typeof CARD_NOTION!=='undefined'){ var n=CARD_NOTION[h]; if(n&&n.indexOf('va-')===0) ch='va'; }
     if(!ch) ch=OLD[q.topic];
     if(ch && TOPICS[ch]) q.topic=ch;
+  }
+})();
+
+
+/* ===== FIG — générateur de schémas mathématiques (SVG inline + labels MathJax) =====
+   Ajouté 2026-06-21. Principe : UN SEUL repère. L'auteur décrit une fenêtre maths
+   [xmin,xmax,ymin,ymax] ; formes ET labels utilisent ces coordonnées. Le conteneur fait
+   la taille exacte du viewBox (1 unité = 1 px) → les labels se posent au pixel près
+   (plus de pourcentage à régler). Sortie = chaîne HTML auto-suffisante (styles inline),
+   theme-safe (stroke/fill = currentColor), à insérer dans exp/answer. Une carte porte un
+   champ déclaratif `fig:{window,items}` (cf. normalisation plus bas). */
+function P(r,deg){ var a=deg*Math.PI/180; return [r*Math.cos(a), r*Math.sin(a)]; }
+function FIG(spec){
+  var win=spec.window, x0=win[0],x1=win[1],y0=win[2],y1=win[3];
+  var wx=x1-x0, wy=y1-y0, s=(spec.size||210)/Math.max(wx,wy), PAD=10;
+  var W=wx*s, H=wy*s, VBW=W+2*PAD, VBH=H+2*PAD;
+  function X(x){ return PAD+(x-x0)*s; }
+  function Y(y){ return PAD+(y1-y)*s; }
+  var svg=[], labels=[];
+  function arrow(ax,ay,bx,by,dash){
+    var x1p=X(ax),y1p=Y(ay),x2p=X(bx),y2p=Y(by);
+    var a=Math.atan2(y2p-y1p,x2p-x1p), L=10, w=3.6;
+    var bxp=x2p-L*Math.cos(a), byp=y2p-L*Math.sin(a);
+    var p1x=bxp-w*Math.sin(a), p1y=byp+w*Math.cos(a);
+    var p2x=bxp+w*Math.sin(a), p2y=byp-w*Math.cos(a);
+    svg.push('<line x1="'+x1p.toFixed(1)+'" y1="'+y1p.toFixed(1)+'" x2="'+bxp.toFixed(1)+'" y2="'+byp.toFixed(1)+'"'+(dash?' stroke-dasharray="4 3"':'')+'/>');
+    svg.push('<polygon points="'+x2p.toFixed(1)+','+y2p.toFixed(1)+' '+p1x.toFixed(1)+','+p1y.toFixed(1)+' '+p2x.toFixed(1)+','+p2y.toFixed(1)+'" fill="currentColor" stroke="none"/>');
+  }
+  var PLACE={center:[0,0],above:[0,-13],below:[0,13],left:[-13,0],right:[13,0],aboveright:[12,-11],aboveleft:[-12,-11],belowright:[12,11],belowleft:[-12,11]};
+  function lbl(mx,my,txt,place){
+    if(txt==null||txt==='') return;
+    var d=PLACE[place||'right']||PLACE.right;
+    labels.push('<span style="position:absolute;left:'+(X(mx)+d[0]).toFixed(1)+'px;top:'+(Y(my)+d[1]).toFixed(1)+'px;transform:translate(-50%,-50%);font-size:15px;line-height:1;white-space:nowrap">$'+txt+'$</span>');
+  }
+  (spec.items||[]).forEach(function(it){
+    if(it.axes){
+      var o=it.axes===true?{}:it.axes;
+      var ax0=(x0<0&&x1>0)?0:x0, ay0=(y0<0&&y1>0)?0:y0;
+      arrow(x0,ay0,x1,ay0); arrow(ax0,y0,ax0,y1);
+      if(o.O!==false) lbl(ax0,ay0,o.Olabel||'O','belowleft');
+      if(o.x) lbl(x1,ay0,o.x,'belowright');
+      if(o.y) lbl(ax0,y1,o.y,'aboveleft');
+    }
+    if(it.plot){
+      var f=it.plot, a=it.from, b=it.to, n=it.n||140, d='', pen=false;
+      for(var i=0;i<=n;i++){ var xx=a+(b-a)*i/n, yy=f(xx);
+        if(!isFinite(yy)||yy<y0-1e-9||yy>y1+1e-9){ pen=false; continue; }
+        d+=(pen?'L':'M')+X(xx).toFixed(1)+' '+Y(yy).toFixed(1)+' '; pen=true; }
+      svg.push('<path d="'+d.replace(/\s+$/,'')+'"'+(it.dash?' stroke-dasharray="4 3"':'')+'/>');
+      if(it.label) lbl(it.labelAt[0],it.labelAt[1],it.label,it.labelPlace||'center');
+    }
+    if(it.circle){ var c=it.circle.c, r=it.circle.r*s;
+      svg.push('<circle cx="'+X(c[0]).toFixed(1)+'" cy="'+Y(c[1]).toFixed(1)+'" r="'+r.toFixed(1)+'"'+(it.dash?' stroke-dasharray="4 3"':'')+'/>'); }
+    if(it.segment){ var A=it.segment[0],B=it.segment[1];
+      svg.push('<line x1="'+X(A[0]).toFixed(1)+'" y1="'+Y(A[1]).toFixed(1)+'" x2="'+X(B[0]).toFixed(1)+'" y2="'+Y(B[1]).toFixed(1)+'"'+(it.dash?' stroke-dasharray="4 3"':'')+'/>');
+      if(it.label) lbl((A[0]+B[0])/2,(A[1]+B[1])/2,it.label,it.at||'above'); }
+    if(it.vector){ var A2=it.vector[0],B2=it.vector[1]; arrow(A2[0],A2[1],B2[0],B2[1],it.dash);
+      if(it.label) lbl((A2[0]+B2[0])/2,(A2[1]+B2[1])/2,it.label,it.at||'above'); }
+    if(it.polygon){ var pts=it.polygon.map(function(p){return X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1);}).join(' ');
+      svg.push('<polygon points="'+pts+'" fill="none"/>'); }
+    if(it.angle){ var g=it.angle, c2=g.at, rr=g.r||26, ra=g.from*Math.PI/180, rb=g.to*Math.PI/180;
+      var sx=X(c2[0])+rr*Math.cos(ra), sy=Y(c2[1])-rr*Math.sin(ra);
+      var ex=X(c2[0])+rr*Math.cos(rb), ey=Y(c2[1])-rr*Math.sin(rb);
+      var large=Math.abs(g.to-g.from)>180?1:0;
+      svg.push('<path d="M '+sx.toFixed(1)+' '+sy.toFixed(1)+' A '+rr+' '+rr+' 0 '+large+' 0 '+ex.toFixed(1)+' '+ey.toFixed(1)+'" stroke-width="1.3"/>');
+      if(it.label){ var mid=(g.from+g.to)/2*Math.PI/180, lr=rr+13;
+        labels.push('<span style="position:absolute;left:'+(X(c2[0])+lr*Math.cos(mid)).toFixed(1)+'px;top:'+(Y(c2[1])-lr*Math.sin(mid)).toFixed(1)+'px;transform:translate(-50%,-50%);font-size:15px;line-height:1;white-space:nowrap">$'+it.label+'$</span>'); } }
+    if(it.point){ if(it.dot!==false) svg.push('<circle cx="'+X(it.point[0]).toFixed(1)+'" cy="'+Y(it.point[1]).toFixed(1)+'" r="2.8" fill="currentColor" stroke="none"/>');
+      if(it.label) lbl(it.point[0],it.point[1],it.label,it.at||'belowright'); }
+    if(it.label && !it.plot && !it.point && !it.segment && !it.vector && !it.angle){ lbl(it.at[0],it.at[1],it.label,it.place||'center'); }
+  });
+  return '<span style="position:relative;display:block;width:'+VBW.toFixed(0)+'px;height:'+VBH.toFixed(0)+'px;margin:12px auto 2px;line-height:0;color:inherit">'
+    +'<svg viewBox="0 0 '+VBW.toFixed(1)+' '+VBH.toFixed(1)+'" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'
+    +svg.join('')+'</svg>'+labels.join('')+'</span>';
+}
+/* Normalisation : convertit le champ déclaratif `fig` en SVG ajouté à `exp`, UNE fois au
+   chargement. Additif : ne touche pas `q` (donc qHash/SRS préservés). Protégé par try/catch :
+   une figure invalide n'empêche jamais le chargement de l'app. */
+(function(){
+  if(typeof QUESTIONS==='undefined') return;
+  for(var i=0;i<QUESTIONS.length;i++){ var q=QUESTIONS[i];
+    if(q && q.fig){ try{ q.exp=(q.exp?q.exp+'<br>':'')+FIG(q.fig); }catch(e){ if(window.console&&console.error) console.error('FIG',e); } }
   }
 })();
 
