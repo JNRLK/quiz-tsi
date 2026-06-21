@@ -1111,7 +1111,6 @@ window.MathJax = {
       <div id="authClasseRow">
         <input class="ans-input" id="authClasse" type="text" autocomplete="off" placeholder="Classe / groupe (ex. TSI-1)" style="margin-top:12px; width:100%">
       </div>
-      <input class="ans-input" id="authNote" type="text" autocomplete="off" placeholder="N° étudiant ou remarque (optionnel)" style="margin-top:12px; width:100%">
     </div>
 
     <div class="auth-err hidden" id="authErr"></div>
@@ -1159,7 +1158,6 @@ window.MathJax = {
     <div id="pgClasseRow">
       <input class="ans-input" id="pgClasse" type="text" autocomplete="off" placeholder="Classe / groupe (ex. TSI-1)" style="margin-top:12px; width:100%">
     </div>
-    <input class="ans-input" id="pgNote" type="text" autocomplete="off" placeholder="N° étudiant ou remarque (optionnel)" style="margin-top:12px; width:100%">
     <div class="auth-err hidden" id="pgErr"></div>
     <button class="btn" id="pgSubmit" style="width:100%; margin-top:16px">Enregistrer et continuer</button>
     <p class="auth-switch"><a id="pgLogout">Se déconnecter</a></p>
@@ -5583,10 +5581,6 @@ function srsGradeButtons(q, container){
     div.appendChild(b);
   });
   container.appendChild(div);
-  const hint=document.createElement('p'); hint.className='swipe-hint';
-  hint.innerHTML='<span>← Oubli</span><span>glisse pour noter</span><span>Facile →</span>';
-  container.appendChild(hint);
-  setupGradeSwipe(div);
 }
 
 const WRONG_QUIPS = [
@@ -6865,8 +6859,7 @@ $('#authSubmit').onclick = async ()=>{
         lycee: $('#authLycee').value.trim() || null,
         filiere: segValue('authFiliere') || null,
         annee: segValue('authAnnee') || null,
-        classe: $('#authClasse').value.trim() || null,
-        note: $('#authNote').value.trim() || null
+        classe: $('#authClasse').value.trim() || null
       });
       // Compte créé mais non vérifié → la « verify gate » prend le relais (onAuthStateChanged).
     }
@@ -6952,7 +6945,6 @@ function showProfileGate(udoc, user){
   const p = (udoc && udoc.profile) || {};
   if(p.nom) $('#pgNom').value = p.nom;
   if(p.lycee) $('#pgLycee').value = p.lycee;
-  if(p.note) $('#pgNote').value = p.note;
   if(p.classe) $('#pgClasse').value = p.classe;
   if(p.statut) segSet('pgStatut', p.statut);
   if(p.filiere) segSet('pgFiliere', p.filiere);
@@ -6970,7 +6962,6 @@ $('#pgSubmit').onclick = async ()=>{
   const filiere = segValue('pgFiliere');
   const annee = segValue('pgAnnee');
   const classe = $('#pgClasse').value.trim();
-  const note = $('#pgNote').value.trim();
   if(!statut) return pgError('Indique si tu es élève, professeur ou visiteur.');
   if(statut!=='visiteur'){
     if(!nom) return pgError('Indique ton nom et prénom.');
@@ -6987,8 +6978,7 @@ $('#pgSubmit').onclick = async ()=>{
     lycee: lycee || null,
     filiere: (statut!=='visiteur' ? filiere : null) || null,
     annee: (statut==='eleve' ? annee : null),
-    classe: (statut==='eleve' ? classe : null) || null,
-    note: note || null
+    classe: (statut==='eleve' ? classe : null) || null
   };
   $('#pgSubmit').disabled = true;
   try{ await Cloud.saveProfile(profile); }
