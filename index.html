@@ -1503,7 +1503,14 @@ const FAMILIES = {
   "fondements": {
     "name": "Fondements & logique",
     "raw": "#64748b"
-  }
+  },
+  /* ===== Physique-Chimie — familles (regroupements de couleur pour l'accordéon). subject:'physique'
+     OBLIGATOIRE, sinon le runtime les rattache à maths. Additif : n'affecte aucune famille maths. ===== */
+  "ph_signaux":   { "name": "Signaux physiques",      "raw": "#0ea5e9", "subject": "physique" },
+  "ph_meca":      { "name": "Mécanique",              "raw": "#ef4444", "subject": "physique" },
+  "ph_induction": { "name": "Induction & conversion", "raw": "#6366f1", "subject": "physique" },
+  "ph_thermo":    { "name": "Thermodynamique",        "raw": "#f59e0b", "subject": "physique" },
+  "ph_chimie":    { "name": "Chimie",                 "raw": "#22c55e", "subject": "physique" }
 };
 const TOPICS = {
   "trigo": { "name": "1. Trigonométrie", "family": "geometrie", "raw": "#eab308" },
@@ -1537,7 +1544,42 @@ const TOPICS = {
   "dl": { "name": "29. Développements limités", "family": "analyse", "raw": "#c084fc" },
   "applications_lineaires": { "name": "30. Applications linéaires", "family": "algebre", "raw": "#4f46e5" },
   "matrices_al": { "name": "31. Matrices et applications linéaires", "family": "algebre", "raw": "#60a5fa" },
-  "va": { "name": "32. Variables aléatoires", "family": "proba_denom", "raw": "#a855f7" }
+  "va": { "name": "32. Variables aléatoires", "family": "proba_denom", "raw": "#a855f7" },
+  /* ===== Physique-Chimie · TSI1 — rubriques du programme national officiel (BO/MENESR).
+     subject:'physique' + level:'tsi1' OBLIGATOIRES. AUCUNE carte pour l'instant (QUESTIONS) : ces
+     chapitres s'affichent en « bientôt » et se peupleront de façon strictement additive (SRS-safe). ===== */
+  /* — Signaux physiques (1er semestre) — */
+  "ph_propagation":      { "name": "1. Propagation d'un signal",                  "family": "ph_signaux",   "raw": "#0ea5e9", "subject": "physique", "level": "tsi1" },
+  "ph_optique_geo":      { "name": "2. Optique géométrique",                       "family": "ph_signaux",   "raw": "#38bdf8", "subject": "physique", "level": "tsi1" },
+  "ph_photon":           { "name": "3. Aspect corpusculaire de la lumière",       "family": "ph_signaux",   "raw": "#818cf8", "subject": "physique", "level": "tsi1" },
+  "ph_arqs":             { "name": "4. Circuits électriques dans l'ARQS",         "family": "ph_signaux",   "raw": "#06b6d4", "subject": "physique", "level": "tsi1" },
+  "ph_premier_ordre":    { "name": "5. Circuit linéaire du premier ordre",        "family": "ph_signaux",   "raw": "#22d3ee", "subject": "physique", "level": "tsi1" },
+  "ph_second_ordre":     { "name": "6. Systèmes du second ordre",                 "family": "ph_signaux",   "raw": "#2dd4bf", "subject": "physique", "level": "tsi1" },
+  "ph_filtrage":         { "name": "7. Filtrage linéaire",                        "family": "ph_signaux",   "raw": "#0891b2", "subject": "physique", "level": "tsi1" },
+  /* — Mécanique (2nd semestre) — */
+  "ph_cinematique":      { "name": "12. Cinématique du point",                    "family": "ph_meca",      "raw": "#ef4444", "subject": "physique", "level": "tsi1" },
+  "ph_newton":           { "name": "13. Mécanique newtonienne",                   "family": "ph_meca",      "raw": "#f87171", "subject": "physique", "level": "tsi1" },
+  "ph_solide_rotation":  { "name": "14. Solide en rotation autour d'un axe fixe", "family": "ph_meca",      "raw": "#dc2626", "subject": "physique", "level": "tsi1" },
+  /* — Induction et conversion électromécanique (2nd semestre) — */
+  "ph_champ_magnetique": { "name": "15. Champ magnétique",                        "family": "ph_induction", "raw": "#6366f1", "subject": "physique", "level": "tsi1" },
+  "ph_laplace":          { "name": "16. Forces de Laplace",                       "family": "ph_induction", "raw": "#818cf8", "subject": "physique", "level": "tsi1" },
+  "ph_induction_lois":   { "name": "17. Lois de l'induction",                     "family": "ph_induction", "raw": "#4f46e5", "subject": "physique", "level": "tsi1" },
+  "ph_circuit_fixe":     { "name": "18. Circuit fixe dans un champ variable",     "family": "ph_induction", "raw": "#a5b4fc", "subject": "physique", "level": "tsi1" },
+  "ph_circuit_mobile":   { "name": "19. Circuit mobile dans un champ stationnaire","family": "ph_induction", "raw": "#4338ca", "subject": "physique", "level": "tsi1" },
+  "ph_convertisseurs":   { "name": "20. Convertisseurs électromécaniques",        "family": "ph_induction", "raw": "#7c3aed", "subject": "physique", "level": "tsi1" },
+  /* — Thermodynamique (2nd semestre) — */
+  "ph_gaz_parfait":      { "name": "21. Système à l'équilibre — gaz parfait",     "family": "ph_thermo",    "raw": "#f59e0b", "subject": "physique", "level": "tsi1" },
+  "ph_premier_principe": { "name": "22. Premier principe — bilans d'énergie",     "family": "ph_thermo",    "raw": "#fbbf24", "subject": "physique", "level": "tsi1" },
+  "ph_second_principe":  { "name": "23. Deuxième principe — bilans d'entropie",   "family": "ph_thermo",    "raw": "#f97316", "subject": "physique", "level": "tsi1" },
+  "ph_machines_therm":   { "name": "24. Machines thermiques",                     "family": "ph_thermo",    "raw": "#ea580c", "subject": "physique", "level": "tsi1" },
+  /* — Chimie (transformation & architecture de la matière, 1er sem. ; solutions aqueuses, 2nd sem.) — */
+  "ph_transfo_matiere":  { "name": "8. Transformation de la matière",            "family": "ph_chimie",    "raw": "#22c55e", "subject": "physique", "level": "tsi1" },
+  "ph_cinetique":        { "name": "9. Cinétique chimique",                       "family": "ph_chimie",    "raw": "#16a34a", "subject": "physique", "level": "tsi1" },
+  "ph_classification":   { "name": "10. Classification périodique des éléments",  "family": "ph_chimie",    "raw": "#4ade80", "subject": "physique", "level": "tsi1" },
+  "ph_molecules":        { "name": "11. Molécules et cristaux",                   "family": "ph_chimie",    "raw": "#15803d", "subject": "physique", "level": "tsi1" },
+  "ph_oxydoreduction":   { "name": "25. Oxydo-réduction",                         "family": "ph_chimie",    "raw": "#14b8a6", "subject": "physique", "level": "tsi1" },
+  "ph_acide_base":       { "name": "26. Acido-basicité et précipitation",        "family": "ph_chimie",    "raw": "#2dd4bf", "subject": "physique", "level": "tsi1" },
+  "ph_potentiel_ph":     { "name": "27. Diagrammes potentiel-pH",                 "family": "ph_chimie",    "raw": "#0d9488", "subject": "physique", "level": "tsi1" }
 };
 
 /* ============== MATIÈRES & ANNÉES — socle infrastructure multi-matières (additif) ==============
@@ -1589,6 +1631,12 @@ function applyPreferredLevel(p){
 }
 /* Matières disponibles pour une classe (année) : celles qui ont du contenu à ce niveau + les transversales. */
 function subjectsForLevel(level){ return Object.keys(SUBJECTS).filter(s => isTransversal(s) ? hasContent(s,'tr') : hasContent(s,level)).sort((a,b)=>SUBJECTS[a].order-SUBJECTS[b].order); }
+/* Une matière a-t-elle au moins une RUBRIQUE déclarée (avec ou sans carte) à ce niveau ? */
+function hasTopics(subject, level){ return Object.keys(TOPICS).some(k => TOPICS[k].subject===subject && TOPICS[k].level===level); }
+/* Matières à AFFICHER dans la nav d'une année : celles qui ont des cartes OU au moins une rubrique
+   déclarée — permet d'exposer une matière « en préparation » (ex. Physique-Chimie TSI1) avec ses
+   chapitres et un badge « bientôt », avant toute carte. N'affecte pas le filtrage du pool (poolFilter). */
+function subjectsForNav(level){ return Object.keys(SUBJECTS).filter(s => isTransversal(s) ? (hasContent(s,'tr')||hasTopics(s,'tr')) : (hasContent(s,level)||hasTopics(s,level))).sort((a,b)=>SUBJECTS[a].order-SUBJECTS[b].order); }
 /* La classe a-t-elle du contenu « cœur » (hors langues transversales) ? sinon badge « bientôt ». */
 function levelHasOwnContent(level){ return Object.keys(SUBJECTS).some(s => !isTransversal(s) && hasContent(s,level)); }
 /* ============================================================================================ */
@@ -1960,8 +2008,8 @@ const QUESTIONS = [
    answer:"Une famille à la fois libre et génératrice (tout vecteur s'écrit de façon unique).",
    exp:"Libre + génératrice."},
   {topic:'ev', mode:'flash', q:"Lien entre $\\mathrm{Im}(p)$ et $\\ker(p-\\mathrm{Id})$ pour un projecteur $p$.",
-   ggb:{obs:"projection sur le plan F parallèlement à la droite G : P=p(x) est le point où la parallèle à G passant par x=M perce le plan F. Décomposition unique x = p(x) + (x−p(x)), avec p(x)∈F et x−p(x)∈G (segment rouge).",leg:[["#5078e6","plan F"],["#28a05a","droite G"],["#d23232","x=M, p(x)=P"]],cmds:["F: z=0","SetColor(F,80,120,230)","SetFilling(F,0.22)","gdir=Vector((0,0,0),(0.5,0.3,1))","G=Line((0,0,0),gdir)","SetColor(G,40,160,90)","SetLineThickness(G,4)","M=(1.5,0.9,1.7)","SetColor(M,210,50,50)","SetPointSize(M,5)","LM=Line(M,gdir)","SetVisible(LM,false)","P=Intersect(LM,F)","SetColor(P,210,50,50)","SetPointSize(P,5)","seg=Segment(M,P)","SetColor(seg,210,50,50)","SetLineStyle(seg,1)","ShowLabel(M,true)","ShowLabel(P,true)","ShowLabel(G,true)"]},
-   fig:{window:[-0.7,3.3,-0.7,2.2],items:[{segment:[[-0.5,-0.09],[3.05,0.549]]},{segment:[[-0.2,-0.5],[0.76,1.9]]},{label:'F=\\mathrm{Im}\\,p',at:[2.85,0.5],place:'below'},{label:'G=\\ker p',at:[0.72,1.9],place:'right'},{point:[2.66,1.546],label:'x',at:'aboveright'},{point:[2.2,0.396],label:'p(x)',at:'belowright'},{segment:[[2.66,1.546],[2.2,0.396]],dash:true},{point:[0,0],dot:true,label:'O',at:'belowleft'}]},
+   ggb:{obs:"projection sur le plan F parallèlement à la droite G : P=p(x) est le point où la parallèle à G passant par x=M perce le plan F. Décomposition unique x = p(x) + (x−p(x)), avec p(x)∈F et x−p(x)∈G (segment rouge).",leg:[["#5078e6","plan F"],["#28a05a","droite G"],["#d23232","x=M, p(x)=P"]],cmds:["F: z=0","SetColor(F,80,120,230)","SetFilling(F,0.22)","G=Line((0,0,0),(0.5,0.3,1))","SetColor(G,40,160,90)","SetLineThickness(G,4)","M=(1.5,0.9,1.7)","SetColor(M,210,50,50)","SetPointSize(M,5)","P=M-z(M)*(0.5,0.3,1)","SetColor(P,210,50,50)","SetPointSize(P,5)","seg=Segment(M,P)","SetColor(seg,210,50,50)","SetLineStyle(seg,1)","ShowLabel(M,true)","ShowLabel(P,true)","ShowLabel(G,true)"]},
+   fig:{window:[-0.6,2.7,-0.7,1.9],items:[{segment:[[-0.5,0],[2.6,0]]},{label:'F=\\mathrm{Im}\\,p',at:[2.45,0],place:'aboveright'},{segment:[[0,0],[0.66,1.14]],dash:true},{label:'G=\\ker p',at:[0.66,1.14],place:'right'},{vector:[[0,0],[1.8,1.2]],label:'x',at:'above'},{point:[1.107,0],label:'p(x)',at:'belowright'},{segment:[[1.8,1.2],[1.107,0]],dash:true},{point:[0,0],dot:true,label:'O',at:'belowleft'}]},
    answer:"$\\mathrm{Im}(p)=\\ker(p-\\mathrm{Id})$ (vecteurs invariants), et $E=\\ker p\\oplus\\mathrm{Im}\\,p$.",
    exp:"$x\\in\\mathrm{Im}(p)\\iff p(x)=x$."},
 
@@ -3189,7 +3237,7 @@ const QUESTIONS = [
    answer:"$n+1$", accept:["n+1"],
    exp:"Base $(1,X,\\dots,X^n)$ : $n+1$ vecteurs."},
   {topic:'ev', mode:'qcm', q:"Si $F$ et $G$ sont supplémentaires dans $E$ ($E=F\\oplus G$) :",
-   ggb:{obs:"projection sur le plan F parallèlement à la droite G : P=p(x) est le point où la parallèle à G passant par x=M perce le plan F. Décomposition unique x = p(x) + (x−p(x)), avec p(x)∈F et x−p(x)∈G (segment rouge).",leg:[["#5078e6","plan F"],["#28a05a","droite G"],["#d23232","x=M, p(x)=P"]],cmds:["F: z=0","SetColor(F,80,120,230)","SetFilling(F,0.22)","gdir=Vector((0,0,0),(0.5,0.3,1))","G=Line((0,0,0),gdir)","SetColor(G,40,160,90)","SetLineThickness(G,4)","M=(1.5,0.9,1.7)","SetColor(M,210,50,50)","SetPointSize(M,5)","LM=Line(M,gdir)","SetVisible(LM,false)","P=Intersect(LM,F)","SetColor(P,210,50,50)","SetPointSize(P,5)","seg=Segment(M,P)","SetColor(seg,210,50,50)","SetLineStyle(seg,1)","ShowLabel(M,true)","ShowLabel(P,true)","ShowLabel(G,true)"]},
+   ggb:{obs:"projection sur le plan F parallèlement à la droite G : P=p(x) est le point où la parallèle à G passant par x=M perce le plan F. Décomposition unique x = p(x) + (x−p(x)), avec p(x)∈F et x−p(x)∈G (segment rouge).",leg:[["#5078e6","plan F"],["#28a05a","droite G"],["#d23232","x=M, p(x)=P"]],cmds:["F: z=0","SetColor(F,80,120,230)","SetFilling(F,0.22)","G=Line((0,0,0),(0.5,0.3,1))","SetColor(G,40,160,90)","SetLineThickness(G,4)","M=(1.5,0.9,1.7)","SetColor(M,210,50,50)","SetPointSize(M,5)","P=M-z(M)*(0.5,0.3,1)","SetColor(P,210,50,50)","SetPointSize(P,5)","seg=Segment(M,P)","SetColor(seg,210,50,50)","SetLineStyle(seg,1)","ShowLabel(M,true)","ShowLabel(P,true)","ShowLabel(G,true)"]},
    fig:{window:[-0.7,3.3,-0.7,2.4],items:[{segment:[[-0.5,-0.09],[3.05,0.549]]},{segment:[[-0.4,-1.0],[0.78,1.95]]},{label:'F',at:[2.9,0.52],place:'below'},{label:'G',at:[0.72,1.9],place:'right'},{point:[2.66,1.546],label:'x',at:'aboveright'},{vector:[[0,0],[2.2,0.396]],label:'x_F',at:'below'},{vector:[[0,0],[0.46,1.15]],label:'x_G',at:'left'},{segment:[[2.2,0.396],[2.66,1.546]],dash:true},{segment:[[0.46,1.15],[2.66,1.546]],dash:true},{point:[0,0],dot:true,label:'O',at:'belowleft'}]},
    choices:[{t:"$\\dim F+\\dim G=\\dim E$ et $F\\cap G=\\{0\\}$", c:true},{t:"$F\\cap G\\ne\\{0\\}$", c:false},{t:"$F=G$", c:false},{t:"$\\dim F=\\dim G$", c:false}],
    exp:"Tout vecteur s'écrit de façon unique $x=x_F+x_G$."},
@@ -3211,7 +3259,7 @@ const QUESTIONS = [
    answer:"L'ensemble des combinaisons linéaires $\\sum_i\\lambda_i v_i$ ; c'est le plus petit sous-espace vectoriel contenant les $v_i$.",
    exp:"Sous-espace engendré par la famille."},
   {topic:'ev', mode:'flash', q:"Définis : $F$ et $G$ sont supplémentaires dans $E$ ($E=F\\oplus G$).",
-   ggb:{obs:"projection sur le plan F parallèlement à la droite G : P=p(x) est le point où la parallèle à G passant par x=M perce le plan F. Décomposition unique x = p(x) + (x−p(x)), avec p(x)∈F et x−p(x)∈G (segment rouge).",leg:[["#5078e6","plan F"],["#28a05a","droite G"],["#d23232","x=M, p(x)=P"]],cmds:["F: z=0","SetColor(F,80,120,230)","SetFilling(F,0.22)","gdir=Vector((0,0,0),(0.5,0.3,1))","G=Line((0,0,0),gdir)","SetColor(G,40,160,90)","SetLineThickness(G,4)","M=(1.5,0.9,1.7)","SetColor(M,210,50,50)","SetPointSize(M,5)","LM=Line(M,gdir)","SetVisible(LM,false)","P=Intersect(LM,F)","SetColor(P,210,50,50)","SetPointSize(P,5)","seg=Segment(M,P)","SetColor(seg,210,50,50)","SetLineStyle(seg,1)","ShowLabel(M,true)","ShowLabel(P,true)","ShowLabel(G,true)"]},
+   ggb:{obs:"projection sur le plan F parallèlement à la droite G : P=p(x) est le point où la parallèle à G passant par x=M perce le plan F. Décomposition unique x = p(x) + (x−p(x)), avec p(x)∈F et x−p(x)∈G (segment rouge).",leg:[["#5078e6","plan F"],["#28a05a","droite G"],["#d23232","x=M, p(x)=P"]],cmds:["F: z=0","SetColor(F,80,120,230)","SetFilling(F,0.22)","G=Line((0,0,0),(0.5,0.3,1))","SetColor(G,40,160,90)","SetLineThickness(G,4)","M=(1.5,0.9,1.7)","SetColor(M,210,50,50)","SetPointSize(M,5)","P=M-z(M)*(0.5,0.3,1)","SetColor(P,210,50,50)","SetPointSize(P,5)","seg=Segment(M,P)","SetColor(seg,210,50,50)","SetLineStyle(seg,1)","ShowLabel(M,true)","ShowLabel(P,true)","ShowLabel(G,true)"]},
    fig:{window:[-0.7,3.3,-0.7,2.4],items:[{segment:[[-0.5,-0.09],[3.05,0.549]]},{segment:[[-0.4,-1.0],[0.78,1.95]]},{label:'F',at:[2.9,0.52],place:'below'},{label:'G',at:[0.72,1.9],place:'right'},{point:[2.66,1.546],label:'x',at:'aboveright'},{vector:[[0,0],[2.2,0.396]],label:'x_F',at:'below'},{vector:[[0,0],[0.46,1.15]],label:'x_G',at:'left'},{segment:[[2.2,0.396],[2.66,1.546]],dash:true},{segment:[[0.46,1.15],[2.66,1.546]],dash:true},{point:[0,0],dot:true,label:'O',at:'belowleft'}]},
    answer:"$F\\cap G=\\{0_E\\}$ et $F+G=E$ ; alors tout $x\\in E$ s'écrit de façon UNIQUE $x=f+g$ avec $f\\in F,\\ g\\in G$.",
    exp:"Somme directe qui remplit $E$ : existence et unicité de la décomposition."},
@@ -3988,13 +4036,13 @@ const QUESTIONS = [
    answer:"Par les images $f(e_1),\\dots,f(e_n)$ des vecteurs d'une base de $E$ (choisies librement dans $F$).",
    exp:"D'où $\\mathcal{L}(E,F)\\simeq\\mathcal{M}_{n,p}(\\mathbb{K})$."},
   {topic:'applications_lineaires', mode:'flash', q:"Définis un projecteur $p\\in\\mathcal{L}(E)$ et donne sa décomposition.",
-   ggb:{obs:"projection sur le plan F parallèlement à la droite G : P=p(x) est le point où la parallèle à G passant par x=M perce le plan F. Décomposition unique x = p(x) + (x−p(x)), avec p(x)∈F et x−p(x)∈G (segment rouge).",leg:[["#5078e6","plan F"],["#28a05a","droite G"],["#d23232","x=M, p(x)=P"]],cmds:["F: z=0","SetColor(F,80,120,230)","SetFilling(F,0.22)","gdir=Vector((0,0,0),(0.5,0.3,1))","G=Line((0,0,0),gdir)","SetColor(G,40,160,90)","SetLineThickness(G,4)","M=(1.5,0.9,1.7)","SetColor(M,210,50,50)","SetPointSize(M,5)","LM=Line(M,gdir)","SetVisible(LM,false)","P=Intersect(LM,F)","SetColor(P,210,50,50)","SetPointSize(P,5)","seg=Segment(M,P)","SetColor(seg,210,50,50)","SetLineStyle(seg,1)","ShowLabel(M,true)","ShowLabel(P,true)","ShowLabel(G,true)"]},
-   fig:{window:[-0.7,3.3,-0.7,2.2],items:[{segment:[[-0.5,-0.09],[3.05,0.549]]},{segment:[[-0.2,-0.5],[0.76,1.9]]},{label:'F=\\mathrm{Im}\\,p',at:[2.85,0.5],place:'below'},{label:'G=\\ker p',at:[0.72,1.9],place:'right'},{point:[2.66,1.546],label:'x',at:'aboveright'},{point:[2.2,0.396],label:'p(x)',at:'belowright'},{segment:[[2.66,1.546],[2.2,0.396]],dash:true},{point:[0,0],dot:true,label:'O',at:'belowleft'}]},
+   ggb:{obs:"projection sur le plan F parallèlement à la droite G : P=p(x) est le point où la parallèle à G passant par x=M perce le plan F. Décomposition unique x = p(x) + (x−p(x)), avec p(x)∈F et x−p(x)∈G (segment rouge).",leg:[["#5078e6","plan F"],["#28a05a","droite G"],["#d23232","x=M, p(x)=P"]],cmds:["F: z=0","SetColor(F,80,120,230)","SetFilling(F,0.22)","G=Line((0,0,0),(0.5,0.3,1))","SetColor(G,40,160,90)","SetLineThickness(G,4)","M=(1.5,0.9,1.7)","SetColor(M,210,50,50)","SetPointSize(M,5)","P=M-z(M)*(0.5,0.3,1)","SetColor(P,210,50,50)","SetPointSize(P,5)","seg=Segment(M,P)","SetColor(seg,210,50,50)","SetLineStyle(seg,1)","ShowLabel(M,true)","ShowLabel(P,true)","ShowLabel(G,true)"]},
+   fig:{window:[-0.6,2.7,-0.7,1.9],items:[{segment:[[-0.5,0],[2.6,0]]},{label:'F=\\mathrm{Im}\\,p',at:[2.45,0],place:'aboveright'},{segment:[[0,0],[0.66,1.14]],dash:true},{label:'G=\\ker p',at:[0.66,1.14],place:'right'},{vector:[[0,0],[1.8,1.2]],label:'x',at:'above'},{point:[1.107,0],label:'p(x)',at:'belowright'},{segment:[[1.8,1.2],[1.107,0]],dash:true},{point:[0,0],dot:true,label:'O',at:'belowleft'}]},
    answer:"$p$ linéaire avec $p\\circ p=p$ ; alors $E=\\ker p\\oplus\\mathrm{Im}\\,p$.",
    exp:"Projection sur $\\mathrm{Im}\\,p$ parallèlement à $\\ker p$ ; $\\mathrm{Im}\\,p=\\ker(p-\\mathrm{id})$."},
   {topic:'applications_lineaires', mode:'flash', q:"Définis une symétrie $s\\in\\mathcal{L}(E)$.",
-   ggb:{obs:"symétrie par rapport au plan F parallèlement à la droite G : Sx est le symétrique de x=M, et p(x)=P est le milieu de [M, Sx]. Formule s(x) = 2 p(x) − x.",leg:[["#5078e6","plan F"],["#28a05a","droite G"],["#d23232","x=M, p(x)=P, s(x)=Sx"]],cmds:["F: z=0","SetColor(F,80,120,230)","SetFilling(F,0.22)","gdir=Vector((0,0,0),(0.5,0.3,1))","G=Line((0,0,0),gdir)","SetColor(G,40,160,90)","SetLineThickness(G,4)","M=(1.5,0.9,1.7)","SetColor(M,210,50,50)","SetPointSize(M,5)","LM=Line(M,gdir)","SetVisible(LM,false)","P=Intersect(LM,F)","SetColor(P,90,90,90)","SetPointSize(P,4)","Sx=2*P-M","SetColor(Sx,210,50,50)","SetPointSize(Sx,5)","segS=Segment(M,Sx)","SetColor(segS,210,50,50)","SetLineStyle(segS,1)","ShowLabel(M,true)","ShowLabel(P,true)","ShowLabel(Sx,true)"]},
-   fig:{window:[-0.7,3.3,-1.1,2.2],items:[{segment:[[-0.5,-0.09],[3.05,0.549]]},{segment:[[-0.25,-0.62],[0.5,1.25]]},{label:'F',at:[2.9,0.52],place:'below'},{label:'G',at:[0.47,1.25],place:'right'},{point:[2.66,1.546],label:'x',at:'aboveright'},{point:[1.74,-0.754],label:'s(x)',at:'belowright'},{point:[2.2,0.396],dot:true,label:'p(x)',at:'aboveleft'},{segment:[[2.66,1.546],[1.74,-0.754]],dash:true},{point:[0,0],dot:true,label:'O',at:'belowleft'}]},
+   ggb:{obs:"symétrie par rapport au plan F parallèlement à la droite G : Sx est le symétrique de x=M, et p(x)=P est le milieu de [M, Sx]. Formule s(x) = 2 p(x) − x.",leg:[["#5078e6","plan F"],["#28a05a","droite G"],["#d23232","x=M, p(x)=P, s(x)=Sx"]],cmds:["F: z=0","SetColor(F,80,120,230)","SetFilling(F,0.22)","G=Line((0,0,0),(0.5,0.3,1))","SetColor(G,40,160,90)","SetLineThickness(G,4)","M=(1.5,0.9,1.7)","SetColor(M,210,50,50)","SetPointSize(M,5)","P=M-z(M)*(0.5,0.3,1)","SetColor(P,90,90,90)","SetPointSize(P,4)","Sx=2*P-M","SetColor(Sx,210,50,50)","SetPointSize(Sx,5)","segS=Segment(M,Sx)","SetColor(segS,210,50,50)","SetLineStyle(segS,1)","ShowLabel(M,true)","ShowLabel(P,true)","ShowLabel(Sx,true)"]},
+   fig:{window:[-0.6,2.7,-1.6,1.9],items:[{segment:[[-0.5,0],[2.6,0]]},{label:'F',at:[2.45,0],place:'aboveright'},{segment:[[0,0],[0.66,1.14]],dash:true},{label:'G',at:[0.66,1.14],place:'right'},{vector:[[0,0],[1.8,1.2]],label:'x',at:'above'},{vector:[[0,0],[0.414,-1.2]],label:'s(x)',at:'below'},{point:[1.107,0],dot:true,label:'p(x)',at:'aboveright'},{segment:[[1.8,1.2],[0.414,-1.2]],dash:true},{point:[0,0],dot:true,label:'O',at:'left'}]},
    answer:"$s$ linéaire avec $s\\circ s=\\mathrm{id}_E$ ; alors $E=\\ker(s-\\mathrm{id})\\oplus\\ker(s+\\mathrm{id})$.",
    exp:"Symétrie par rapport à $\\ker(s-\\mathrm{id})$."},
 
@@ -4888,7 +4936,7 @@ function buildClassMenu(){
 }
 function buildNavScope(){
   const host=$('#navScope'); if(!host) return;
-  const subs=subjectsForLevel(activeLevel);                  // matières disponibles pour la classe active
+  const subs=subjectsForNav(activeLevel);                    // matières affichables (cartes OU rubriques déclarées) pour la classe active
   if(subs.length<2){ host.style.display='none'; host.innerHTML=''; return; }  // 0 ou 1 matière → pas de sélecteur
   host.style.display='';
   let html=`<div class="scope-row"><span class="scope-lbl">Matière</span>`;
@@ -4907,8 +4955,35 @@ function buildFamilyAccordion(){
   const lvl=effLevel();
   // Aucun chapitre pour cette classe × matière → état « bientôt disponible »
   const scopeTopics=Object.keys(TOPICS).filter(k=>TOPICS[k].subject===activeSubject && TOPICS[k].level===lvl);
+  // Matière avec rubriques déclarées mais AUCUNE carte (ex. Physique-Chimie TSI1) → mode aperçu « bientôt ».
+  const previewMode = scopeTopics.length>0 && !hasContent(activeSubject, lvl);
+  // En aperçu : on masque « Tout sélectionner » et « Démarrer » (rien à réviser encore). Restaurés sinon.
+  ['#selectAllBtn','#startBtn'].forEach(sel=>{ const el=$(sel); if(el) el.style.display = previewMode ? 'none' : ''; });
   if(scopeTopics.length===0){
     host.innerHTML=`<div class="scope-soon"><span class="ss-emoji">🚧</span><div class="ss-t">${LEVELS[activeLevel]?LEVELS[activeLevel].short:''} · ${SUBJECTS[activeSubject].name}</div><div class="ss-s">Pas encore de chapitres pour cette classe en ${SUBJECTS[activeSubject].name}. Bientôt disponible.</div></div>`;
+    updateSelectAllBtn();
+    return;
+  }
+  // ---- Aperçu « bientôt » : liste les rubriques du programme, NON sélectionnables (pas de carte). ----
+  if(previewMode){
+    const note=document.createElement('div'); note.className='cm-lbl'; note.style.margin='2px 0 12px';
+    note.innerHTML='🚧 Programme officiel en place · les cartes de révision arrivent bientôt';
+    host.appendChild(note);
+    for(const fkey of familiesFor(activeSubject)){
+      const fam=FAMILIES[fkey];
+      const ts=Object.entries(TOPICS).filter(([,t])=>t.family===fkey && t.subject===activeSubject && t.level===lvl);
+      if(ts.length===0) continue;
+      const block=document.createElement('div'); block.className='fam-block';
+      const hdr=document.createElement('div'); hdr.className='fam-hdr'; hdr.style.cursor='default';
+      hdr.innerHTML=`<span class="fdot" style="background:${fam.raw}"></span><span class="fname">${fam.name}</span><span class="cc-soon">bientôt</span><span class="f-pct">${ts.length} chap.</span>`;
+      const body=document.createElement('div'); body.className='fam-body'; body.style.display='block';
+      for(const [,t] of ts){
+        const row=document.createElement('div'); row.className='topic-row'; row.style.cursor='default'; row.style.opacity='.92'; row.style.setProperty('--tc',t.raw);
+        row.innerHTML=`<span class="topic-sel" aria-hidden="true" style="--c:${t.raw}"><span class="ts-dot" style="background:${t.raw}"></span></span><div class="topic-info"><div class="topic-name">${t.name}</div></div>`;
+        body.appendChild(row);
+      }
+      block.appendChild(hdr); block.appendChild(body); host.appendChild(block);
+    }
     updateSelectAllBtn();
     return;
   }
