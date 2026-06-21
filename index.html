@@ -984,11 +984,12 @@ window.MathJax = {
     <div id="answerZone"></div>
     <div class="feedback hidden" id="feedback" role="status" aria-live="polite"></div>
     <div class="next-row">
+      <button class="btn ghost" id="undoBtn" type="button" style="font-size:13px; padding:9px 14px; opacity:.4; cursor:default" title="Rien à annuler" disabled>↶ Annuler</button>
       <button class="btn ghost" id="reportBtn" style="font-size:13px; padding:9px 14px" title="Signaler une erreur sur cette carte">⚐ Signaler</button>
       <button class="btn ghost" id="abandonBtn" style="font-size:13px; padding:9px 14px">✕ Abandonner</button>
       <button class="btn hidden" id="nextBtn">Suivant →</button>
     </div>
-    <p class="kbd-hint">Raccourcis : <kbd>1</kbd>–<kbd>4</kbd> répondre / noter · <kbd>Espace</kbd> révéler · <kbd>Entrée</kbd> suivant</p>
+    <p class="kbd-hint">Raccourcis : <kbd>1</kbd>–<kbd>4</kbd> répondre / noter · <kbd>Espace</kbd> révéler · <kbd>Entrée</kbd> suivant · <kbd>Ctrl</kbd>+<kbd>Z</kbd> annuler</p>
   </div>
 
   <!-- RESULTS -->
@@ -4009,6 +4010,9 @@ let chosenLen = 10;
 let pool = [];
 let idx = 0, score = 0, streak = 0, bestStreak = 0;
 let answeredFlag = false;
+let undoStack = [];      // pile d'annulation (anti-miss-click) : instantanés « avant notation », un par carte traitée
+let _entrySnap = null;   // instantané de la carte actuellement affichée (poussé sur la pile au passage à la suivante)
+let _inUndo = false;     // garde : ré-affichage pendant une annulation (ne pas réinitialiser le chrono ni la pile)
 let sessionStartedAt = 0;   // début de session quiz (durée de connexion) — capture analytique
 let _sessionFlushed = false;   // garde anti-doublon : une session n'est sauvée qu'une fois (bilan OU abandon OU pagehide)
 // Session de révision : pioche à la demande (dues → nouvelles → entraînement libre), bornée par un objectif.
@@ -5033,6 +5037,8 @@ function startSrsReview(){
 /* Avancement centralisé : route vers la session de révision (file dynamique) ou
    le flux quiz à pool fixe. Appelé par les boutons de notation, la confiance QCM et « Suivant ». */
 function advanceCard(){
+  // mémorise l'état « avant notation » de la carte qu'on quitte (pour pouvoir l'annuler)
+  if(_entrySnap){ undoStack.push(_entrySnap); if(undoStack.length > 60) undoStack.shift(); _entrySnap = null; }
   if(reviewSession){ reviewAdvance(); return; }
   if(idx < pool.length-1){ idx++; renderQuestion(); }
   else showResults();
@@ -5051,6 +5057,65 @@ function finishReview(){
   // bilan de la session (showResults s'appuie sur `pool`, qui contient les cartes traitées)
   showResults();
   reviewSession = null;
+}
+
+/* ====================== ANNULATION (anti-miss-click) ======================
+   Un clic accidentel sur une note (Oubli/Difficile/Correct/Facile, confiance QCM,
+   « Je ne sais pas »…) fait avancer la carte ET corrompt la planification SRS.
+   On capture, AVANT chaque notation, un instantané MINIMAL : l'état SRS de la carte
+   (clé qHash) + les agrégats touchés par review() (daily/streak/reviewLog) + les
+   compteurs de session. L'annulation restaure cet état et ré-affiche la carte vierge
+   pour la re-noter. Multi-niveaux (pile bornée), SRS-safe, sans toucher aux énoncés. */
+function _srsSnap(){
+  try{
+    const q = pool[idx]; if(!q) return null;
+    const h = qHash(q.q);
+    const d = SRS._d();
+    return {
+      h,
+      card: d.cards[h] ? JSON.parse(JSON.stringify(d.cards[h])) : null,
+      daily: d.daily ? JSON.parse(JSON.stringify(d.daily)) : null,
+      streak: d.streak ? JSON.parse(JSON.stringify(d.streak)) : null,
+      reviewLogLen: (d.reviewLog || []).length,
+      idx, score, sStreak: streak, best: bestStreak,
+      rsCount: reviewSession ? reviewSession.count : null
+    };
+  }catch(e){ return null; }
+}
+function updateUndoBtn(){
+  const b = document.getElementById('undoBtn'); if(!b) return;
+  const can = undoStack.length > 0;
+  b.disabled = !can;
+  b.style.opacity = can ? '1' : '.4';
+  b.style.cursor  = can ? 'pointer' : 'default';
+  b.title = can ? 'Annuler la dernière carte notée (Ctrl+Z)' : 'Rien à annuler';
+}
+function undoLast(){
+  if(!undoStack.length) return false;
+  try{
+    const s = undoStack.pop();
+    // 1) restaurer l'état SRS (chirurgical : uniquement les clés que review() modifie)
+    const d = SRS._d();
+    if(s.card) d.cards[s.h] = s.card; else delete d.cards[s.h];
+    d.daily = s.daily; d.streak = s.streak;
+    if(Array.isArray(d.reviewLog) && d.reviewLog.length > s.reviewLogLen) d.reviewLog.length = s.reviewLogLen;
+    SRS._save(d); SRS._syncCloud();           // le cloud reflète aussi l'annulation
+    // 2) restaurer les compteurs de session
+    score = s.score; streak = s.sStreak; bestStreak = s.best;
+    if(reviewSession && s.rsCount != null) reviewSession.count = s.rsCount;
+    // 3) revenir sur la carte. En révision (file dynamique), on jette la carte piochée
+    //    APRÈS celle qu'on annule ; le pool fixe d'un quiz n'est jamais tronqué.
+    if(reviewSession && pool.length > s.idx + 1) pool.length = s.idx + 1;
+    idx = Math.min(s.idx, pool.length - 1);
+    // 4) réinitialiser les marqueurs de réponse de la carte pour pouvoir la re-noter
+    const q = pool[idx];
+    if(q){ delete q._answered; delete q._missed; delete q._ms; delete q._chosen; }
+    answeredFlag = false;
+    // 5) ré-afficher la carte vierge (sans réinitialiser le chrono de session ni la pile)
+    _inUndo = true; renderQuestion(); _inUndo = false;
+    updateHeaderStats(); updateUndoBtn();
+    return true;
+  }catch(e){ console.warn('undo', e); _inUndo = false; updateUndoBtn(); return false; }
 }
 
 /* ====================== START SCREEN ====================== */
@@ -5165,7 +5230,7 @@ $('#startBtn').onclick = ()=>{
 function renderQuestion(){
   answeredFlag=false;
   const q = pool[idx], t = TOPICS[q.topic];
-  if(idx===0){ sessionStartedAt = Date.now(); _sessionFlushed = false; }   // démarrage de session (durée + reset anti-doublon)
+  if(idx===0 && !_inUndo){ sessionStartedAt = Date.now(); _sessionFlushed = false; undoStack = []; _entrySnap = null; }   // démarrage de session (durée + reset anti-doublon + pile d'annulation)
   q._shownAt = Date.now();                      // horodatage d'affichage (temps de réponse)
   const pad = n => String(n).padStart(2,'0');
   if(reviewSession){
@@ -5197,6 +5262,8 @@ function renderQuestion(){
 
   renderReveal($('#quizScreen'), [$('#qText'), $('#answerZone')]);
   scrollQuizTop();
+  _entrySnap = _srsSnap();        // instantané « avant notation » de cette carte (base de l'annulation)
+  updateUndoBtn();
 }
 
 /* ---- QCM ---- */
@@ -5543,6 +5610,7 @@ function finalizeSelf(q, ok){
 }
 
 $('#nextBtn').onclick = ()=> advanceCard();
+(function(){ const ub = document.getElementById('undoBtn'); if(ub) ub.onclick = ()=> undoLast(); })();
 
 /* ====================== MODE PLEIN ÉCRAN (révision sans distraction) ====================== */
 (function(){
@@ -5596,6 +5664,14 @@ document.addEventListener('keydown', (e)=>{
   const tag = (e.target.tagName||'').toLowerCase();
   const typing = tag==='input' || tag==='textarea';
   const q = pool[idx]; if(!q) return;
+
+  // Ctrl/Cmd+Z → annuler la dernière carte notée (anti-miss-click). On ne vole PAS
+  // l'annulation native du navigateur tant qu'on tape dans un champ encore éditable.
+  if((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key==='z' || e.key==='Z')){
+    const editable = (tag==='input' || tag==='textarea') && !e.target.disabled && !e.target.readOnly;
+    if(!editable && undoStack.length){ e.preventDefault(); undoLast(); }
+    return;
+  }
 
   // Entrée → avancer une fois répondu : bouton « Suivant » s'il est présent (QCM faux / saisie),
   // sinon on valide la note par défaut « Correct » (g2) pour passer à la carte suivante (flash,
