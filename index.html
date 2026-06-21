@@ -619,6 +619,16 @@ window.MathJax = {
   .verdict{font-weight:700; font-size:15px; margin-bottom:10px; display:flex; align-items:center; gap:9px}
   .verdict.ok{color:var(--ok-text)} .verdict.no{color:var(--no-text)}
   .exp{background:var(--panel-2); border-left:5px solid var(--accent); border-radius:12px; padding:14px 16px; font-size:16px}
+  /* GeoGebra 3D — explorateurs interactifs (lazy, derrière un bouton) */
+  .ggb-explore{font-family:'Lexend',sans-serif; font-size:14px; font-weight:600; cursor:pointer; border:1px solid var(--accent-bright); background:color-mix(in srgb,var(--accent-bright) 12%,var(--bg-deep)); color:var(--accent-bright); border-radius:10px; padding:9px 14px; margin-top:10px}
+  .ggb-explore:hover{background:color-mix(in srgb,var(--accent-bright) 22%,var(--bg-deep))}
+  .ggb-host{margin-top:10px}
+  .ggb-obs{font-size:13.5px; color:var(--ink); background:color-mix(in srgb,var(--accent-bright) 8%,transparent); border:1px solid color-mix(in srgb,var(--accent-bright) 28%,transparent); border-radius:10px; padding:10px 13px; margin:0 0 10px}
+  .ggb-obs b{color:var(--ink)}
+  .ggb-leg{display:flex; flex-wrap:wrap; gap:13px; align-items:center; margin-top:7px; font-size:12.5px; color:var(--muted)}
+  .ggb-leg span{display:inline-flex; align-items:center}
+  .ggb-leg i{display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:5px}
+  .ggbview{min-height:240px; border-radius:10px; overflow:hidden}
   .vig{margin-top:12px; background:color-mix(in srgb,var(--integ) 12%,var(--bg-deep)); border:1px solid color-mix(in srgb,var(--integ) 45%,transparent); border-radius:12px; padding:13px 15px; font-size:15px; display:flex; gap:11px}
   .vig .ic{flex:none; font-size:18px}
   .vig b{color:var(--warn-text)}
@@ -2445,6 +2455,7 @@ const QUESTIONS = [
    choices:[{t:"$ax+by+cz+d=0$", c:true},{t:"$ax+by+cz=1$", c:false},{t:"$x/a+y/b+z/c=0$", c:false},{t:"$a x^2+by^2+cz^2=0$", c:false}],
    exp:"Tout plan a une équation de la forme $ax+by+cz+d=0$, où $(a,b,c)$ est normal."},
   {topic:'geoespace', mode:'flash', q:"Le produit vectoriel $\\overrightarrow{u}\\wedge\\overrightarrow{v}$ est orthogonal à quoi ?",
+   ggb:{obs:"le vecteur rouge w = u∧v sort du plan : il lui reste perpendiculaire quel que soit l'angle de vue, et sa longueur égale l'aire du parallélogramme bleu.",leg:[["#289650","u, v"],["#5078e6","plan (u,v)"],["#d23232","w = u∧v"]],cmds:["O=(0,0,0)","u=Vector(O,(2,1,0))","v=Vector(O,(-1,2,0))","w=Cross(u,v)","A=O+u","B=O+u+v","C=O+v","par=Polygon(O,A,B,C)","ShowLabel(A,false)","ShowLabel(B,false)","ShowLabel(C,false)","ShowLabel(O,false)","SetColor(u,40,150,80)","SetColor(v,40,150,80)","SetLineThickness(u,5)","SetLineThickness(v,5)","SetColor(par,80,120,230)","SetFilling(par,0.28)","SetColor(w,210,50,50)","SetLineThickness(w,6)"]},
    answer:"À la fois à $\\overrightarrow{u}$ et à $\\overrightarrow{v}$.",
    exp:"$\\overrightarrow{u}\\wedge\\overrightarrow{v}$ est normal au plan engendré par $\\overrightarrow{u}$ et $\\overrightarrow{v}$."},
   {topic:'geoespace', mode:'trou', q:"En base orthonormée, $\\overrightarrow{u}(x,y,z)\\cdot\\overrightarrow{v}(x',y',z')=$ ___.",
@@ -2455,12 +2466,14 @@ const QUESTIONS = [
    exp:"C'est l'aire du parallélogramme construit sur $\\overrightarrow{u},\\overrightarrow{v}$.",
    vig:"Le produit scalaire utilise $\\cos\\theta$, le produit vectoriel $\\sin\\theta$."},
   {topic:'geoespace', mode:'flash', q:"Le produit mixte $[\\overrightarrow{u},\\overrightarrow{v},\\overrightarrow{w}]=\\det(\\overrightarrow{u},\\overrightarrow{v},\\overrightarrow{w})$ est nul $\\iff$ ?",
+   ggb:{obs:"les trois vecteurs bâtissent un parallélépipède ; son volume égale |det(u,v,w)| (le produit mixte en valeur absolue). Coplanaires, le volume serait nul.",leg:[["#d23c3c","u"],["#289650","v"],["#3c5ad2","w"]],cmds:["O=(0,0,0)","u=Vector(O,(2.4,0.5,0))","v=Vector(O,(0.6,2.2,0))","w=Vector(O,(0.6,0.9,2.2))","base=Polygon(O,O+u,O+u+v,O+v)","pp=Prism(base,O+w)","SetColor(pp,90,130,230)","SetFilling(pp,0.16)","SetColor(u,210,60,60)","SetColor(v,40,150,80)","SetColor(w,60,90,210)","SetLineThickness(u,5)","SetLineThickness(v,5)","SetLineThickness(w,5)","ShowLabel(O,false)"]},
    answer:"Les trois vecteurs sont coplanaires (liés).",
    exp:"Le produit mixte est le déterminant $3\\times3$ : nul ssi famille liée."},
   {topic:'geoespace', mode:'saisie', q:"Norme du vecteur $\\overrightarrow{u}(2,1,2)$ ?",
    answer:"3", accept:["3","3.0"],
    exp:"$\\sqrt{4+1+4}=\\sqrt9=3$."},
   {topic:'geoespace', mode:'qcm', q:"Un vecteur normal au plan $2x-y+3z=5$ est :",
+   ggb:{obs:"le vecteur normal n (rouge) d'un plan d'équation ax+by+cz+d=0 a pour coordonnées (a,b,c) ; il est perpendiculaire au plan.",leg:[["#5a8ce6","plan"],["#d23232","n = (a,b,c)"]],cmds:["P:2x-y+3z=0","SetColor(P,90,140,230)","SetFilling(P,0.3)","n=Vector((0,0,0),(2,-1,3))","SetColor(n,210,50,50)","SetLineThickness(n,6)"]},
    choices:[{t:"$(2,-1,3)$", c:true},{t:"$(2,1,3)$", c:false},{t:"$(5,0,0)$", c:false},{t:"$(-2,1,-3,5)$", c:false}],
    exp:"Les coefficients de $x,y,z$ donnent un vecteur normal."},
   {topic:'geoespace', mode:'flash', q:"Distance d'un point $M_0(x_0,y_0,z_0)$ au plan $ax+by+cz+d=0$ ?",
@@ -3355,9 +3368,11 @@ const QUESTIONS = [
 
   /* ---- Géométrie de l'espace (compléments) ---- */
   {topic:'geoespace', mode:'qcm', q:"Le produit mixte $[\\vec u,\\vec v,\\vec w]=\\det(\\vec u,\\vec v,\\vec w)$ représente (en valeur absolue) :",
+   ggb:{obs:"les trois vecteurs bâtissent un parallélépipède ; son volume égale |det(u,v,w)| (le produit mixte en valeur absolue). Coplanaires, le volume serait nul.",leg:[["#d23c3c","u"],["#289650","v"],["#3c5ad2","w"]],cmds:["O=(0,0,0)","u=Vector(O,(2.4,0.5,0))","v=Vector(O,(0.6,2.2,0))","w=Vector(O,(0.6,0.9,2.2))","base=Polygon(O,O+u,O+u+v,O+v)","pp=Prism(base,O+w)","SetColor(pp,90,130,230)","SetFilling(pp,0.16)","SetColor(u,210,60,60)","SetColor(v,40,150,80)","SetColor(w,60,90,210)","SetLineThickness(u,5)","SetLineThickness(v,5)","SetLineThickness(w,5)","ShowLabel(O,false)"]},
    choices:[{t:"le volume du parallélépipède", c:true},{t:"une aire", c:false},{t:"une longueur", c:false},{t:"un angle", c:false}],
    exp:"$|\\det(\\vec u,\\vec v,\\vec w)|$ = volume engendré par les trois vecteurs."},
   {topic:'geoespace', mode:'qcm', q:"Un vecteur normal au plan $ax+by+cz+d=0$ est :",
+   ggb:{obs:"le vecteur normal n (rouge) d'un plan d'équation ax+by+cz+d=0 a pour coordonnées (a,b,c) ; il est perpendiculaire au plan.",leg:[["#5a8ce6","plan"],["#d23232","n = (a,b,c)"]],cmds:["P:2x-y+3z=0","SetColor(P,90,140,230)","SetFilling(P,0.3)","n=Vector((0,0,0),(2,-1,3))","SetColor(n,210,50,50)","SetLineThickness(n,6)"]},
    choices:[{t:"$(a,b,c)$", c:true},{t:"$(d,d,d)$", c:false},{t:"$(b,c,a)$", c:false},{t:"$(-a,-b,-c)$ uniquement", c:false}],
    exp:"$(a,b,c)$ est normal au plan."},
   {topic:'geoespace', mode:'saisie', q:"Distance d'un point $M(x_0,y_0,z_0)$ au plan $ax+by+cz+d=0$ ?",
@@ -3371,15 +3386,18 @@ const QUESTIONS = [
    choices:[{t:"orthogonal à $\\vec u$ et à $\\vec v$", c:true},{t:"colinéaire à $\\vec u$", c:false},{t:"un scalaire", c:false},{t:"dans le plan $(\\vec u,\\vec v)$", c:false}],
    exp:"Direction normale au plan engendré ; norme = aire du parallélogramme."},
   {topic:'geoespace', mode:'qcm', q:"Équation cartésienne d'une sphère de centre $\\Omega(a,b,c)$ rayon $R$ :",
+   ggb:{obs:"l'ensemble des points à distance R d'un centre Ω est une sphère de rayon R (segment rouge) : (x−a)²+(y−b)²+(z−c)² = R².",leg:[["#5a8ce6","sphère"],["#d23232","rayon R"]],cmds:["ctr=(0,0,0)","S=Sphere(ctr,2)","SetColor(S,90,140,230)","SetFilling(S,0.16)","rad=Segment(ctr,(0,0,2))","SetColor(rad,210,50,50)","SetLineThickness(rad,6)","ShowLabel(ctr,true)"]},
    choices:[{t:"$(x-a)^2+(y-b)^2+(z-c)^2=R^2$", c:true},{t:"$(x-a)+(y-b)+(z-c)=R$", c:false},{t:"$x^2+y^2+z^2=R$", c:false},{t:"$|x-a|+|y-b|+|z-c|=R$", c:false}],
    exp:"Ensemble des points à distance $R$ du centre."},
   {topic:'geoespace', mode:'saisie', q:"Représentation paramétrique d'un plan passant par $A$, dirigé par $\\vec u,\\vec v$ (non colinéaires) : $M=A+\\square$ ?",
    answer:"$s\\vec u+t\\vec v$", accept:["su+tv","s u + t v","s*u+t*v"],
    exp:"$M=A+s\\vec u+t\\vec v$ avec $(s,t)\\in\\mathbb{R}^2$."},
   {topic:'geoespace', mode:'qcm', q:"Deux plans de l'espace sont parallèles $\\iff$ leurs vecteurs normaux sont :",
+   ggb:{obs:"deux plans sont parallèles si et seulement si leurs vecteurs normaux sont colinéaires : ici les deux flèches rouges ont la même direction.",leg:[["#5a8ce6","plan P"],["#3cbe8c","plan Q"],["#d23c3c","normales"]],cmds:["P:2x-y+2z=0","Q:2x-y+2z=6","SetColor(P,90,140,230)","SetFilling(P,0.3)","SetColor(Q,60,190,140)","SetFilling(Q,0.3)","n1=Vector((0,0,0),(2,-1,2))","n2=Vector((3,0,0),(5,-1,2))","SetColor(n1,210,60,60)","SetColor(n2,210,60,60)","SetLineThickness(n1,5)","SetLineThickness(n2,5)"]},
    choices:[{t:"colinéaires", c:true},{t:"orthogonaux", c:false},{t:"égaux à $\\vec 0$", c:false},{t:"unitaires", c:false}],
    exp:"Normales colinéaires $\\Rightarrow$ plans parallèles (ou confondus)."},
   {topic:'geoespace', mode:'flash', q:"Comment obtenir un vecteur directeur de la droite d'intersection de deux plans ?",
+   ggb:{obs:"deux plans non parallèles se coupent selon une droite (rouge). Un vecteur directeur de cette droite est n₁ ∧ n₂, le produit vectoriel des deux normales.",leg:[["#5a8ce6","plan P"],["#3cbe8c","plan Q"],["#d23232","droite d'intersection"]],cmds:["P:x+2y+z=2","Q:2x-y+z=1","SetColor(P,90,140,230)","SetFilling(P,0.28)","SetColor(Q,60,190,140)","SetFilling(Q,0.28)","L=Intersect(P,Q)","SetColor(L,210,50,50)","SetLineThickness(L,6)"]},
    answer:"Le produit vectoriel $\\vec{n_1}\\wedge\\vec{n_2}$ des deux vecteurs normaux.",
    exp:"Il est orthogonal aux deux normales, donc parallèle aux deux plans."},
 
@@ -3583,9 +3601,11 @@ const QUESTIONS = [
 
   /* ===== géométrie de l'espace ===== */
   {topic:'geoespace', mode:'flash', q:"Que vaut $\\|\\overrightarrow{u}\\wedge\\overrightarrow{v}\\|$ géométriquement ?",
+   ggb:{obs:"le vecteur rouge w = u∧v sort du plan : il lui reste perpendiculaire quel que soit l'angle de vue, et sa longueur égale l'aire du parallélogramme bleu.",leg:[["#289650","u, v"],["#5078e6","plan (u,v)"],["#d23232","w = u∧v"]],cmds:["O=(0,0,0)","u=Vector(O,(2,1,0))","v=Vector(O,(-1,2,0))","w=Cross(u,v)","A=O+u","B=O+u+v","C=O+v","par=Polygon(O,A,B,C)","ShowLabel(A,false)","ShowLabel(B,false)","ShowLabel(C,false)","ShowLabel(O,false)","SetColor(u,40,150,80)","SetColor(v,40,150,80)","SetLineThickness(u,5)","SetLineThickness(v,5)","SetColor(par,80,120,230)","SetFilling(par,0.28)","SetColor(w,210,50,50)","SetLineThickness(w,6)"]},
    answer:"$\\|\\overrightarrow{u}\\|\\,\\|\\overrightarrow{v}\\|\\,|\\sin\\theta|$ : l'aire du parallélogramme construit sur $\\overrightarrow u,\\overrightarrow v$.",
    exp:"Nulle si et seulement si $\\overrightarrow u,\\overrightarrow v$ sont colinéaires."},
   {topic:'geoespace', mode:'trou', q:"Un vecteur normal au plan $ax+by+cz+d=0$ est $\\square$.",
+   ggb:{obs:"le vecteur normal n (rouge) d'un plan d'équation ax+by+cz+d=0 a pour coordonnées (a,b,c) ; il est perpendiculaire au plan.",leg:[["#5a8ce6","plan"],["#d23232","n = (a,b,c)"]],cmds:["P:2x-y+3z=0","SetColor(P,90,140,230)","SetFilling(P,0.3)","n=Vector((0,0,0),(2,-1,3))","SetColor(n,210,50,50)","SetLineThickness(n,6)"]},
    answer:"$(a,b,c)$", accept:["(a,b,c)","(a;b;c)","a,b,c"],
    exp:"Les coefficients de $x,y,z$."},
   {topic:'geoespace', mode:'flash', q:"Équation cartésienne du plan passant par $A(x_0,y_0,z_0)$ de normale $\\overrightarrow n(a,b,c)$ ?",
@@ -3598,15 +3618,18 @@ const QUESTIONS = [
    answer:"NON, il est ANTIsymétrique : $\\overrightarrow v\\wedge\\overrightarrow u=-\\,\\overrightarrow u\\wedge\\overrightarrow v$.",
    exp:"En particulier $\\overrightarrow u\\wedge\\overrightarrow u=\\overrightarrow 0$."},
   {topic:'geoespace', mode:'flash', q:"Que représente $|[\\overrightarrow u,\\overrightarrow v,\\overrightarrow w]|=|\\det(\\overrightarrow u,\\overrightarrow v,\\overrightarrow w)|$ ?",
+   ggb:{obs:"les trois vecteurs bâtissent un parallélépipède ; son volume égale |det(u,v,w)| (le produit mixte en valeur absolue). Coplanaires, le volume serait nul.",leg:[["#d23c3c","u"],["#289650","v"],["#3c5ad2","w"]],cmds:["O=(0,0,0)","u=Vector(O,(2.4,0.5,0))","v=Vector(O,(0.6,2.2,0))","w=Vector(O,(0.6,0.9,2.2))","base=Polygon(O,O+u,O+u+v,O+v)","pp=Prism(base,O+w)","SetColor(pp,90,130,230)","SetFilling(pp,0.16)","SetColor(u,210,60,60)","SetColor(v,40,150,80)","SetColor(w,60,90,210)","SetLineThickness(u,5)","SetLineThickness(v,5)","SetLineThickness(w,5)","ShowLabel(O,false)"]},
    answer:"Le volume du parallélépipède construit sur $\\overrightarrow u,\\overrightarrow v,\\overrightarrow w$.",
    exp:"Nul si et seulement si les trois vecteurs sont coplanaires."},
   {topic:'geoespace', mode:'saisie', q:"Norme du vecteur $\\overrightarrow u(1,2,2)$ ?",
    answer:"$3$", accept:["3"],
    exp:"$\\sqrt{1+4+4}=\\sqrt9=3$."},
   {topic:'geoespace', mode:'flash', q:"Deux plans de l'espace sont parallèles $\\iff$ ?",
+   ggb:{obs:"deux plans sont parallèles si et seulement si leurs vecteurs normaux sont colinéaires : ici les deux flèches rouges ont la même direction.",leg:[["#5a8ce6","plan P"],["#3cbe8c","plan Q"],["#d23c3c","normales"]],cmds:["P:2x-y+2z=0","Q:2x-y+2z=6","SetColor(P,90,140,230)","SetFilling(P,0.3)","SetColor(Q,60,190,140)","SetFilling(Q,0.3)","n1=Vector((0,0,0),(2,-1,2))","n2=Vector((3,0,0),(5,-1,2))","SetColor(n1,210,60,60)","SetColor(n2,210,60,60)","SetLineThickness(n1,5)","SetLineThickness(n2,5)"]},
    answer:"Leurs vecteurs normaux sont colinéaires.",
    exp:"Plans confondus ou strictement parallèles."},
   {topic:'geoespace', mode:'trou', q:"Sphère de centre $\\Omega(a,b,c)$ et rayon $R$ : $(x-a)^2+(y-b)^2+(z-c)^2=\\square$.",
+   ggb:{obs:"l'ensemble des points à distance R d'un centre Ω est une sphère de rayon R (segment rouge) : (x−a)²+(y−b)²+(z−c)² = R².",leg:[["#5a8ce6","sphère"],["#d23232","rayon R"]],cmds:["ctr=(0,0,0)","S=Sphere(ctr,2)","SetColor(S,90,140,230)","SetFilling(S,0.16)","rad=Segment(ctr,(0,0,2))","SetColor(rad,210,50,50)","SetLineThickness(rad,6)","ShowLabel(ctr,true)"]},
    answer:"$R^2$", accept:["R^2","R²","R**2"],
    exp:"Ensemble des points à distance $R$ de $\\Omega$."},
   {topic:'geoespace', mode:'saisie', q:"$\\overrightarrow u(1,2,3)\\cdot\\overrightarrow v(1,0,-1)=$ ?",
@@ -4614,6 +4637,49 @@ function FIG(spec){
   if(typeof QUESTIONS==='undefined') return;
   for(var i=0;i<QUESTIONS.length;i++){ var q=QUESTIONS[i];
     if(q && q.fig){ try{ q.exp=(q.exp?q.exp+'<br>':'')+FIG(q.fig); }catch(e){ if(window.console&&console.error) console.error('FIG',e); } }
+  }
+})();
+
+
+/* ===== GeoGebra 3D — explorateurs interactifs (ajouté 2026-06-21) =====
+   Une carte peut porter `ggb:{obs, leg, cmds}`. Au chargement, on ajoute à `exp` un bouton
+   « Explorer en 3D » + un hôte vide (énoncé `q` INCHANGÉ → SRS préservé). Au CLIC seulement,
+   on charge deployggb.js (CDN, donc en ligne) puis on injecte un applet 3D (vue 3D seule)
+   qui exécute `cmds`. Le reste de la carte reste léger / hors-ligne / thémé. */
+var GGB_REG = {};
+function ggbLegHTML(leg){ if(!leg||!leg.length) return ''; var s='<span class="ggb-leg">'; for(var i=0;i<leg.length;i++){ s+='<span><i style="background:'+leg[i][0]+'"></i>'+leg[i][1]+'</span>'; } return s+'</span>'; }
+function ggbLoadDeploy(cb){
+  if(window.GGBApplet){ cb(); return; }
+  if(window.__ggbLoading){ window.__ggbLoading.push(cb); return; }
+  window.__ggbLoading=[cb];
+  var s=document.createElement('script'); s.src='https://www.geogebra.org/apps/deployggb.js';
+  s.onload=function(){ var q=window.__ggbLoading; window.__ggbLoading=null; q.forEach(function(f){ try{f();}catch(e){} }); };
+  s.onerror=function(){ window.__ggbLoading=null; };
+  document.head.appendChild(s);
+}
+function ggbOpen(id){
+  var spec=GGB_REG[id]; if(!spec) return;
+  var host=document.getElementById('ggbhost-'+id); if(!host || host.dataset.on) return; host.dataset.on='1';
+  host.innerHTML='<div class="ggb-obs"><b>À observer :</b> '+(spec.obs||'')+ggbLegHTML(spec.leg)+'</div><div class="ggbview" id="ggbview-'+id+'">Chargement de GeoGebra…</div>';
+  var view=document.getElementById('ggbview-'+id);
+  ggbLoadDeploy(function(){
+    if(!window.GGBApplet){ if(view) view.textContent='GeoGebra indisponible (connexion requise).'; return; }
+    var W=Math.max(260, Math.min((host.clientWidth||320), 760));
+    var app=new GGBApplet({ appName:'3d', perspective:'T', width:W, height:Math.round(W*0.62),
+      showToolBar:false, showMenuBar:false, showAlgebraInput:false, showAlgebra:false,
+      showResetIcon:true, enableShiftDragZoom:true, enableRightClick:false, showZoomButtons:true,
+      appletOnLoad:function(api){ try{api.setPerspective('T');}catch(e){} var c=spec.cmds||[]; for(var i=0;i<c.length;i++){ try{api.evalCommand(c[i]);}catch(e){} } try{api.setRotateView(28,-18);}catch(e){} }
+    }, true);
+    app.inject('ggbview-'+id);
+  });
+}
+document.addEventListener('click', function(e){ var b=e.target&&e.target.closest?e.target.closest('.ggb-explore'):null; if(b){ ggbOpen(b.getAttribute('data-ggb')); b.style.display='none'; } });
+(function(){
+  if(typeof QUESTIONS==='undefined') return;
+  for(var i=0;i<QUESTIONS.length;i++){ var q=QUESTIONS[i];
+    if(q && q.ggb){ try{ var id='g'+i; GGB_REG[id]=q.ggb;
+      q.exp=(q.exp?q.exp+'<br>':'')+'<button type="button" class="ggb-explore" data-ggb="'+id+'">🧊 Explorer en 3D (GeoGebra)</button><div class="ggb-host" id="ggbhost-'+id+'"></div>';
+    }catch(e){ if(window.console&&console.error) console.error('GGB',e); } }
   }
 })();
 
