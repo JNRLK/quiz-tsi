@@ -421,9 +421,13 @@ window.MathJax = {
   .bar{height:7px; border-radius:99px; background:var(--bg-deep); overflow:hidden; border:1px solid var(--line)}
   .bar > i{display:block; height:100%; width:0; border-radius:99px; background:var(--grad-accent-h); transition:width .45s cubic-bezier(.2,.8,.2,1)}
   /* Transition douce entre cartes : énoncé + réponses masqués le temps du typeset MathJax
-     (supprime le flash de $...$ brut), puis fondu d'apparition. */
+     (supprime le flash de $...$ brut), puis fondu d'apparition DÉTERMINISTE via animation CSS
+     (indépendante de la vitesse de typeset → même fondu fluide en flashcard ET en quiz perso,
+     avant : le fondu ne se voyait que si le typeset était lent → pop sec sur les QCM rapides). */
   #qText, #answerZone{transition:opacity .22s ease}
   .mj-pending{opacity:0 !important; transition:none !important}
+  .card-in{animation:cardFade .24s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes cardFade{from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:none}}
 
   .badge{display:inline-block; padding:6px 12px; border-radius:999px; color:#fff; font-weight:700; font-size:12.5px; letter-spacing:.03em; margin-bottom:16px}
   .mtag{display:inline-block; margin-left:8px; padding:5px 10px; border-radius:999px; font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; border:1px solid var(--line); color:var(--muted); vertical-align:middle}
@@ -4095,7 +4099,12 @@ function typeset(el){ _doTypeset(el); }
 function renderReveal(typesetEl, fadeEls){
   fadeEls.forEach(e=>{ if(e) e.classList.add('mj-pending'); });
   let shown=false;
-  const reveal=()=>{ if(shown) return; shown=true; requestAnimationFrame(()=>{ fadeEls.forEach(e=>{ if(e) e.classList.remove('mj-pending'); }); }); };
+  const reveal=()=>{ if(shown) return; shown=true; requestAnimationFrame(()=>{ fadeEls.forEach(e=>{ if(!e) return;
+    e.classList.remove('card-in');     // reset pour rejouer l'animation à chaque carte
+    void e.offsetWidth;                // reflow PENDANT que .mj-pending masque encore (donc aucun flash) → redémarre l'anim
+    e.classList.add('card-in');        // fondu déterministe (démarre à opacity:0)
+    e.classList.remove('mj-pending');  // on dévoile : l'animation prend le relais (joue quelle que soit la vitesse du typeset)
+  }); }); };
   _pendingEls.add(typesetEl);
   const run=()=>{
     if(window.MathJax && window.MathJax.typesetPromise){
