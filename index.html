@@ -629,6 +629,10 @@ window.MathJax = {
   .ggb-leg span{display:inline-flex; align-items:center}
   .ggb-leg i{display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:5px}
   .ggbview{min-height:240px; border-radius:10px; overflow:hidden}
+  .ggb-modal-card{position:relative; background:var(--panel); border:1px solid var(--line); border-radius:18px; max-width:940px; width:100%; margin:auto; padding:16px; box-shadow:0 20px 60px rgba(0,0,0,.32)}
+  .ggb-modal-card .ggb-obs{margin:0 46px 12px 0}
+  .ggb-modal-close{position:absolute; top:10px; right:10px; cursor:pointer; border:1px solid var(--line); background:var(--bg-deep); color:var(--ink); border-radius:10px; width:38px; height:38px; font-size:17px; line-height:1; z-index:2}
+  .ggb-modal-close:hover{background:var(--panel-2)}
   .vig{margin-top:12px; background:color-mix(in srgb,var(--integ) 12%,var(--bg-deep)); border:1px solid color-mix(in srgb,var(--integ) 45%,transparent); border-radius:12px; padding:13px 15px; font-size:15px; display:flex; gap:11px}
   .vig .ic{flex:none; font-size:18px}
   .vig b{color:var(--warn-text)}
@@ -1560,18 +1564,25 @@ for (const k in FAMILIES){ if(!FAMILIES[k].subject) FAMILIES[k].subject = 'maths
 /* État de navigation. Défauts = comportement actuel (maths / TSI1). Pas encore câblé à l'UI. */
 let activeSubject = 'maths';
 let activeLevel   = 'tsi1';
+let lockedLevel   = null;   // élève (non-admin) verrouillé sur la classe rejointe ; null = admin / pas encore de classe → navigation libre
 /* Helpers de filtrage par (matière, année). Définis ici, câblés à l'UI dans une étape suivante. */
 function topicsFor(subject, level){ return Object.keys(TOPICS).filter(k => TOPICS[k].subject === subject && TOPICS[k].level === level); }
 function familiesFor(subject){ return Object.keys(FAMILIES).filter(k => FAMILIES[k].subject === subject); }
 function hasContent(subject, level){ return QUESTIONS.some(q => { const t = TOPICS[q.topic]; return t && t.subject === subject && t.level === level; }); }
 function isTransversal(subject){ return !!(SUBJECTS[subject] && SUBJECTS[subject].transversal); }
-function effLevel(){ return isTransversal(activeSubject) ? 'tr' : activeLevel; }       // matière transversale ⇒ niveau 'tr'
+function effLevel(){ return isTransversal(activeSubject) ? 'tr' : (lockedLevel || activeLevel); }   // transversale ⇒ 'tr' ; élève verrouillé ⇒ sa classe
 function inActiveScope(topicKey){ const t = TOPICS[topicKey]; return !!t && t.subject === activeSubject && t.level === effLevel(); }
 function subjectsWithContent(){ return Object.keys(SUBJECTS).filter(s => isTransversal(s) ? hasContent(s,'tr') : ['tsi0','tsi1','tsi2'].some(l=>hasContent(s,l))).sort((a,b)=>SUBJECTS[a].order-SUBJECTS[b].order); }
 function levelsWithContent(subject){ if(isTransversal(subject)) return []; return ['tsi0','tsi1','tsi2'].filter(l=>hasContent(subject,l)).sort((a,b)=>LEVELS[a].order-LEVELS[b].order); }
 /* Phase 2 : l'élève atterrit sur SON année. filiere==='TSI' + annee 0/1/2 → activeLevel.
    Si l'année visée n'a pas (encore) de contenu, buildNavScope la corrige (révélation progressive). */
-function applyPreferredLevel(p){ if(p && p.filiere==='TSI' && ['0','1','2'].includes(String(p.annee))) activeLevel = 'tsi'+p.annee; }
+function applyPreferredLevel(p){
+  if(!(p && p.filiere==='TSI' && ['0','1','2'].includes(String(p.annee)))) return;
+  const lvl = 'tsi'+p.annee;
+  if(isAdmin) return;        // admin : navigation libre (ni atterrissage forcé, ni verrou) pour gérer/tester toutes les classes
+  activeLevel = lvl;         // élève : atterrit sur SA classe…
+  lockedLevel = lvl;         // …et y reste verrouillé (ne voit que les cartes de sa classe ; les autres années sont masquées)
+}
 /* Matières disponibles pour une classe (année) : celles qui ont du contenu à ce niveau + les transversales. */
 function subjectsForLevel(level){ return Object.keys(SUBJECTS).filter(s => isTransversal(s) ? hasContent(s,'tr') : hasContent(s,level)).sort((a,b)=>SUBJECTS[a].order-SUBJECTS[b].order); }
 /* La classe a-t-elle du contenu « cœur » (hors langues transversales) ? sinon badge « bientôt ». */
@@ -4665,28 +4676,40 @@ function ggbLoadDeploy(cb){
   s.onerror=function(){ window.__ggbLoading=null; };
   document.head.appendChild(s);
 }
+var _ggbApi=null;
 function ggbOpen(id){
   var spec=GGB_REG[id]; if(!spec) return;
-  var host=document.getElementById('ggbhost-'+id); if(!host || host.dataset.on) return; host.dataset.on='1';
-  host.innerHTML='<div class="ggb-obs"><b>À observer :</b> '+(spec.obs||'')+ggbLegHTML(spec.leg)+'</div><div class="ggbview" id="ggbview-'+id+'">Chargement de GeoGebra…</div>';
-  var view=document.getElementById('ggbview-'+id);
+  var ov=document.createElement('div'); ov.className='modal-overlay ggb-modal';
+  ov.innerHTML='<div class="ggb-modal-card"><button type="button" class="ggb-modal-close" aria-label="Fermer">✕</button>'
+    +'<div class="ggb-obs"><b>À observer :</b> '+(spec.obs||'')+ggbLegHTML(spec.leg)+'</div>'
+    +'<div class="ggbview" id="ggbview-modal">Chargement de GeoGebra…</div></div>';
+  var qs=document.getElementById('quizScreen');
+  var fsEl=document.fullscreenElement||document.webkitFullscreenElement||((qs&&qs.classList.contains('fs-active'))?qs:null);
+  (fsEl||document.body).appendChild(ov);
+  function close(){ try{ if(_ggbApi&&_ggbApi.remove) _ggbApi.remove(); }catch(e){} _ggbApi=null; if(ov.parentNode) ov.parentNode.removeChild(ov); document.removeEventListener('keydown',onKey); }
+  function onKey(e){ if(e.key==='Escape') close(); }
+  ov.addEventListener('click', function(e){ if(e.target===ov) close(); });
+  ov.querySelector('.ggb-modal-close').addEventListener('click', close);
+  document.addEventListener('keydown', onKey);
+  var view=ov.querySelector('#ggbview-modal');
   ggbLoadDeploy(function(){
     if(!window.GGBApplet){ if(view) view.textContent='GeoGebra indisponible (connexion requise).'; return; }
-    var W=Math.max(260, Math.min((host.clientWidth||320), 760));
-    var app=new GGBApplet({ appName:'3d', perspective:'T', width:W, height:Math.round(W*0.62),
+    var W=Math.max(280, Math.min(window.innerWidth-56, 900));
+    var H=Math.max(260, Math.min(Math.round(W*0.62), window.innerHeight-200));
+    var app=new GGBApplet({ appName:'3d', perspective:'T', width:W, height:H,
       showToolBar:false, showMenuBar:false, showAlgebraInput:false, showAlgebra:false,
       showResetIcon:true, enableShiftDragZoom:true, enableRightClick:false, showZoomButtons:true,
-      appletOnLoad:function(api){ try{api.setPerspective('T');}catch(e){} var c=spec.cmds||[]; for(var i=0;i<c.length;i++){ try{api.evalCommand(c[i]);}catch(e){} } try{api.setRotateView(28,-18);}catch(e){} }
+      appletOnLoad:function(api){ _ggbApi=api; try{api.setPerspective('T');}catch(e){} var c=spec.cmds||[]; for(var i=0;i<c.length;i++){ try{api.evalCommand(c[i]);}catch(e){} } try{api.setRotateView(28,-18);}catch(e){} }
     }, true);
-    app.inject('ggbview-'+id);
+    app.inject('ggbview-modal');
   });
 }
-document.addEventListener('click', function(e){ var b=e.target&&e.target.closest?e.target.closest('.ggb-explore'):null; if(b){ ggbOpen(b.getAttribute('data-ggb')); b.style.display='none'; } });
+document.addEventListener('click', function(e){ var b=e.target&&e.target.closest?e.target.closest('.ggb-explore'):null; if(b){ e.preventDefault(); ggbOpen(b.getAttribute('data-ggb')); } });
 (function(){
   if(typeof QUESTIONS==='undefined') return;
   for(var i=0;i<QUESTIONS.length;i++){ var q=QUESTIONS[i];
     if(q && q.ggb){ try{ var id='g'+i; GGB_REG[id]=q.ggb;
-      q.exp=(q.exp?q.exp+'<br>':'')+'<button type="button" class="ggb-explore" data-ggb="'+id+'">🧊 Explorer en 3D (GeoGebra)</button><div class="ggb-host" id="ggbhost-'+id+'"></div>';
+      q.exp=(q.exp?q.exp+'<br>':'')+'<button type="button" class="ggb-explore" data-ggb="'+id+'">🧊 Explorer en 3D (GeoGebra)</button>';
     }catch(e){ if(window.console&&console.error) console.error('GGB',e); } }
   }
 })();
@@ -4845,11 +4868,13 @@ function updateSrsBar(){
 const CLS_SUB = { tsi0:'transition · bac pro', tsi1:'1re année', tsi2:'2e année' };
 function buildClassMenu(){
   const host=$('#classMenu'); if(!host) return;
-  host.innerHTML = `<div class="cm-lbl">Choisis ta classe</div>` + ['tsi0','tsi1','tsi2'].map(l=>{
+  // Élève verrouillé sur sa classe → on n'affiche QUE sa classe (aucune bascule vers une autre année).
+  const levels = lockedLevel ? [lockedLevel] : ['tsi0','tsi1','tsi2'];
+  host.innerHTML = `<div class="cm-lbl">${lockedLevel ? 'Ta classe' : 'Choisis ta classe'}</div>` + levels.map(l=>{
     const soon = !levelHasOwnContent(l);
     return `<button class="class-card${activeLevel===l?' on':''}" data-cls="${l}"><span class="cc-y">${LEVELS[l].short}</span><span class="cc-s">${CLS_SUB[l]}</span>${soon?'<span class="cc-soon">bientôt</span>':''}</button>`;
   }).join('');
-  host.querySelectorAll('[data-cls]').forEach(b=>b.onclick=()=>{ activeLevel=b.dataset.cls; buildFamilyAccordion(); updatePoolInfo(); updateSelectAllBtn(); });
+  host.querySelectorAll('[data-cls]').forEach(b=>b.onclick=()=>{ if(lockedLevel && b.dataset.cls!==lockedLevel) return; activeLevel=b.dataset.cls; buildFamilyAccordion(); updatePoolInfo(); updateSelectAllBtn(); });
 }
 function buildNavScope(){
   const host=$('#navScope'); if(!host) return;
@@ -6545,6 +6570,7 @@ $('#juryBack').onclick = ()=>{
    Reprend la logique SRS : cartes dues + nouvelles (plafonnées/jour) ; à défaut,
    entraînement libre sur ces chapitres. */
 function startReviewForTopics(keys){
+  if(lockedLevel) keys = keys.filter(k => TOPICS[k] && TOPICS[k].level === lockedLevel);  // élève verrouillé : jamais de cartes hors de sa classe
   const set = new Set(keys);
   const d = SRS._d();
   const hMap = {}; QUESTIONS.forEach(q=>{ hMap[qHash(q.q)] = q; });
