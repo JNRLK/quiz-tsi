@@ -4176,7 +4176,7 @@ const NEW_PER_DAY       = 20;        // nouvelles cartes introduites au maximum 
 const MAX_REVIEWS_PER_DAY = 120;     // plafond de révisions DUES servies par jour (lissage du backlog après une absence — les plus en retard d'abord, le reste attend)
 const SRS_LEECH_THRESHOLD = 8;       // nb d'oublis à partir duquel une carte est signalée « problème » (leech, façon Anki)
 const SRS_LAPSE_IVL_CAP   = 7;       // jours — intervalle MAX après oubli d'une carte MÛRE (≥21 j) : évite le reset brutal à 1 j
-const SRS_LEARN_HORIZON_MS = 20*60000; // fenêtre de re-présentation EN SESSION des cartes d'apprentissage (collapse façon Anki)
+const SRS_LEARN_COLLAPSE_MS = 60*1000; // « collapse » resserré (façon Anki, mais court) : on ne re-présente une carte d'apprentissage QUE lorsqu'elle est réellement due, à <1 min près. AVANT : 20 min → la carte revenait AVANT que le palier (1/10 min) ne soit écoulé (« Correct/10 min » qui revient tout de suite). Maintenant le palier est HONORÉ : entre-temps on propose d'autres cartes.
 function srsFuzz(ivl){
   if(ivl < 7) return ivl;            // pas d'aléa sur les courts intervalles
   const delta = ivl * SRS_FUZZ;
@@ -4485,10 +4485,11 @@ const SRS = {
       .map(([h,c]) => ({h,...c}));
   },
 
-  // Cartes d'apprentissage/réapprentissage de la session en cours redevenues « dues » (étapes en minutes),
-  // dans une fenêtre de « collapse » → réinjection intra-session (#1) pour faire vivre les paliers d'apprentissage.
-  dueLearning(seenSet, horizonMs){
-    const d = this._d(), now = Date.now(), lim = now + (horizonMs||0);
+  // Cartes d'apprentissage/réapprentissage de la session en cours qui sont RÉELLEMENT redevenues dues
+  // (palier 1/10 min écoulé), à un petit « collapse » près → réinjection intra-session qui HONORE les
+  // paliers (la carte ne revient pas avant son temps). État relu à frais à chaque appel.
+  dueLearning(seenSet, collapseMs){
+    const d = this._d(), now = Date.now(), lim = now + (collapseMs||0);
     const out = [];
     seenSet.forEach(h=>{
       const c = d.cards[h]; if(!c) return;
@@ -5099,14 +5100,23 @@ function makeReviewSource(){
     next(){
       // 1) travail du jour (cartes dues + nouvelles), entrelacé
       if(pi < primary.length){ const q = primary[pi++]; lastH = qHash(q.q); return q; }
-      // 2) #1 RÉINJECTION : cartes d'apprentissage/réapprentissage de CETTE session redevenues dues (paliers 1/10 min).
-      //    C'est ce qui fait RÉELLEMENT vivre les étapes d'apprentissage en séance (avant : jamais re-servies).
-      //    On évite la répétition immédiate de la carte qu'on vient de voir (lastH).
-      const learn = SRS.dueLearning(seen, SRS_LEARN_HORIZON_MS).filter(h => h !== lastH);
+      // 2) RÉINJECTION des paliers : une carte vue cette session n'est re-servie que lorsqu'elle est
+      //    RÉELLEMENT due (étape 1/10 min écoulée, à SRS_LEARN_COLLAPSE_MS près). Ainsi « Correct/10 min »
+      //    n'enchaîne pas tout de suite : la carte attend son palier et on propose d'AUTRES cartes en
+      //    attendant. L'état est relu à frais dans dueLearning(). On évite la répétition immédiate (lastH).
+      const learn = SRS.dueLearning(seen, SRS_LEARN_COLLAPSE_MS).filter(h => h !== lastH);
       if(learn.length){ const h = learn[0]; lastH = h; return hMap[h] || null; }
-      // 3) entraînement libre : tout le programme, mélangé, recyclé à l'infini
-      if(!freeBag.length) freeBag = shuffle(freeAll.slice());
-      const q = freeBag.shift() || null;
+      // 3) ENTRAÎNEMENT LIBRE : on recycle le programme, mais JAMAIS une carte planifiée dans le futur
+      //    (due > maintenant). Sinon une carte notée « Correct, +2 j » reviendrait le jour même et serait
+      //    re-planifiée en double, cassant le timing SRS. État relu À FRAIS à chaque rechargement du sac
+      //    (pour tenir compte des cartes notées depuis le début de la session). Sac vide → plus rien à
+      //    réviser ni à pratiquer aujourd'hui → la session se termine sur le bilan « à jour ».
+      if(!freeBag.length){
+        const dd = SRS._d(), nowT = Date.now();
+        freeBag = shuffle(freeAll.filter(q => { const c = dd.cards[qHash(q.q)]; return !c || (c.due||0) <= nowT; }));
+      }
+      let q = freeBag.shift() || null;
+      if(q && qHash(q.q) === lastH && freeBag.length){ freeBag.push(q); q = freeBag.shift(); } // pas deux fois de suite
       if(q){ const h = qHash(q.q); seen.add(h); lastH = h; }
       return q;
     }
