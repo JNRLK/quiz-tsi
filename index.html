@@ -1543,41 +1543,44 @@ const TOPICS = {
   "applications_lineaires": { "name": "30. Applications linéaires", "family": "algebre", "raw": "#4f46e5" },
   "matrices_al": { "name": "31. Matrices et applications linéaires", "family": "algebre", "raw": "#60a5fa" },
   "va": { "name": "32. Variables aléatoires", "family": "proba_denom", "raw": "#a855f7" },
-  /* ===== Physique-Chimie · TSI1 — rubriques du programme national officiel (BO/MENESR).
-     subject:'physique' + level:'tsi1' OBLIGATOIRES. AUCUNE carte pour l'instant (QUESTIONS) : ces
-     chapitres s'affichent en « bientôt » et se peupleront de façon strictement additive (SRS-safe). ===== */
-  /* — Signaux physiques (1er semestre) — */
-  "ph_propagation":      { "name": "1. Propagation d'un signal",                  "family": "ph_signaux",   "raw": "#0ea5e9", "subject": "physique", "level": "tsi1" },
-  "ph_optique_geo":      { "name": "2. Optique géométrique",                       "family": "ph_signaux",   "raw": "#38bdf8", "subject": "physique", "level": "tsi1" },
-  "ph_photon":           { "name": "3. Aspect corpusculaire de la lumière",       "family": "ph_signaux",   "raw": "#818cf8", "subject": "physique", "level": "tsi1" },
-  "ph_arqs":             { "name": "4. Circuits électriques dans l'ARQS",         "family": "ph_signaux",   "raw": "#06b6d4", "subject": "physique", "level": "tsi1" },
-  "ph_premier_ordre":    { "name": "5. Circuit linéaire du premier ordre",        "family": "ph_signaux",   "raw": "#22d3ee", "subject": "physique", "level": "tsi1" },
-  "ph_second_ordre":     { "name": "6. Systèmes du second ordre",                 "family": "ph_signaux",   "raw": "#2dd4bf", "subject": "physique", "level": "tsi1" },
-  "ph_filtrage":         { "name": "7. Filtrage linéaire",                        "family": "ph_signaux",   "raw": "#0891b2", "subject": "physique", "level": "tsi1" },
-  /* — Mécanique (2nd semestre) — */
-  "ph_cinematique":      { "name": "12. Cinématique du point",                    "family": "ph_meca",      "raw": "#ef4444", "subject": "physique", "level": "tsi1" },
-  "ph_newton":           { "name": "13. Mécanique newtonienne",                   "family": "ph_meca",      "raw": "#f87171", "subject": "physique", "level": "tsi1" },
-  "ph_solide_rotation":  { "name": "14. Solide en rotation autour d'un axe fixe", "family": "ph_meca",      "raw": "#dc2626", "subject": "physique", "level": "tsi1" },
-  /* — Induction et conversion électromécanique (2nd semestre) — */
-  "ph_champ_magnetique": { "name": "15. Champ magnétique",                        "family": "ph_induction", "raw": "#6366f1", "subject": "physique", "level": "tsi1" },
-  "ph_laplace":          { "name": "16. Forces de Laplace",                       "family": "ph_induction", "raw": "#818cf8", "subject": "physique", "level": "tsi1" },
-  "ph_induction_lois":   { "name": "17. Lois de l'induction",                     "family": "ph_induction", "raw": "#4f46e5", "subject": "physique", "level": "tsi1" },
-  "ph_circuit_fixe":     { "name": "18. Circuit fixe dans un champ variable",     "family": "ph_induction", "raw": "#a5b4fc", "subject": "physique", "level": "tsi1" },
-  "ph_circuit_mobile":   { "name": "19. Circuit mobile dans un champ stationnaire","family": "ph_induction", "raw": "#4338ca", "subject": "physique", "level": "tsi1" },
-  "ph_convertisseurs":   { "name": "20. Convertisseurs électromécaniques",        "family": "ph_induction", "raw": "#7c3aed", "subject": "physique", "level": "tsi1" },
-  /* — Thermodynamique (2nd semestre) — */
-  "ph_gaz_parfait":      { "name": "21. Système à l'équilibre — gaz parfait",     "family": "ph_thermo",    "raw": "#f59e0b", "subject": "physique", "level": "tsi1" },
-  "ph_premier_principe": { "name": "22. Premier principe — bilans d'énergie",     "family": "ph_thermo",    "raw": "#fbbf24", "subject": "physique", "level": "tsi1" },
-  "ph_second_principe":  { "name": "23. Deuxième principe — bilans d'entropie",   "family": "ph_thermo",    "raw": "#f97316", "subject": "physique", "level": "tsi1" },
-  "ph_machines_therm":   { "name": "24. Machines thermiques",                     "family": "ph_thermo",    "raw": "#ea580c", "subject": "physique", "level": "tsi1" },
-  /* — Chimie (transformation & architecture de la matière, 1er sem. ; solutions aqueuses, 2nd sem.) — */
-  "ph_transfo_matiere":  { "name": "8. Transformation de la matière",            "family": "ph_chimie",    "raw": "#22c55e", "subject": "physique", "level": "tsi1" },
-  "ph_cinetique":        { "name": "9. Cinétique chimique",                       "family": "ph_chimie",    "raw": "#16a34a", "subject": "physique", "level": "tsi1" },
-  "ph_classification":   { "name": "10. Classification périodique des éléments",  "family": "ph_chimie",    "raw": "#4ade80", "subject": "physique", "level": "tsi1" },
-  "ph_molecules":        { "name": "11. Molécules et cristaux",                   "family": "ph_chimie",    "raw": "#15803d", "subject": "physique", "level": "tsi1" },
-  "ph_oxydoreduction":   { "name": "25. Oxydo-réduction",                         "family": "ph_chimie",    "raw": "#14b8a6", "subject": "physique", "level": "tsi1" },
-  "ph_acide_base":       { "name": "26. Acido-basicité et précipitation",        "family": "ph_chimie",    "raw": "#2dd4bf", "subject": "physique", "level": "tsi1" },
-  "ph_potentiel_ph":     { "name": "27. Diagrammes potentiel-pH",                 "family": "ph_chimie",    "raw": "#0d9488", "subject": "physique", "level": "tsi1" }
+  /* ===== Physique-Chimie · TSI1 — rubriques du PROGRAMME NATIONAL OFFICIEL EN VIGUEUR (réforme 2021 ;
+     4 thèmes : Ondes et signaux · Mouvements et interactions · Énergie : conversions et transferts ·
+     Constitution et transformations de la matière). subject:'physique' + level:'tsi1' OBLIGATOIRES.
+     AUCUNE carte (QUESTIONS) → chapitres affichés « bientôt » ; ajout/retrait SANS impact SRS (pas de qHash).
+     NB : « diagrammes potentiel-pH » retirés (passés en TSI2 par la réforme 2021) ; « aspect corpusculaire »
+     réduit à « énergie d'un photon » dans l'optique ; « classification périodique » = acquis du lycée. ===== */
+  /* — Thème 1 « Ondes et signaux » — signaux (parties 1.1 à 1.6) — */
+  "ph_propagation":      { "name": "1. Propagation d'un signal",                          "family": "ph_signaux",   "raw": "#0ea5e9", "subject": "physique", "level": "tsi1" },
+  "ph_optique_geo":      { "name": "2. Formation des images (optique géométrique)",       "family": "ph_signaux",   "raw": "#38bdf8", "subject": "physique", "level": "tsi1" },
+  "ph_arqs":             { "name": "3. Signaux électriques dans l'ARQS",                  "family": "ph_signaux",   "raw": "#06b6d4", "subject": "physique", "level": "tsi1" },
+  "ph_premier_ordre":    { "name": "4. Circuit du premier ordre et oscillateurs libres",  "family": "ph_signaux",   "raw": "#22d3ee", "subject": "physique", "level": "tsi1" },
+  "ph_second_ordre":     { "name": "5. Oscillateurs forcés (résonance)",                  "family": "ph_signaux",   "raw": "#2dd4bf", "subject": "physique", "level": "tsi1" },
+  "ph_filtrage":         { "name": "6. Filtrage linéaire",                                "family": "ph_signaux",   "raw": "#0891b2", "subject": "physique", "level": "tsi1" },
+  /* — Thème 2 « Mouvements et interactions » — mécanique (parties 2.1 à 2.4) — */
+  "ph_cinematique":      { "name": "7. Cinématique du point",                             "family": "ph_meca",      "raw": "#ef4444", "subject": "physique", "level": "tsi1" },
+  "ph_newton":           { "name": "8. Lois de Newton",                                   "family": "ph_meca",      "raw": "#f87171", "subject": "physique", "level": "tsi1" },
+  "ph_energie_meca":     { "name": "9. Approche énergétique du mouvement",                "family": "ph_meca",      "raw": "#fca5a5", "subject": "physique", "level": "tsi1" },
+  "ph_solide_rotation":  { "name": "10. Solide en rotation autour d'un axe fixe",         "family": "ph_meca",      "raw": "#dc2626", "subject": "physique", "level": "tsi1" },
+  /* — Thème 1 « Ondes et signaux » — induction et conversion (parties 1.7 à 1.12) — */
+  "ph_champ_magnetique": { "name": "11. Champ magnétique",                                "family": "ph_induction", "raw": "#6366f1", "subject": "physique", "level": "tsi1" },
+  "ph_laplace":          { "name": "12. Actions d'un champ magnétique (forces de Laplace)","family": "ph_induction", "raw": "#818cf8", "subject": "physique", "level": "tsi1" },
+  "ph_induction_lois":   { "name": "13. Lois de l'induction",                             "family": "ph_induction", "raw": "#4f46e5", "subject": "physique", "level": "tsi1" },
+  "ph_circuit_fixe":     { "name": "14. Circuit fixe dans un champ magnétique variable",  "family": "ph_induction", "raw": "#a5b4fc", "subject": "physique", "level": "tsi1" },
+  "ph_circuit_mobile":   { "name": "15. Circuit mobile dans un champ stationnaire",       "family": "ph_induction", "raw": "#4338ca", "subject": "physique", "level": "tsi1" },
+  "ph_convertisseurs":   { "name": "16. Convertisseurs électromécaniques",               "family": "ph_induction", "raw": "#7c3aed", "subject": "physique", "level": "tsi1" },
+  /* — Thème 3 « Énergie : conversions et transferts » — thermodynamique (parties 3.1 à 3.5) — */
+  "ph_gaz_parfait":      { "name": "17. Système à l'équilibre (gaz parfait)",             "family": "ph_thermo",    "raw": "#f59e0b", "subject": "physique", "level": "tsi1" },
+  "ph_energie_echangee": { "name": "18. Énergie échangée au cours d'une transformation",  "family": "ph_thermo",    "raw": "#fcd34d", "subject": "physique", "level": "tsi1" },
+  "ph_premier_principe": { "name": "19. Premier principe — bilans d'énergie",             "family": "ph_thermo",    "raw": "#fbbf24", "subject": "physique", "level": "tsi1" },
+  "ph_second_principe":  { "name": "20. Deuxième principe — bilans d'entropie",           "family": "ph_thermo",    "raw": "#f97316", "subject": "physique", "level": "tsi1" },
+  "ph_machines_therm":   { "name": "21. Machines thermiques",                             "family": "ph_thermo",    "raw": "#ea580c", "subject": "physique", "level": "tsi1" },
+  /* — Thème 4 « Constitution et transformations de la matière » — chimie (parties 4.1 à 4.6) — */
+  "ph_molecules":        { "name": "22. Molécules, ions et cristaux",                     "family": "ph_chimie",    "raw": "#22c55e", "subject": "physique", "level": "tsi1" },
+  "ph_structure_prop":   { "name": "23. Relations structure – propriétés macroscopiques", "family": "ph_chimie",    "raw": "#34d399", "subject": "physique", "level": "tsi1" },
+  "ph_transfo_matiere":  { "name": "24. Transformations de la matière",                   "family": "ph_chimie",    "raw": "#16a34a", "subject": "physique", "level": "tsi1" },
+  "ph_cinetique":        { "name": "25. Cinétique chimique",                              "family": "ph_chimie",    "raw": "#4ade80", "subject": "physique", "level": "tsi1" },
+  "ph_acide_base":       { "name": "26. Réactions acide-base et de précipitation",        "family": "ph_chimie",    "raw": "#2dd4bf", "subject": "physique", "level": "tsi1" },
+  "ph_oxydoreduction":   { "name": "27. Réactions d'oxydo-réduction",                     "family": "ph_chimie",    "raw": "#14b8a6", "subject": "physique", "level": "tsi1" }
 };
 
 /* ============== MATIÈRES & ANNÉES — socle infrastructure multi-matières (additif) ==============
