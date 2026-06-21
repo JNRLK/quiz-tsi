@@ -1650,6 +1650,7 @@ const QUESTIONS = [
    choices:[{t:"$u_n\\to\\ell$ (gendarmes)", c:true},{t:"$u_n$ peut diverger", c:false},{t:"$u_n\\to 0$", c:false},{t:"$\\ell=0$", c:false}],
    exp:"Théorème d'encadrement (des gendarmes)."},
   {topic:'suites', mode:'qcm', q:"$(u_n)$ croissante, $(v_n)$ décroissante, $v_n-u_n\\to0$ (adjacentes) :",
+   fig:{window:[-0.3,5,-0.7,1.2],items:[{segment:[[0,0],[5,0]]},{point:[0.4,0],label:'u_0',at:'below'},{point:[1.3,0],label:'u_1',at:'below'},{point:[2.0,0],label:'u_2',at:'below'},{point:[4.6,0],label:'v_0',at:'below'},{point:[3.9,0],label:'v_1',at:'below'},{point:[3.2,0],label:'v_2',at:'below'},{point:[2.6,0],label:'\\ell',at:'above'},{segment:[[0.4,0.25],[4.6,0.25]]},{segment:[[1.3,0.45],[3.9,0.45]]},{segment:[[2.0,0.62],[3.2,0.62]]}]},
    choices:[{t:"convergent vers une même limite", c:true},{t:"vers des limites différentes", c:false},{t:"divergent", c:false},{t:"vérifient $u_n\\ge v_n$", c:false}],
    exp:"Suites adjacentes : limite commune $\\ell$ avec $u_n\\le\\ell\\le v_n$."},
   {topic:'suites', mode:'qcm', q:"$u_{n+1}=f(u_n)$, $f$ continue, $u_n\\to\\ell$. Alors :",
@@ -1748,6 +1749,7 @@ const QUESTIONS = [
    exp:"Pour une fonction CONTINUE positive d'intégrale nulle : $f\\equiv 0$ (propriété de positivité stricte).",
    vig:"L'hypothèse de continuité est essentielle pour conclure $f\\equiv0$."},
   {topic:'integration', mode:'qcm', q:"Relation de Chasles pour l'intégrale :",
+   fig:{window:[-0.3,3.6,-0.3,1.8],items:[{axes:{O:true}},{area:{fn:x=>0.9+0.5*Math.sin(0.9*x),from:0.4,to:1.8}},{area:{fn:x=>0.9+0.5*Math.sin(0.9*x),from:1.8,to:3.2}},{plot:x=>0.9+0.5*Math.sin(0.9*x),from:0.2,to:3.4,label:'f',labelAt:[3.05,1.55]},{segment:[[1.8,0],[1.8,0.9+0.5*Math.sin(1.62)]],dash:true},{label:'a',at:[0.4,0],place:'below'},{label:'c',at:[1.8,0],place:'below'},{label:'b',at:[3.2,0],place:'below'}]},
    choices:[{t:"$\\int_a^b f=\\int_a^c f+\\int_c^b f$", c:true},{t:"$\\int_a^b f=\\int_a^c f-\\int_c^b f$", c:false},{t:"$\\int_a^b f=\\int_a^c f\\times\\int_c^b f$", c:false},{t:"$\\int_a^b f=\\int_c^b f$", c:false}],
    exp:"Chasles : additivité par rapport aux bornes."},
   {topic:'integration', mode:'trou', q:"Une primitive de $u'e^{u}$ est $\\square$.",
@@ -2146,12 +2148,15 @@ const QUESTIONS = [
    answer:"$f$ est définie en $a$ et $\\displaystyle\\lim_{x\\to a}f(x)=f(a)$.",
    exp:"La limite existe et vaut la valeur de $f$ au point."},
   {topic:'limites', mode:'trou', q:"Équivalent en $0$ : $e^{x}-1\\sim\\square$.",
+   fig:{window:[-1.8,1.5,-1.2,2.2],items:[{axes:{O:true}},{plot:x=>Math.exp(x)-1,from:-1.7,to:1.2,label:'e^x-1',labelAt:[0.9,1.7]},{plot:x=>x,from:-1.5,to:1.3,label:'y=x',labelAt:[1.2,0.95]},{point:[0,0],dot:true}]},
    answer:"$x$", accept:["x"],
    exp:"$e^x-1\\sim x$ en $0$ (dérivée de $\\exp$ en $0$)."},
   {topic:'limites', mode:'trou', q:"Équivalent en $0$ : $\\ln(1+x)\\sim\\square$.",
+   fig:{window:[-0.6,2.2,-1.4,1.6],items:[{axes:{O:true}},{plot:x=>Math.log(1+x),from:-0.55,to:2.1,label:'\\ln(1+x)',labelAt:[1.5,1.0]},{plot:x=>x,from:-0.55,to:1.3,label:'y=x',labelAt:[1.05,1.35]},{point:[0,0],dot:true}]},
    answer:"$x$", accept:["x"],
    exp:"$\\ln(1+x)\\sim x$ en $0$."},
   {topic:'limites', mode:'trou', q:"Équivalent en $0$ : $1-\\cos x\\sim\\square$.",
+   fig:{window:[-2.0,2.0,-0.3,1.6],items:[{axes:{O:true}},{plot:x=>1-Math.cos(x),from:-1.9,to:1.9,label:'1-\\cos x',labelAt:[1.3,0.6]},{plot:x=>0.5*x*x,from:-1.7,to:1.7,label:'\\frac{x^2}{2}',labelAt:[1.5,1.25]},{point:[0,0],dot:true}]},
    answer:"$\\dfrac{x^{2}}{2}$", accept:["x^2/2","x²/2"],
    exp:"$1-\\cos x\\sim\\frac{x^2}{2}$ en $0$.",
    vig:"$\\cos x-1\\sim -\\frac{x^2}{2}$ : attention au signe."},
@@ -2213,6 +2218,7 @@ const QUESTIONS = [
    choices:[{t:"$F$ est dérivable et $F'=f$", c:true},{t:"$F'=f'$", c:false},{t:"$F$ est constante", c:false},{t:"$F(x)=f(x)$", c:false}],
    exp:"Théorème fondamental : $F'=f$, donc le signe de $f$ donne les variations de $F$."},
   {topic:'integration', mode:'qcm', q:"Croissance de l'intégrale : si $f\\le g$ sur $[a,b]$ ($a\\le b$), alors :",
+   fig:{window:[-0.3,3.3,-0.3,3.2],items:[{axes:{O:true}},{plot:x=>0.3*x*x+0.5,from:0.2,to:2.95,label:'g',labelAt:[2.7,2.7]},{plot:x=>0.3*x+0.2,from:0.2,to:2.95,label:'f',labelAt:[2.7,1.0]},{segment:[[0.4,0],[0.4,0.548]],dash:true},{segment:[[2.8,0],[2.8,2.852]],dash:true},{label:'a',at:[0.4,0],place:'below'},{label:'b',at:[2.8,0],place:'below'}]},
    choices:[{t:"$\\int_a^b f\\le\\int_a^b g$", c:true},{t:"$\\int_a^b f\\ge\\int_a^b g$", c:false},{t:"$\\int_a^b f=\\int_a^b g$", c:false},{t:"rien", c:false}],
    exp:"L'intégrale conserve l'ordre (sur $[a,b]$ avec $a\\le b$)."},
   {topic:'integration', mode:'qcm', q:"Changement de variable $t=x^2$ : $dt=$ ?",
@@ -2734,6 +2740,7 @@ const QUESTIONS = [
 
   /* ---- Fonctions usuelles ---- */
   {topic:'fonctions', mode:'qcm', q:"Domaine de définition de $\\ln$ :",
+   fig:{window:[-1.2,3.5,-2.4,1.7],items:[{axes:{O:true}},{plot:x=>Math.log(x),from:0.06,to:3.3,label:'\\ln',labelAt:[2.8,1.2]},{segment:[[0,-2.3],[0,1.6]],dash:true},{label:']0,+\\infty[',at:[1.7,-2.0],place:'below'}]},
    choices:[{t:"$]0,+\\infty[$", c:true},{t:"$\\mathbb{R}$", c:false},{t:"$[0,+\\infty[$", c:false},{t:"$\\mathbb{R}^*$", c:false}],
    exp:"$\\ln$ est définie sur les réels strictement positifs."},
   {topic:'fonctions', mode:'trou', q:"$(\\ln x)' = \\square$ (sur $]0,+\\infty[$).",
@@ -2801,6 +2808,7 @@ const QUESTIONS = [
    answer:"$e^{x}$", accept:["e^x","exp(x)"],
    exp:"L'exponentielle est sa propre dérivée."},
   {topic:'fonctions', mode:'qcm', q:"$\\cos(\\arccos x)=x$ est valable pour :",
+   fig:{window:[-1.6,1.6,-0.4,3.5],items:[{axes:{O:true}},{plot:x=>Math.acos(x),from:-1,to:1,label:'\\arccos',labelAt:[-0.7,2.5]},{point:[-1,Math.PI],dot:true},{point:[1,0],dot:true},{label:'\\pi',at:[0,Math.PI],place:'left'},{label:'1',at:[1,0],place:'belowright'},{label:'-1',at:[-1,0],place:'below'}]},
    choices:[{t:"$x\\in[-1,1]$", c:true},{t:"$x\\in\\mathbb{R}$", c:false},{t:"$x\\in[0,\\pi]$", c:false},{t:"$x\\ge0$", c:false}],
    exp:"Sur le domaine de $\\arccos$. En revanche $\\arccos(\\cos x)=x$ seulement pour $x\\in[0,\\pi]$.",
    vig:"$\\arccos(\\cos x)\\ne x$ hors de $[0,\\pi]$ : attention au domaine de validité."},
@@ -2871,6 +2879,7 @@ const QUESTIONS = [
    exp:"$\\infty-\\infty$ et $0\\times\\infty$, $\\frac00$, $\\frac\\infty\\infty$, $1^\\infty$ sont indéterminées.",
    vig:"$0\\times\\infty$ EST indéterminée (l'option « vaut 0 » est fausse)."},
   {topic:'limites', mode:'trou', q:"Équivalent en $0$ : $\\sin x\\sim\\square$.",
+   fig:{window:[-2.2,2.2,-1.6,1.8],items:[{axes:{O:true}},{plot:x=>Math.sin(x),from:-2.1,to:2.1,label:'\\sin x',labelAt:[1.95,0.8]},{plot:x=>x,from:-1.5,to:1.5,label:'y=x',labelAt:[1.25,1.5]},{point:[0,0],dot:true}]},
    answer:"$x$", accept:["x"],
    exp:"$\\sin x\\sim x$, $\\tan x\\sim x$, $\\arctan x\\sim x$ en $0$."},
   {topic:'limites', mode:'qcm', q:"Caractérisation séquentielle : $f$ continue en $a$ $\\iff$ pour toute suite $u_n\\to a$ :",
@@ -2923,6 +2932,7 @@ const QUESTIONS = [
    exp:"On change les bornes par $\\varphi$ et $du=\\varphi'(t)dt$.",
    vig:"Penser à transformer les bornes ET le $dt$."},
   {topic:'integration', mode:'saisie', q:"Pour $f$ IMPAIRE et continue, $\\displaystyle\\int_{-a}^{a} f(t)\\,dt=$ ?",
+   fig:{window:[-2.4,2.4,-1.4,1.4],items:[{axes:{O:true}},{area:{fn:x=>0.55*Math.sin(1.3*x),from:0,to:2.0}},{area:{fn:x=>0.55*Math.sin(1.3*x),from:-2.0,to:0}},{plot:x=>0.55*Math.sin(1.3*x),from:-2.2,to:2.2,label:'f',labelAt:[1.7,0.7]},{label:'+',at:[1.0,0.32],place:'center'},{label:'-',at:[-1.0,-0.32],place:'center'},{label:'a',at:[2.0,0],place:'belowright'},{label:'-a',at:[-2.0,0],place:'belowleft'}]},
    answer:"$0$", accept:["0"],
    exp:"Symétrie : les contributions s'annulent. Pour $f$ paire : $2\\int_0^a f$."},
   {topic:'integration', mode:'qcm', q:"La valeur moyenne de $f$ sur $[a,b]$ est :",
@@ -2932,6 +2942,7 @@ const QUESTIONS = [
    answer:"$\\ln|u|$, $\\dfrac{u^{n+1}}{n+1}$, et $e^{u}$.",
    exp:"Reconnaître la forme $u'\\times g(u)$ est la clé du calcul de primitives au programme."},
   {topic:'integration', mode:'qcm', q:"$\\displaystyle\\int_0^{\\pi}\\sin t\\,dt=$ ?",
+   fig:{window:[-0.4,3.5,-0.4,1.4],items:[{axes:{O:true}},{area:{fn:x=>Math.sin(x),from:0,to:Math.PI}},{plot:x=>Math.sin(x),from:-0.2,to:3.4,label:'\\sin',labelAt:[2.7,0.95]},{label:'\\pi',at:[Math.PI,0],place:'belowright'},{label:'2',at:[1.55,0.42],place:'center'}]},
    choices:[{t:"$2$", c:true},{t:"$0$", c:false},{t:"$1$", c:false},{t:"$\\pi$", c:false}],
    exp:"$[-\\cos t]_0^\\pi=-(-1)-(-1)=2$."},
   {topic:'integration', mode:'qcm', q:"Si $f\\le g$ sur $[a,b]$ (avec $a\\le b$), alors :",
@@ -2965,6 +2976,7 @@ const QUESTIONS = [
    exp:"L'intégration d'un DL est licite ; la dérivation NON (en général).",
    vig:"On INTÈGRE un DL (sûr), on ne le DÉRIVE pas terme à terme sans hypothèse."},
   {topic:'dl', mode:'qcm', q:"Position d'une courbe par rapport à sa tangente en $a$ se lit sur :",
+   fig:{window:[-0.3,3.3,-0.4,2.7],items:[{axes:{O:true}},{plot:x=>0.35*x*x-0.3*x+0.6,from:0.1,to:3.0,label:'\\mathcal{C}_f',labelAt:[2.7,2.45]},{segment:[[0.2,0.204],[2.7,1.554]]},{point:[1.2,0.744],label:'a',at:'belowright'},{label:'T',at:[2.5,1.4],place:'below'}]},
    choices:[{t:"le premier terme non nul après l'ordre 1 du DL", c:true},{t:"la valeur $f(a)$", c:false},{t:"la pente $f'(a)$", c:false},{t:"le signe de $f$", c:false}],
    exp:"Si ce terme est $c(x-a)^2$ : tangente sous la courbe si $c>0$, etc."},
   {topic:'dl', mode:'flash', q:"Donne le DL en $0$ à l'ordre 3 de $\\sqrt{1+x}$.",
@@ -3284,6 +3296,7 @@ const QUESTIONS = [
    answer:"$\\dfrac{\\sqrt3}{2}$", accept:["sqrt(3)/2","√3/2","racine(3)/2"],
    exp:"$\\sin\\frac\\pi3=\\frac{\\sqrt3}2$, $\\cos\\frac\\pi3=\\frac12$."},
   {topic:'trigo', mode:'qcm', q:"L'amplitude de $a\\cos x+b\\sin x$ (forme $R\\cos(x-\\varphi)$) est :",
+   fig:{window:[-0.4,2.6,-0.4,2.0],items:[{axes:{O:true}},{vector:[[0,0],[1.8,1.0]]},{segment:[[1.8,0],[1.8,1.0]],dash:true},{point:[1.8,1.0],label:'(a,b)',at:'aboveright'},{label:'R',at:[0.85,0.6],place:'aboveleft'},{angle:{at:[0,0],from:0,to:29,r:30},label:'\\varphi'},{label:'a',at:[0.9,0],place:'below'},{label:'b',at:[1.8,0.5],place:'right'}]},
    choices:[{t:"$R=\\sqrt{a^2+b^2}$", c:true},{t:"$R=a+b$", c:false},{t:"$R=|a|+|b|$", c:false},{t:"$R=ab$", c:false}],
    exp:"$a\\cos x+b\\sin x=\\sqrt{a^2+b^2}\\,\\cos(x-\\varphi)$."},
   {topic:'trigo', mode:'trou', q:"$1+\\tan^2 x=\\dfrac{1}{\\square}$.",
@@ -3487,6 +3500,7 @@ const QUESTIONS = [
    answer:"$\\dfrac{1}{b-a}\\displaystyle\\int_a^b f(t)\\,dt$.",
    exp:"Hauteur du rectangle de même aire."},
   {topic:'integration', mode:'saisie', q:"Calcule $\\displaystyle\\int_0^{\\pi}\\sin t\\,dt$.",
+   fig:{window:[-0.4,3.5,-0.4,1.4],items:[{axes:{O:true}},{area:{fn:x=>Math.sin(x),from:0,to:Math.PI}},{plot:x=>Math.sin(x),from:-0.2,to:3.4,label:'\\sin',labelAt:[2.7,0.95]},{label:'\\pi',at:[Math.PI,0],place:'belowright'},{label:'2',at:[1.55,0.42],place:'center'}]},
    answer:"$2$", accept:["2"],
    exp:"$[-\\cos t]_0^{\\pi}=1+1=2$."},
   {topic:'integration', mode:'flash', q:"Énonce la relation de Chasles pour l'intégrale.",
@@ -3603,6 +3617,7 @@ const QUESTIONS = [
    answer:"Si $a_n\\le u_n\\le b_n$ et $a_n\\to\\ell$, $b_n\\to\\ell$, alors $u_n\\to\\ell$.",
    exp:"Encadrement par deux suites de même limite."},
   {topic:'suites', mode:'flash', q:"Que dire de deux suites adjacentes ($(u_n)$ croissante, $(v_n)$ décroissante, $v_n-u_n\\to0$) ?",
+   fig:{window:[-0.3,5,-0.7,1.2],items:[{segment:[[0,0],[5,0]]},{point:[0.4,0],label:'u_0',at:'below'},{point:[1.3,0],label:'u_1',at:'below'},{point:[2.0,0],label:'u_2',at:'below'},{point:[4.6,0],label:'v_0',at:'below'},{point:[3.9,0],label:'v_1',at:'below'},{point:[3.2,0],label:'v_2',at:'below'},{point:[2.6,0],label:'\\ell',at:'above'},{segment:[[0.4,0.25],[4.6,0.25]]},{segment:[[1.3,0.45],[3.9,0.45]]},{segment:[[2.0,0.62],[3.2,0.62]]}]},
    answer:"Elles convergent vers une MÊME limite $\\ell$, avec $u_n\\le\\ell\\le v_n$.",
    exp:"Théorème des suites adjacentes."},
   {topic:'suites', mode:'flash', q:"Si $(u_n)\\to\\ell$, que dire d'une suite extraite $(u_{\\varphi(n)})$ ?",
@@ -3777,6 +3792,7 @@ const QUESTIONS = [
    answer:"$1$", accept:["1"],
    exp:"$\\ln(1+x)=x-\\dfrac{x^2}{2}+\\dots$"},
   {topic:'dl', mode:'flash', q:"Comment lit-on la position locale de $\\mathcal{C}_f$ par rapport à sa tangente en $a$ ?",
+   fig:{window:[-0.3,3.3,-0.4,2.7],items:[{axes:{O:true}},{plot:x=>0.35*x*x-0.3*x+0.6,from:0.1,to:3.0,label:'\\mathcal{C}_f',labelAt:[2.7,2.45]},{segment:[[0.2,0.204],[2.7,1.554]]},{point:[1.2,0.744],label:'a',at:'belowright'},{label:'T',at:[2.5,1.4],place:'below'}]},
    answer:"Sur le signe du premier terme non nul après l'ordre $1$ du DL ($a_p(x-a)^p$, $p\\ge2$).",
    exp:"Au-dessus / en dessous / inflexion selon le signe et la parité de $p$."},
   {topic:'dl', mode:'saisie', q:"$\\displaystyle\\lim_{x\\to0}\\frac{\\sin x-x}{x^3}=$ ?",
@@ -4555,6 +4571,11 @@ function FIG(spec){
       svg.push('<path d="'+d.replace(/\s+$/,'')+'"'+(it.dash?' stroke-dasharray="4 3"':'')+'/>');
       if(it.label) lbl(it.labelAt[0],it.labelAt[1],it.label,it.labelPlace||'center');
     }
+    if(it.area){ var af=it.area.fn, aa=it.area.from, ab=it.area.to, an=it.area.n||60, abase=(it.area.base!==undefined?it.area.base:0);
+      var ad='M '+X(aa).toFixed(1)+' '+Y(abase).toFixed(1)+' ';
+      for(var ai=0;ai<=an;ai++){ var ax=aa+(ab-aa)*ai/an; ad+='L '+X(ax).toFixed(1)+' '+Y(af(ax)).toFixed(1)+' '; }
+      ad+='L '+X(ab).toFixed(1)+' '+Y(abase).toFixed(1)+' Z';
+      svg.push('<path d="'+ad+'" fill="currentColor" fill-opacity="0.16" stroke="none"/>'); }
     if(it.circle){ var c=it.circle.c, r=it.circle.r*s;
       svg.push('<circle cx="'+X(c[0]).toFixed(1)+'" cy="'+Y(c[1]).toFixed(1)+'" r="'+r.toFixed(1)+'"'+(it.dash?' stroke-dasharray="4 3"':'')+'/>'); }
     if(it.segment){ var A=it.segment[0],B=it.segment[1];
