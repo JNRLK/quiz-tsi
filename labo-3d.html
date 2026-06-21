@@ -67,10 +67,11 @@ window.MathJax = { tex:{inlineMath:[['$','$'],['\\(','\\)']], macros:{R:"\\mathb
 <script>
   function build(id, cmds, rot){
     var app = new GGBApplet({
-      appName:'3d', width:740, height:420,
-      showToolBar:false, showMenuBar:false, showAlgebraInput:false,
+      appName:'3d', perspective:'T', width:740, height:420,
+      showToolBar:false, showMenuBar:false, showAlgebraInput:false, showAlgebra:false,
       showResetIcon:true, enableShiftDragZoom:true, enableRightClick:false, showZoomButtons:true,
       appletOnLoad:function(api){
+        try{ api.setPerspective('T'); }catch(e){}
         for(var i=0;i<cmds.length;i++){ try{ api.evalCommand(cmds[i]); }catch(e){} }
         try{ api.setRotateView(rot[0], rot[1]); }catch(e){}
       }
