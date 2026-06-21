@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Labo 3D — GeoGebra (test)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700&family=Lexend:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script>
+window.MathJax = { tex:{inlineMath:[['$','$'],['\\(','\\)']], macros:{R:"\\mathbb{R}",C:"\\mathbb{C}"}}, options:{skipHtmlTags:['script','noscript','style','textarea']}, startup:{typeset:false} };
+</script>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+<style>
+  :root{ --bg:#f7f3eb; --panel:#ffffff; --line:#ddd2bf; --ink:#221e17; --muted:#6c6354; --accent:#6d4ae0; }
+  [data-theme="nuit"]{ --bg:#070b16; --panel:#141b27; --line:#374151; --ink:#f9fafb; --muted:#a3abbd; --accent:#a78bfa; }
+  [data-theme="contraste"]{ --bg:#fff; --panel:#fff; --line:#000; --ink:#000; --muted:#1f2430; --accent:#3b1e9e; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Lexend',system-ui,sans-serif;line-height:1.55;padding:0 16px 60px;transition:.2s}
+  .wrap{max-width:840px;margin:0 auto}
+  header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:22px 0 4px}
+  h1{font-family:'Literata',serif;font-weight:700;font-size:21px;margin:0;flex:1 1 280px}
+  h1 em{font-style:italic;color:var(--accent)}
+  .themebar button{font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:6px 13px;margin-left:6px}
+  .themebar button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .lead{color:var(--muted);font-size:14.5px;margin:6px 0 18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:18px}
+  .card h3{font-family:'Literata',serif;font-weight:600;font-size:16px;margin:0 0 4px}
+  .card .src{font-size:12px;color:var(--muted);margin:0 0 12px;font-family:'JetBrains Mono',monospace}
+  .ggb{min-height:420px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px;border-radius:10px;overflow:hidden}
+  .hint{font-size:13px;color:var(--muted);margin:12px 0 0}
+  .caveat{font-size:12.5px;color:var(--muted);background:color-mix(in srgb,var(--accent) 8%,transparent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-radius:12px;padding:12px 14px;margin-top:6px}
+  b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Labo <em>GeoGebra 3D</em> — test live</h1>
+    <div class="themebar" id="themebar">
+      <button data-t="" class="on">Papier</button><button data-t="nuit">Nuit</button><button data-t="contraste">Contraste</button>
+    </div>
+  </header>
+  <p class="lead">Servi en <b>https</b> (donc GeoGebra tourne). <b>Fais pivoter chaque scène 3D</b> à la souris / au doigt. Bascule en <b>Nuit</b> pour voir la limite : l'applet garde son cadre clair (il ne suit pas les 3 thèmes).</p>
+
+  <div class="card">
+    <h3>1. Produit vectoriel : $\vec u\wedge\vec v$ est orthogonal au plan $(\vec u,\vec v)$</h3>
+    <p class="src">geoespace — « Le produit vectoriel est orthogonal à quoi ? »</p>
+    <div class="ggb" id="ggb1">Chargement de GeoGebra…</div>
+    <p class="hint"><b>u, v</b> (verts) engendrent le plan bleu ; <b>w = u∧v</b> (rouge) lui est perpendiculaire ; $\|\vec u\wedge\vec v\|$ = aire du parallélogramme.</p>
+  </div>
+
+  <div class="card">
+    <h3>2. Produit mixte : $[\vec u,\vec v,\vec w]$ = volume du parallélépipède</h3>
+    <p class="src">geoespace — « Que représente $|[\vec u,\vec v,\vec w]|$ ? »</p>
+    <div class="ggb" id="ggb2">Chargement de GeoGebra…</div>
+    <p class="hint">Le volume du parallélépipède bâti sur <b>u, v, w</b> vaut $|\det(\vec u,\vec v,\vec w)|$.</p>
+  </div>
+
+  <div class="caveat">
+    <b>Plan d'intégration :</b> dans l'app, ce ne sera pas chargé d'emblée mais <b>derrière un bouton « Explorer en 3D »</b> (chargé seulement au clic). Énoncé, réponse et révision SRS restent <b>légers, hors-ligne et thémés</b> ; seul l'explorateur 3D, optionnel, demande le réseau. Aucun énoncé modifié → SRS préservé.
+  </div>
+</div>
+
+<script src="https://www.geogebra.org/apps/deployggb.js"></script>
+<script>
+  function build(id, cmds, rot){
+    var app = new GGBApplet({
+      appName:'3d', width:740, height:420,
+      showToolBar:false, showMenuBar:false, showAlgebraInput:false,
+      showResetIcon:true, enableShiftDragZoom:true, enableRightClick:false, showZoomButtons:true,
+      appletOnLoad:function(api){
+        for(var i=0;i<cmds.length;i++){ try{ api.evalCommand(cmds[i]); }catch(e){} }
+        try{ api.setRotateView(rot[0], rot[1]); }catch(e){}
+      }
+    }, true);
+    app.inject(id);
+  }
+  var produitVectoriel = ['O=(0,0,0)','u=Vector(O,(2,1,0))','v=Vector(O,(-1,2,0))','w=Cross(u,v)',
+    'A=O+u','B=O+u+v','C=O+v','par=Polygon(O,A,B,C)',
+    'SetLabelVisible(A,false)','SetLabelVisible(B,false)','SetLabelVisible(C,false)','SetLabelVisible(O,false)',
+    'SetColor(u,40,150,80)','SetColor(v,40,150,80)','SetLineThickness(u,5)','SetLineThickness(v,5)',
+    'SetColor(par,80,120,230)','SetFilling(par,0.28)','SetColor(w,210,50,50)','SetLineThickness(w,6)'];
+  var produitMixte = ['O=(0,0,0)','u=Vector(O,(2.4,0.5,0))','v=Vector(O,(0.6,2.2,0))','w=Vector(O,(0.6,0.9,2.2))',
+    'base=Polygon(O,O+u,O+u+v,O+v)','pp=Prism(base,O+w)',
+    'SetColor(pp,90,130,230)','SetFilling(pp,0.16)',
+    'SetColor(u,210,60,60)','SetColor(v,40,150,80)','SetColor(w,60,90,210)',
+    'SetLineThickness(u,5)','SetLineThickness(v,5)','SetLineThickness(w,5)','SetLabelVisible(O,false)'];
+
+  if (window.GGBApplet){ build('ggb1', produitVectoriel, [28,-18]); build('ggb2', produitMixte, [26,-20]); }
+  else { document.getElementById('ggb1').textContent='deployggb.js non chargé (réseau ?)'; }
+
+  var bar=document.getElementById('themebar');
+  bar.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;
+    if(b.dataset.t)document.documentElement.setAttribute('data-theme',b.dataset.t);else document.documentElement.removeAttribute('data-theme');
+    [].forEach.call(bar.children,function(x){x.classList.toggle('on',x===b);});});
+  function ts(){ if(window.MathJax&&MathJax.startup&&MathJax.startup.promise) MathJax.startup.promise.then(function(){return MathJax.typesetPromise([document.body]);}); else setTimeout(ts,120); } ts();
+</script>
+</body>
+</html>
