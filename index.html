@@ -7095,6 +7095,34 @@ const JURY_DATA = [
    text:"Le rayon de convergence d'une série entière est par définition un nombre, et non un domaine ; certains confondent développement en série entière et développement limité. Le critère de d'Alembert permet de conclure à la convergence mais pas de calculer la somme, et $|u_{p+1}/u_p|<1$ ne suffit pas à affirmer la convergence de la série."},
   {concours:'ccinp', year:2021, theme:'Rédaction', type:'synthese',
    text:"Synthèse : il faut citer explicitement le nom des théorèmes et formules employés (intégration terme à terme, formule d'Euler, intégration par parties, croissances comparées). Les abréviations comme IPP ou FPT n'ont pas leur place dans une copie si elles n'ont pas été définies auparavant, et affirmer un résultat fourni par l'énoncé sans la moindre justification n'apporte aucun point."},
+
+  /* ——— Centrale-Supélec TSI 2025 ——— */
+  {concours:'centrale', year:2025, theme:'Analyse', type:'citation',
+   text:"Un nombre conséquent de candidats ont écrit que le gradient est la somme des dérivées partielles d'ordre 1 ; c'est en réalité le vecteur de ces dérivées partielles. Les symboles de dérivée partielle et de dérivée d'une fonction d'une seule variable ont par ailleurs été largement confondus."},
+  {concours:'centrale', year:2025, theme:'Algèbre linéaire', type:'citation',
+   text:"Une norme n'est pas une application linéaire et l'inégalité de Cauchy-Schwarz est trop souvent mal énoncée. Pour invoquer le théorème spectral, toutes les hypothèses (matrice symétrique réelle) doivent être données et le nom du théorème cité. Attention enfin aux incohérences de type $\\langle Mu,v\\rangle = M\\langle u,v\\rangle$, qui mêle un scalaire et une matrice."},
+  {concours:'centrale', year:2025, theme:'Algèbre linéaire', type:'citation',
+   text:"Pour déterminer l'image d'une matrice, il était naturel d'exhiber une famille génératrice, mais il ne fallait pas oublier d'en extraire une famille libre et de prouver qu'elle l'est. Rappel : il ne suffit pas de justifier la non-colinéarité des vecteurs deux à deux pour prouver la liberté d'une famille."},
+  {concours:'centrale', year:2025, theme:'Cours & théorèmes', type:'citation',
+   text:"Le théorème du rang pour une matrice non carrée impose de prendre en compte le nombre de colonnes : pour $A\\in\\mathcal{M}_{n,p}(\\mathbb{R})$, $\\operatorname{rg}(A)+\\dim\\ker(A)=p$. Et pour justifier l'inversibilité de $A^{\\top}A$, il est essentiel de préciser d'abord qu'elle est carrée."},
+  {concours:'centrale', year:2025, theme:'Rédaction', type:'citation',
+   text:"Les inégalités strictes $<$ et larges $\\leqslant$ sont parfois confondues, et il faut rester prudent en multipliant une inégalité par un nombre (son sens s'inverse si ce nombre est négatif). Être vigilant sur la validité des expressions et sur chaque étape d'une démonstration permet souvent d'obtenir la totalité des points."},
+
+  /* ——— CCINP / CCP TSI 2020 ——— */
+  {concours:'ccinp', year:2020, theme:'Algèbre linéaire', type:'synthese',
+   text:"Synthèse : autour de l'inversibilité, le jury relève des implications fausses — « la trace est non nulle donc inversible », « diagonalisable donc inversible », « symétrique réelle donc inversible », « toute matrice carrée est inversible ». Le bon critère : une matrice carrée est inversible si et seulement si $0$ n'en est pas valeur propre, ce qui équivaut à $\\det\\neq 0$."},
+  {concours:'ccinp', year:2020, theme:'Analyse', type:'citation',
+   text:"On lit encore trop souvent « la fonction est de limite nulle en $+\\infty$ donc intégrable » : c'est faux. Beaucoup confondent $o(\\cdot)$ et équivalent, et croient que $\\int_0^{+\\infty}\\frac{\\mathrm{d}t}{t^2}$ converge — le problème se situe en $0$, où l'intégrale diverge, et non en $+\\infty$."},
+  {concours:'ccinp', year:2020, theme:'Analyse', type:'citation',
+   text:"Un nombre non négligeable de copies considèrent la fonction sinus comme $\\pi$-périodique (en écrivant par exemple $\\sin(2x+\\pi)=\\sin(2x)$, ce qui est faux : $\\sin$ est $2\\pi$-périodique, et $\\sin(2x+\\pi)=-\\sin(2x)$). Une périodicité ne se teste pas sur quelques valeurs, elle se démontre."},
+
+  /* ——— CCINP / CCP TSI 2019 ——— */
+  {concours:'ccinp', year:2019, theme:'Algèbre linéaire', type:'citation',
+   text:"Beaucoup de candidats ne connaissent pas la définition d'une matrice orthogonale et mélangent matrices symétriques, inversibles et de déterminant $1$. Rappel : $A$ est orthogonale lorsque $A^{\\top}A=I$, c'est-à-dire que ses colonnes forment une base orthonormée (son déterminant vaut alors $\\pm 1$)."},
+  {concours:'ccinp', year:2019, theme:'Probabilités', type:'synthese',
+   text:"Synthèse : ne jamais asséner qu'une variable suit une loi géométrique — il faut établir la formule de $P(X=k)$. Réviser les propriétés de translation de l'espérance et de la variance : $E(X+a)=E(X)+a$ alors que $V(X+a)=V(X)$. Le jury s'étonne qu'on maîtrise la règle de d'Alembert en ignorant l'espérance d'une loi géométrique : un sujet couvre tout le programme des deux années, probabilités comprises."},
+  {concours:'ccinp', year:2019, theme:'Analyse', type:'citation',
+   text:"Il ne suffit pas qu'une quantité $I$ soit majorée par $v_n$ pour que $I$ soit équivalente à $v_n$ ; il ne faut pas non plus assimiler une suite et son équivalent. Enfin, « l'intégrale d'un produit est le produit des intégrales » est évidemment fausse : $\\int fg \\neq \\bigl(\\int f\\bigr)\\bigl(\\int g\\bigr)$ en général."},
 ];
 
 const JURY_THEMES = ['Tous', 'Rédaction', 'Cours & théorèmes', 'Algèbre linéaire', 'Analyse', 'Probabilités', 'Erreurs fréquentes'];
