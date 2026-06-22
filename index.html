@@ -5076,6 +5076,7 @@ function qHash(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h*31 + s.charCodeAt(
    (plus de pourcentage à régler). Sortie = chaîne HTML auto-suffisante (styles inline),
    theme-safe (stroke/fill = currentColor), à insérer dans exp/answer. Une carte porte un
    champ déclaratif `fig:{window,items}` (cf. normalisation plus bas). */
+/* NE PAS convertir en const : P() est appelée par les champs fig: du tableau QUESTIONS à la construction (hoisting requis). */
 function P(r,deg){ var a=deg*Math.PI/180; return [r*Math.cos(a), r*Math.sin(a)]; }
 function FIG(spec){
   var win=spec.window, x0=win[0],x1=win[1],y0=win[2],y1=win[3];
@@ -5142,7 +5143,7 @@ function FIG(spec){
     if(it.label && !it.plot && !it.point && !it.segment && !it.vector && !it.angle){ lbl(it.at[0],it.at[1],it.label,it.place||'center'); }
   });
   return '<span style="position:relative;display:block;width:'+VBW.toFixed(0)+'px;height:'+VBH.toFixed(0)+'px;margin:12px auto 2px;line-height:0;color:inherit">'
-    +'<svg viewBox="0 0 '+VBW.toFixed(1)+' '+VBH.toFixed(1)+'" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'
+    +'<svg viewBox="0 0 '+VBW.toFixed(1)+' '+VBH.toFixed(1)+'" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible" role="img" aria-label="schéma de la notion" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'
     +svg.join('')+'</svg>'+labels.join('')+'</span>';
 }
 /* Normalisation : convertit le champ déclaratif `fig` en SVG ajouté à `exp`, UNE fois au
@@ -7157,7 +7158,7 @@ function cloudToast(type, msg){
   _cloudStatusTimer = setTimeout(()=>{ el.classList.remove('show'); }, 4000);
 }
 // Horodatage de la dernière synchro réussie (persisté pour survivre aux rechargements)
-let lastSyncTs = parseInt(localStorage.getItem('quiztsi_lastsync')||'0') || 0;
+let lastSyncTs = 0; try{ lastSyncTs = parseInt(localStorage.getItem('quiztsi_lastsync')||'0') || 0; }catch(e){}
 function fmtSyncAgo(){
   if(!lastSyncTs) return 'jamais';
   const s = Math.round((Date.now()-lastSyncTs)/1000);
