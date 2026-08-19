@@ -433,6 +433,8 @@ window.MathJax = {
   .question{font-family:'Literata',serif; font-weight:500; font-size:clamp(21px,3.4vw,27px); line-height:1.35; margin:0 0 22px}
 
   .choices{display:flex; flex-direction:column; gap:11px}
+  /* Amorce des QCM à énoncé-prémisse (voir isPremiseQ) : discrète, jamais dans l'énoncé lui-même. */
+  .qcm-lead{margin:0 0 10px; font-size:13px; font-style:italic; color:var(--muted); letter-spacing:.01em}
   .choice{
     text-align:left; cursor:pointer; border:1.5px solid var(--line); background:var(--bg-deep); color:var(--ink);
     border-radius:14px; padding:15px 17px; font-size:16.5px; font-family:inherit; transition:.16s;
@@ -6319,7 +6321,30 @@ function renderQuestion(){
 }
 
 /* ---- QCM ---- */
+/* Signalement récurrent (>=7 remontées, 3 comptes différents, sur Cramer, suites adjacentes,
+   approche énergétique, nombres complexes, inégalité des accroissements finis) : les QCM dont
+   l'énoncé est une PRÉMISSE — il se termine par « : » ou reste suspendu sur un opérateur, du
+   type « $\cos(a+b)=$ ? » — sont perçus comme « sans question » ou « pas lisibles ».
+   Correctif d'AFFICHAGE uniquement : une amorce discrète est insérée au-dessus des propositions.
+   L'énoncé q n'est JAMAIS modifié → qHash et progression FSRS intacts. */
+const PREMISE_OPS = /(?:[=<>+\-\/±]|\\(?:le|leq|ge|geq|ne|neq|in|subset|supset|to|Rightarrow|rightarrow|iff|equiv|sim|simeq|approx|times|cdot|pm|mp|cap|cup|wedge|vee|oplus|mapsto|square|dots|cdots))$/;
+function isPremiseQ(t){
+  if(!t) return false;
+  let x = String(t).replace(/\s+$/,'');
+  x = x.replace(/\s*\?\s*$/,'');   // « … \le $ ? » : on retire le point d'interrogation
+  x = x.replace(/\s*\$\s*$/,'');   // puis la fermeture de la formule
+  x = x.replace(/\s+$/,'');
+  if(/:$/.test(x)) return true;     // « Système de Cramer (…) : »
+  return PREMISE_OPS.test(x);       // « $\cos(a+b)=$ »
+}
+const PREMISE_LEAD = 'Choisis la proposition qui complète l\u2019énoncé.';
 function renderQCM(zone, q){
+  if(isPremiseQ(q && q.q)){
+    const lead = document.createElement('p');
+    lead.className = 'qcm-lead';
+    lead.textContent = PREMISE_LEAD;
+    zone.appendChild(lead);
+  }
   const box = document.createElement('div'); box.className='choices';
   const keys = ['1','2','3','4','5'];
   q._choices.forEach((c,i)=>{
@@ -6922,6 +6947,7 @@ function renderExamQuestion(){
     </div>
     <div style="height:6px;border-radius:99px;background:var(--panel-2);overflow:hidden;margin:10px 0 16px"><i style="display:block;height:100%;width:${pct}%;background:var(--accent);transition:width .3s"></i></div>
     <div class="question">${q.q}</div>
+    ${isPremiseQ(q.q) ? `<p class="qcm-lead">${PREMISE_LEAD}</p>` : ''}
     <div class="choices" id="examChoices">${choices}</div>
     <div class="actions" style="margin-top:16px">
       <button class="btn" id="examNext">${last?'Terminer l\'examen ✓':'Question suivante →'}</button>
