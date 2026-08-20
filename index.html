@@ -5225,6 +5225,18 @@ const FSRS_W = [0.212,1.2931,2.3065,8.2956,6.4133,0.8334,3.0194,0.001,1.8722,0.1
 const FSRS_RETENTION_KEY = 'quiztsi_fsrs_retention';
 function getFsrsRetention(){ let v=NaN; try{ v=parseFloat(localStorage.getItem(FSRS_RETENTION_KEY)); }catch(e){} return (v>=0.70 && v<=0.97) ? v : 0.92; }  /* cible IMPOSÉE 92 % (lean concours : l'optimum d'ancrage est ~90 %, on penche très légèrement vers la rétention sans l'excès de 95 %+). Réglable uniquement via setFsrsRetention (console prof/admin) — pas de curseur élève, pour éviter le sous-révision. */
 function setFsrsRetention(r){ try{ localStorage.setItem(FSRS_RETENTION_KEY, String(r)); }catch(e){} }
+/* ---- Poids FSRS PERSONNALISÉS (optionnels — personnalisation par élève) ----
+   Défaut = poids FSRS-6 génériques (FSRS_W, entraînés sur des millions de révisions).
+   optimizeFsrsWeights() (console admin) réajuste ces 21 poids sur l'historique RÉEL de l'élève
+   et ne les applique QUE s'ils battent le défaut sur des données de VALIDATION → jamais pire. */
+const FSRS_W_KEY = 'quiztsi_fsrs_w';
+const FSRS_W_LO=[0.001,0.001,0.001,0.001,1,0.001,0.001,0,0,0,0.001,0.001,0.001,0.001,0,0,0,0,0,0,0.1];
+const FSRS_W_HI=[100,100,100,100,10,4,4,0.75,4.5,0.8,3.5,5,0.25,0.9,4,1,6,2,2,0.8,0.8];
+function getFsrsW(){ try{ const a=JSON.parse(localStorage.getItem(FSRS_W_KEY));
+    if(Array.isArray(a)&&a.length===21&&a.every((x,i)=>Number.isFinite(x)&&x>=FSRS_W_LO[i]-1e-6&&x<=FSRS_W_HI[i]+1e-6)) return a; }catch(e){}
+  return FSRS_W; }
+function setFsrsW(a){ try{ localStorage.setItem(FSRS_W_KEY, JSON.stringify(a)); }catch(e){} }
+function clearFsrsW(){ try{ localStorage.removeItem(FSRS_W_KEY); }catch(e){} }
 const FSRS = (function(w, maxInt){
   const S_MIN = 1e-3, DECAY = -w[20], FACTOR = Math.exp((1/DECAY)*Math.log(0.9)) - 1;
   const clamp=(x,a,b)=>Math.min(Math.max(x,a),b);
@@ -5255,9 +5267,79 @@ const FSRS = (function(w, maxInt){
     return clamp(Math.max(1, Math.round(s*modifier)), 1, maxInt);
   }
   return { nextState, interval, retrievability:fc };
-})(FSRS_W, SRS_MAX_INTERVAL);
+})(getFsrsW(), SRS_MAX_INTERVAL);
 // Difficulté FSRS estimée depuis l'ancienne « ease » SM-2 — migration douce des cartes existantes (S amorcée depuis l'intervalle).
 function fsrsDfromEase(ef){ return Math.min(10, Math.max(1, 11 - 3*(ef||SRS_START_EASE))); }
+
+/* ====== OPTIMISEUR DE POIDS FSRS (personnalisation sur l'historique réel) ======
+   Reconstruit les séquences de révision par carte depuis reviewLog {t,h,g}, ajuste les 21
+   poids par descente Adam (gradient par différences finies) pour minimiser la log-loss de la
+   récupérabilité prédite (régularisée vers le défaut), split train/validation par carte.
+   N'APPLIQUE le résultat que s'il améliore la validation → garde-fou « jamais pire que le défaut ».
+   Déclenché à la main : optimizeFsrsWeights() en console admin. Prend effet au rechargement. */
+function _fsrsEng(w){
+  const S_MIN=1e-3, DECAY=-w[20], FACTOR=Math.exp((1/DECAY)*Math.log(0.9))-1;
+  const cl=(x,a,b)=>Math.min(Math.max(x,a),b);
+  const fc=(t,s)=>Math.pow(1+FACTOR*t/s,DECAY);
+  const initS=g=>Math.max(w[g-1],0.1);
+  const initD=g=>w[4]-Math.exp((g-1)*w[5])+1;
+  const nextD=(d,g)=>{const nd=d+(-w[6]*(g-3))*(10-d)/9;return cl(w[7]*initD(4)+(1-w[7])*nd,1,10);};
+  const recallS=(d,s,r,g)=>{const hp=g===2?w[15]:1,eb=g===4?w[16]:1;return cl(s*(1+Math.exp(w[8])*(11-d)*Math.pow(s,-w[9])*(Math.exp((1-r)*w[10])-1)*hp*eb),S_MIN,36500);};
+  const forgetS=(d,s,r)=>cl(w[11]*Math.pow(d,-w[12])*(Math.pow(s+1,w[13])-1)*Math.exp((1-r)*w[14]),S_MIN,36500);
+  const shortS=(s,g)=>{let si=Math.pow(s,-w[19])*Math.exp(w[17]*(g-3+w[18]));if(g>=2)si=Math.max(si,1);return cl(s*si,S_MIN,36500);};
+  function nextState(mem,t,g){const d=mem?mem.D:0,s=mem?mem.S:0;
+    if(d===0&&s===0)return{D:cl(initD(g),1,10),S:initS(g)};
+    const r=fc(Math.max(0,t),s);let ns;
+    if(t<=0)ns=shortS(s,g);
+    else if(g===1){const saf=forgetS(d,s,r);ns=cl(s/Math.exp(w[17]*w[18]),S_MIN,saf);}
+    else ns=recallS(d,s,r,g);
+    return{D:nextD(d,g),S:ns};}
+  return {fc,nextState};
+}
+function _fsrsLoss(w,seqs,reg){
+  const {fc,nextState}=_fsrsEng(w); let L=0,n=0;
+  for(const seq of seqs){ let mem=null;
+    for(const rv of seq){
+      if(mem){ const R=Math.min(0.9999,Math.max(0.0001,fc(Math.max(0,rv.e),mem.S))); const y=rv.g>=2?1:0;
+        L+=-(y*Math.log(R)+(1-y)*Math.log(1-R)); n++; }
+      mem=nextState(mem,rv.e,rv.g); } }
+  let base=n?L/n:0;
+  if(reg){ let p=0; for(let i=0;i<21;i++){ const dd=(w[i]-FSRS_W[i])/(FSRS_W_HI[i]-FSRS_W_LO[i]+1e-9); p+=dd*dd; } base+=reg*p/21; }
+  return base;
+}
+function _fsrsSeqs(){
+  const d=SRS._d(); const log=(d.reviewLog||[]).filter(r=>r&&r.h&&r.g);
+  const by={}; log.forEach(r=>{ (by[r.h]=by[r.h]||[]).push(r); });
+  const seqs=[];
+  for(const h in by){ const rs=by[h].sort((a,b)=>a.t-b.t); if(rs.length<2) continue;
+    const seq=[]; let prev=null;
+    for(const r of rs){ const e=prev? Math.max(0,(r.t-prev)/DAY_MS):0; seq.push({e, g:Math.min(4,Math.max(1,r.g|0))}); prev=r.t; }
+    seqs.push(seq); }
+  return seqs;
+}
+function optimizeFsrsWeights(opts){
+  opts=opts||{}; const seqs=_fsrsSeqs();
+  const nrev=seqs.reduce((a,s)=>a+s.length,0);
+  const MIN=opts.minReviews||300;
+  if(seqs.length<40||nrev<MIN) return {ok:false, reason:'Pas assez d\'historique enrichi ('+nrev+' révisions sur '+seqs.length+' cartes ; min '+MIN+'). Continue à réviser : le journal s\'enrichit à chaque carte.'};
+  const clamp=(x,a,b)=>Math.min(Math.max(x,a),b);
+  const tr=seqs.filter((_,i)=>i%5!==0), va=seqs.filter((_,i)=>i%5===0);
+  let w=FSRS_W.slice(); const m=new Array(21).fill(0),v=new Array(21).fill(0);
+  const b1=0.9,b2=0.999,eps=1e-3,lr=0.02,reg=0.01,steps=opts.steps||200;
+  for(let s=1;s<=steps;s++){ const L0=_fsrsLoss(w,tr,reg); const g=new Array(21);
+    for(let i=0;i<21;i++){ const wp=w.slice(); wp[i]=clamp(w[i]+eps,FSRS_W_LO[i],FSRS_W_HI[i]); g[i]=(_fsrsLoss(wp,tr,reg)-L0)/eps; }
+    for(let i=0;i<21;i++){ m[i]=b1*m[i]+(1-b1)*g[i]; v[i]=b2*v[i]+(1-b2)*g[i]*g[i];
+      const mh=m[i]/(1-Math.pow(b1,s)), vh=v[i]/(1-Math.pow(b2,s));
+      w[i]=clamp(w[i]-lr*(FSRS_W_HI[i]-FSRS_W_LO[i])*mh/(Math.sqrt(vh)+1e-8), FSRS_W_LO[i], FSRS_W_HI[i]); } }
+  const Ld=_fsrsLoss(FSRS_W,va,0), Lo=_fsrsLoss(w,va,0), gain=(Ld-Lo)/Ld;
+  const report={ ok:true, reviews:nrev, cards:seqs.length,
+    valLossDefaut:+Ld.toFixed(4), valLossPerso:+Lo.toFixed(4), gainPct:+(gain*100).toFixed(1),
+    applied:false, poids:w.map(x=>+x.toFixed(4)) };
+  if(gain>0.005){ setFsrsW(w); report.applied=true; report.note='✅ Poids personnalisés appliqués — RECHARGE la page pour qu\'ils prennent effet.'; }
+  else report.note='ℹ️ Gain insuffisant : les poids par défaut restent (déjà quasi-optimaux pour toi). Rien changé.';
+  return report;
+}
+try{ if(typeof window!=='undefined'){ window.optimizeFsrsWeights=optimizeFsrsWeights; window.clearFsrsW=clearFsrsW; window.getFsrsW=getFsrsW; } }catch(e){}
 
 const SRS = {
   _d(){ try{ return JSON.parse(localStorage.getItem(STATS_KEY)) || {cards:{}, sessions:[]}; }catch(e){ return {cards:{},sessions:[]}; } },
@@ -5442,7 +5524,7 @@ const SRS = {
     // pass = grade>0 ; fail = grade 0. On note la maturité AVANT la révision.
     if(dejaVue){
       d.reviewLog = d.reviewLog || [];
-      d.reviewLog.push({ t: now, pass: grade>0 ? 1 : 0, mature: ivlAvant >= 21 ? 1 : 0 });
+      d.reviewLog.push({ t: now, h, g: grade+1, pass: grade>0 ? 1 : 0, mature: ivlAvant >= 21 ? 1 : 0 });
       if(d.reviewLog.length > 2000) d.reviewLog = d.reviewLog.slice(-2000);
     }
 
