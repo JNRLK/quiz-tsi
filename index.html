@@ -8087,29 +8087,120 @@ const JURY_DATA = [
   {concours:'centrale', year:2020, theme:'Rédaction', type:'citation',
      text:"Il est vivement déconseillé d'utiliser les locutions « évident », « trivial » ou « il est clair que » : elles masquent souvent la difficulté à donner l'argument mathématique attendu. De même, quand un candidat prétend relever une erreur d'énoncé, c'est le plus souvent qu'un point lui a échappé."},
   {concours:'centrale', year:2020, theme:'Algèbre linéaire', type:'citation',
-     text:"La notion de matrice de passage est mal maîtrisée : beaucoup évoquent « la matrice d'une base » au lieu de la matrice de passage entre deux bases. Rappel utile après une orthonormalisation de Gram-Schmidt : la matrice de passage entre deux bases orthonormées est orthogonale."}
+     text:"La notion de matrice de passage est mal maîtrisée : beaucoup évoquent « la matrice d'une base » au lieu de la matrice de passage entre deux bases. Rappel utile après une orthonormalisation de Gram-Schmidt : la matrice de passage entre deux bases orthonormées est orthogonale."},
+  /* ——— PHYSIQUE-CHIMIE — Centrale-Supélec TSI 2024 & CCINP TSI 2023 ——— */
+  {concours:'centrale', year:2024, subject:'physique', theme:'Méthode & rédaction', type:'citation',
+   text:"Tout résultat numérique doit être suivi de son unité : sans unité, aucun point n'est attribué au calcul, même si la valeur est correcte."},
+  {concours:'centrale', year:2024, subject:'physique', theme:'Méthode & rédaction', type:'citation',
+   text:"« Calculer » ne signifie pas seulement obtenir une expression littérale : il faut mener l'application numérique. Et lorsqu'un ordre de grandeur paraît aberrant, le signaler."},
+  {concours:'centrale', year:2024, subject:'physique', theme:'Méthode & rédaction', type:'synthese',
+   text:"Consignes qui coûtent des points : numéroter les questions (une bonne réponse mal repérée n'est pas comptée), encadrer ou souligner les résultats, soigner la présentation (malus sinon). Une succession de formules sans texte explicatif ne suffit pas."},
+  {concours:'ccinp', year:2023, subject:'physique', theme:'Méthode & rédaction', type:'synthese',
+   text:"Le jury relève de nombreuses erreurs de conversion et d'homogénéité, et des applications numériques simples fausses aux ordres de grandeur extravagants — qui devraient alerter le candidat sur la véracité de sa réponse."},
+  {concours:'ccinp', year:2023, subject:'physique', theme:'Méthode & rédaction', type:'citation',
+   text:"Poser des valeurs fausses puis « retrouver » miraculeusement le résultat imposé est une malhonnêteté que le correcteur repère."},
+  {concours:'ccinp', year:2023, subject:'physique', theme:'Mécanique', type:'citation',
+   text:"Théorème de l'énergie cinétique : c'est le travail de TOUTES les forces qui intervient, pas seulement celui des forces conservatives."},
+  {concours:'ccinp', year:2023, subject:'physique', theme:'Mécanique', type:'synthese',
+   text:"Avant tout bilan mécanique : préciser le système, le référentiel, et faire un vrai bilan des forces. Rappel : une chute libre est un mouvement sous l'effet du seul champ de pesanteur."},
+  {concours:'centrale', year:2024, subject:'physique', theme:'Mécanique', type:'synthese',
+   text:"Hydraulique : la relation de Bernoulli généralisée doit intégrer les pertes de charge (singulières et régulières) présentes entre les deux points. Beaucoup les oublient, avec des erreurs d'homogénéité manifestes."},
+  {concours:'ccinp', year:2023, subject:'physique', theme:'Électricité & électromagnétisme', type:'citation',
+   text:"Conditions initiales : les justifier par la continuité de la tension aux bornes d'un condensateur et de l'intensité dans une bobine — argument trop souvent omis."},
+  {concours:'ccinp', year:2023, subject:'physique', theme:'Électricité & électromagnétisme', type:'citation',
+   text:"Ce n'est pas parce qu'une fonction est nulle à un instant que sa dérivée l'est aussi."},
+  {concours:'ccinp', year:2023, subject:'physique', theme:'Électricité & électromagnétisme', type:'synthese',
+   text:"Notation complexe mal maîtrisée : oublis de parenthèses dans j(ωt+φ), confusions entre sinus/cosinus et grandeurs complexes. Savoir aussi déduire le régime d'un second ordre de la valeur du facteur de qualité."},
+  {concours:'ccinp', year:2023, subject:'physique', theme:'Ondes', type:'synthese',
+   text:"Confusions fréquentes : équation de propagation (d'Alembert) vs équation de diffusion, et direction de propagation vs direction de polarisation. Peu de candidats savent définir précisément une onde plane."},
+  {concours:'centrale', year:2024, subject:'physique', theme:'Thermodynamique', type:'synthese',
+   text:"Analogie thermique-électrique : une résistance thermique se mesure en K/W, PAS en ohms. Penser aux associations en parallèle (convection // rayonnement) et convertir les températures en kelvin quand la constante de Stefan-Boltzmann l'impose."},
+  {concours:'centrale', year:2024, subject:'physique', theme:'Thermodynamique', type:'citation',
+   text:"Une « puissance » du type Rth·Φ² n'a aucun sens : ne pas plaquer aveuglément l'analogie électrique sur la thermique."},
+  {concours:'centrale', year:2024, subject:'physique', theme:'Chimie', type:'synthese',
+   text:"Diagrammes E-pH : détailler le calcul du nombre d'oxydation en explicitant les n.o. de H et O, et discuter la stabilité d'une espèce en tenant compte du dioxygène, pas seulement de l'eau."},
+  {concours:'centrale', year:2024, subject:'physique', theme:'Chimie', type:'citation',
+   text:"Au passage à l'équivalence d'un dosage, l'égalité doit être écrite proprement en quantités de matière, et l'unité imposée respectée."},
+
+  /* ——— SCIENCES DE L'INGÉNIEUR — Centrale-Supélec TSI 2024 (S2I) ——— */
+  {concours:'centrale', year:2024, subject:'si', theme:'Méthode & rédaction', type:'synthese',
+   text:"La démarche du sujet de S2I est progressive et cohérente : traiter les questions DANS L'ORDRE. Les copies traitées dans le désordre, mal présentées, sans résultats mis en évidence, sont sanctionnées par un malus."},
+  {concours:'centrale', year:2024, subject:'si', theme:'Liaisons & schéma cinématique', type:'synthese',
+   text:"Sur un schéma cinématique : identifier correctement chaque liaison (glissière, pivot…) ET ses caractéristiques (direction, axe). Ne pas tracer un schéma 2D sur une épure spatiale."},
+  {concours:'centrale', year:2024, subject:'si', theme:'Liaisons & schéma cinématique', type:'citation',
+   text:"Pour un robot série (chaîne ouverte), le graphe de structure ne doit comporter aucun cycle : un graphe avec cycle a été sanctionné."},
+  {concours:'centrale', year:2024, subject:'si', theme:'Cinématique & mouvement', type:'citation',
+   text:"La position finale se calcule par l'AIRE sous la courbe de vitesse, pas par des équations horaires : quand la vitesse n'est pas constante, « v = d/t » est proscrit."},
+  {concours:'centrale', year:2024, subject:'si', theme:'Cinématique & mouvement', type:'synthese',
+   text:"Profils de mouvement : une position ne peut pas décroître quand la vitesse est positive, ni présenter de point anguleux (non dérivable). Un rapport de réduction est sans dimension — ni masse ni moment d'inertie dedans."},
+  {concours:'centrale', year:2024, subject:'si', theme:'Statique & dynamique', type:'synthese',
+   text:"Théorème du moment dynamique : préciser le système isolé, le point d'application et l'axe de projection. Interdit d'appliquer le théorème du moment cinétique en un point mobile par rapport au bâti."},
+  {concours:'centrale', year:2024, subject:'si', theme:'Statique & dynamique', type:'synthese',
+   text:"Théorème de l'énergie cinétique : pour un système à plusieurs mobilités, il ne fournit qu'une seule équation scalaire (insuffisant). Recenser TOUTES les pièces mobiles ; la puissance du poids est nulle pour un mouvement horizontal."},
+  {concours:'centrale', year:2024, subject:'si', theme:'Asservissement (SLCI)', type:'synthese',
+   text:"Pour un système à retour NON unitaire, la FTBO est le produit de toutes les fonctions de la boucle : ne pas la confondre avec la fonction de transfert en chaîne directe ni avec la boucle fermée."},
+  {concours:'centrale', year:2024, subject:'si', theme:'Asservissement (SLCI)', type:'citation',
+   text:"Identifier la constante de temps d'un premier ordre : à 63 % de la valeur finale ou par la tangente à l'origine. Les lectures à 95 % ou 99 % sont à proscrire ; penser au décalage de l'origine des temps."},
+  {concours:'centrale', year:2024, subject:'si', theme:'Asservissement (SLCI)', type:'citation',
+   text:"« Identifier » un paramètre, c'est déterminer sa VALEUR à partir d'une réponse expérimentale — pas simplement donner son nom."},
+  {concours:'centrale', year:2024, subject:'si', theme:'Asservissement (SLCI)', type:'synthese',
+   text:"Précision : l'erreur en régime permanent se calcule avec le théorème de la valeur finale. Valider l'exigence pour la consigne en rampe ET en échelon. Augmenter la marge de phase avec un correcteur proportionnel se fait en DIMINUANT le gain."},
+  {concours:'centrale', year:2024, subject:'si', theme:'Asservissement (SLCI)', type:'synthese',
+   text:"Distinguer les trois boucles imbriquées (courant, vitesse, position) : la boucle de courant n'est pas une « boucle de puissance ». La grandeur limitée par le bloc de limitation de courant est le COUPLE moteur, pas l'intensité."},
+  {concours:'centrale', year:2024, subject:'si', theme:'Chaîne de puissance', type:'synthese',
+   text:"Bilan de puissance d'une machine : ne pas confondre puissance absorbée et puissance électromagnétique. Pour une machine triphasée, ne pas oublier le facteur 3 et distinguer la résistance d'un enroulement de celle mesurée entre deux bornes."},
+  {concours:'centrale', year:2024, subject:'si', theme:'Chaîne de puissance', type:'citation',
+   text:"Le produit de deux grandeurs négatives est positif : erreur récurrente sur les tracés de puissance (couple × vitesse)."},
+  {concours:'centrale', year:2024, subject:'si', theme:'Chaîne de puissance', type:'synthese',
+   text:"Une puissance négative côté machine traduit une phase de freinage : si l'étage d'entrée du variateur n'est pas réversible, l'énergie est dissipée dans une résistance. La notion de réversibilité est souvent incomprise."},
+  {concours:'centrale', year:2024, subject:'si', theme:'Informatique & numérique', type:'synthese',
+   text:"Méthodes numériques : ne pas confondre listes Python et vecteurs Numpy, ni dérivation arrière et avant. Dans une boucle « for », l'instruction i+=1 est inutile et fautive. La méthode des rectangles cumule des aires, elle ne donne pas la valeur instantanée."},
+  {concours:'centrale', year:2024, subject:'si', theme:'Informatique & numérique', type:'citation',
+   text:"Lecture d'un graphe d'états (SysML) : les états orthogonaux (parallèles) sont mal maîtrisés et compliquent le calcul de la durée d'un cycle."}
 ];
 
-const JURY_THEMES = ['Tous', 'Rédaction', 'Cours & théorèmes', 'Algèbre linéaire', 'Analyse', 'Probabilités', 'Erreurs fréquentes'];
+const JURY_THEMES_BY_SUBJECT = {
+  maths: ['Tous', 'Rédaction', 'Cours & théorèmes', 'Algèbre linéaire', 'Analyse', 'Probabilités', 'Erreurs fréquentes'],
+  physique: ['Tous', 'Méthode & rédaction', 'Mécanique', 'Électricité & électromagnétisme', 'Ondes', 'Thermodynamique', 'Chimie'],
+  si: ['Tous', 'Méthode & rédaction', 'Liaisons & schéma cinématique', 'Cinématique & mouvement', 'Statique & dynamique', 'Asservissement (SLCI)', 'Chaîne de puissance', 'Informatique & numérique']
+};
+const JURY_SUBJECTS = [{k:'maths',label:'Mathématiques'},{k:'physique',label:'Physique-chimie'},{k:'si',label:"Sciences de l'ingénieur"}];
 const JURY_THEME_COLORS = {
   'Rédaction':'#b45309','Cours & théorèmes':'#6d28d9','Algèbre linéaire':'#1d5fbf',
-  'Analyse':'#c2342e','Probabilités':'#b83a6b','Erreurs fréquentes':'#475569'
+  'Analyse':'#c2342e','Probabilités':'#b83a6b','Erreurs fréquentes':'#475569',
+  'Méthode & rédaction':'#b45309','Mécanique':'#c2342e','Électricité & électromagnétisme':'#1d5fbf',
+  'Ondes':'#0891b2','Thermodynamique':'#9a3412','Chimie':'#15803d',
+  'Liaisons & schéma cinématique':'#1d5fbf','Cinématique & mouvement':'#0891b2',
+  'Statique & dynamique':'#c2342e','Asservissement (SLCI)':'#6d28d9','Chaîne de puissance':'#9a3412',
+  'Informatique & numérique':'#475569'
 };
 
 // Lien thème de jury → chapitres (clés TOPICS) pour la révision ciblée.
-// Les thèmes transversaux (Rédaction, Cours & théorèmes, Erreurs fréquentes) n'ont pas de bouton.
+// Les thèmes transversaux (Rédaction, Méthode & rédaction, Cours & théorèmes, Erreurs fréquentes) n'ont pas de bouton.
 const JURY_THEME_TOPICS = {
   'Algèbre linéaire': ['matrices','ev','systemes','complexes','polynomes'],
   'Analyse': ['suites','limites','derivation','integration','dl','edl','fonctions'],
-  'Probabilités': ['proba','denombrement']
+  'Probabilités': ['proba','denombrement'],
+  'Mécanique': ['ph_cinematique','ph_newton','ph_energie_meca','ph_solide_rotation'],
+  'Électricité & électromagnétisme': ['ph_premier_ordre','ph_second_ordre','ph_arqs','ph_filtrage','ph_champ_magnetique','ph_laplace'],
+  'Ondes': ['ph_propagation'],
+  'Thermodynamique': ['ph_premier_principe','ph_second_principe','ph_energie_echangee','ph_machines_therm','ph_gaz_parfait'],
+  'Chimie': ['ph_acide_base','ph_oxydoreduction','ph_cinetique','ph_structure_prop','ph_transfo_matiere','ph_molecules'],
+  'Liaisons & schéma cinématique': ['si_liaisons','si_cinematique'],
+  'Cinématique & mouvement': ['si_cinematique'],
+  'Statique & dynamique': ['si_statique'],
+  'Asservissement (SLCI)': ['si_slci'],
+  'Chaîne de puissance': ['si_chaine_energie'],
+  'Informatique & numérique': ['si_chaine_info']
 };
 
-let _juryState = {concours:'all', theme:'Tous'};
+let _juryState = {subject:'maths', concours:'all', theme:'Tous'};
 let _juryOpen = {};   // état d'ouverture de l'accordéon par thème
 
 function renderJury(){
-  const {concours, theme} = _juryState;
-  let entries = JURY_DATA;
+  const {subject, concours, theme} = _juryState;
+  const THEMES = JURY_THEMES_BY_SUBJECT[subject] || ['Tous'];
+  let entries = JURY_DATA.filter(e => (e.subject||'maths') === subject);
   if(concours !== 'all') entries = entries.filter(e => e.concours === concours);
   if(theme !== 'Tous') entries = entries.filter(e => e.theme === theme);
 
@@ -8120,7 +8211,16 @@ function renderJury(){
     {k:'centrale', label:'Centrale-Supélec'},
     {k:'ccinp', label:'CCINP / ex-CCP'},
   ];
-  let fHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">`;
+  let fHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">`;
+  JURY_SUBJECTS.forEach(sj=>{
+    const active = subject === sj.k;
+    fHtml += `<button data-js="${sj.k}" style="
+      padding:7px 15px;border-radius:20px;border:1px solid ${active?'var(--accent)':'var(--line)'};
+      background:${active?'color-mix(in srgb,var(--accent) 20%,transparent)':'transparent'};
+      color:${active?'var(--ink)':'var(--muted)'};font-size:13px;font-weight:700;cursor:pointer;
+      font-family:'Lexend',sans-serif;transition:.15s">${sj.label}</button>`;
+  });
+  fHtml += `</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">`;
   cTabs.forEach(t=>{
     const active = _juryState.concours === t.k;
     fHtml += `<button data-jc="${t.k}" style="
@@ -8130,7 +8230,7 @@ function renderJury(){
       font-family:'Lexend',sans-serif;transition:.15s">${t.label}</button>`;
   });
   fHtml += `</div><div style="display:flex;gap:6px;flex-wrap:wrap">`;
-  JURY_THEMES.forEach(th=>{
+  THEMES.forEach(th=>{
     const active = _juryState.theme === th;
     const col = JURY_THEME_COLORS[th] || '#a78bfa';
     fHtml += `<button data-jt="${th}" style="
@@ -8146,6 +8246,9 @@ function renderJury(){
   });
   filtersEl.querySelectorAll('[data-jt]').forEach(btn=>{
     btn.onclick = ()=>{ _juryState.theme = btn.dataset.jt; renderJury(); };
+  });
+  filtersEl.querySelectorAll('[data-js]').forEach(btn=>{
+    btn.onclick = ()=>{ _juryState.subject = btn.dataset.js; _juryState.theme='Tous'; _juryOpen={}; renderJury(); };
   });
 
   // Entries — regroupées par thème (accordéon), triées par année décroissante
@@ -8183,7 +8286,7 @@ function renderJury(){
     </div>`;
   };
 
-  const themeOrder = JURY_THEMES.filter(t=>t!=='Tous');
+  const themeOrder = THEMES.filter(t=>t!=='Tous');
   const byTheme = {};
   entries.forEach(e=>{ (byTheme[e.theme] ||= []).push(e); });
   const singleTheme = (theme !== 'Tous');
@@ -8270,6 +8373,7 @@ function renderJuryTip(){
   const e = JURY_DATA[Math.floor(Date.now()/86400000) % JURY_DATA.length];
   const col = JURY_THEME_COLORS[e.theme] || '#a78bfa';
   const lbl = {centrale:'Centrale-Supélec', ccinp:'CCINP'}[e.concours] || e.concours;
+  const subjLbl = {maths:'Maths', physique:'Physique-chimie', si:'SI'}[e.subject||'maths'] || '';
   host.innerHTML = `<div style="margin-top:24px;border:1px solid ${col}44;border-left:3px solid ${col};
     background:color-mix(in srgb,${col} 6%,transparent);border-radius:14px;padding:16px 18px">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
@@ -8277,7 +8381,7 @@ function renderJuryTip(){
       <a id="juryTipMore" style="margin-left:auto;font-size:12px;color:var(--accent-soft);cursor:pointer;text-decoration:underline">Tout voir →</a>
     </div>
     <p style="margin:0;font-size:14px;line-height:1.6;color:var(--ink);${e.type==='citation'?'font-style:italic':''}">${e.text.replace(/\n/g,'<br>')}</p>
-    <div style="font-size:11px;color:var(--muted);margin-top:8px">${e.theme} · ${lbl} ${e.year}</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">${subjLbl} · ${e.theme} · ${lbl} ${e.year}</div>
   </div>`;
   const m=$('#juryTipMore'); if(m) m.onclick=showJury;
   typeset(host);
