@@ -1622,7 +1622,18 @@ function topicsFor(subject, level){ return Object.keys(TOPICS).filter(k => TOPIC
 function familiesFor(subject){ return Object.keys(FAMILIES).filter(k => FAMILIES[k].subject === subject); }
 function hasContent(subject, level){ return QUESTIONS.some(q => { const t = TOPICS[q.topic]; return t && t.subject === subject && t.level === level; }); }
 function isTransversal(subject){ return !!(SUBJECTS[subject] && SUBJECTS[subject].transversal); }
-function effLevel(){ return isTransversal(activeSubject) ? 'tr' : (lockedLevel || activeLevel); }   // transversale ⇒ 'tr' ; élève verrouillé ⇒ sa classe
+/* Un élève peut réviser SON année ET les années INFÉRIEURES (ex. un TSI2 peut aussi travailler le TSI1),
+   jamais une année supérieure. Admin (lockedLevel null) : accès libre à toutes les années. */
+function allowedLevels(){
+  const order = { tsi0:0, tsi1:1, tsi2:2 };
+  if(!lockedLevel || order[lockedLevel]===undefined) return ['tsi0','tsi1','tsi2'];
+  return ['tsi0','tsi1','tsi2'].filter(l => order[l] <= order[lockedLevel]);
+}
+function effLevel(){
+  if(isTransversal(activeSubject)) return 'tr';           // transversale ⇒ 'tr'
+  if(lockedLevel) return allowedLevels().includes(activeLevel) ? activeLevel : lockedLevel;  // élève : année choisie parmi celles autorisées
+  return activeLevel;                                     // admin : navigation libre
+}
 function inActiveScope(topicKey){ const t = TOPICS[topicKey]; return !!t && t.subject === activeSubject && t.level === effLevel(); }
 function subjectsWithContent(){ return Object.keys(SUBJECTS).filter(s => isTransversal(s) ? hasContent(s,'tr') : ['tsi0','tsi1','tsi2'].some(l=>hasContent(s,l))).sort((a,b)=>SUBJECTS[a].order-SUBJECTS[b].order); }
 function levelsWithContent(subject){ if(isTransversal(subject)) return []; return ['tsi0','tsi1','tsi2'].filter(l=>hasContent(subject,l)).sort((a,b)=>LEVELS[a].order-LEVELS[b].order); }
@@ -6471,13 +6482,21 @@ function masteryRadarSVG(fams){
 const CLS_SUB = { tsi0:'transition · bac pro', tsi1:'1re année', tsi2:'2e année' };
 function buildClassMenu(){
   const host=$('#classMenu'); if(!host) return;
-  // Élève verrouillé sur sa classe → on n'affiche QUE sa classe (aucune bascule vers une autre année).
-  const levels = lockedLevel ? [lockedLevel] : ['tsi0','tsi1','tsi2'];
-  host.innerHTML = `<div class="cm-lbl">${lockedLevel ? 'Ta classe' : 'Choisis ta classe'}</div>` + levels.map(l=>{
+  // Élève : sa classe + les années inférieures (révision). Admin : toutes les classes.
+  const levels = allowedLevels();
+  const multi = !!lockedLevel && levels.length>1;
+  const cmLbl = lockedLevel ? (multi ? 'Ta classe · tu peux aussi réviser les années précédentes' : 'Ta classe') : 'Choisis ta classe';
+  host.innerHTML = `<div class="cm-lbl">${cmLbl}</div>` + levels.map(l=>{
     const soon = !levelHasOwnContent(l);
-    return `<button class="class-card${activeLevel===l?' on':''}" data-cls="${l}"><span class="cc-y">${LEVELS[l].short}</span><span class="cc-s">${CLS_SUB[l]}</span>${soon?'<span class="cc-soon">bientôt</span>':''}</button>`;
+    const mine = lockedLevel===l ? ' cc-mine' : '';
+    return `<button class="class-card${activeLevel===l?' on':''}${mine}" data-cls="${l}"><span class="cc-y">${LEVELS[l].short}</span><span class="cc-s">${CLS_SUB[l]}</span>${soon?'<span class="cc-soon">bientôt</span>':''}${lockedLevel===l?'<span class="cc-soon" style="background:var(--accent);color:#fff">ta classe</span>':''}</button>`;
   }).join('');
-  host.querySelectorAll('[data-cls]').forEach(b=>b.onclick=()=>{ if(lockedLevel && b.dataset.cls!==lockedLevel) return; activeLevel=b.dataset.cls; buildFamilyAccordion(); updatePoolInfo(); updateSelectAllBtn(); });
+  host.querySelectorAll('[data-cls]').forEach(b=>b.onclick=()=>{
+    if(lockedLevel && !allowedLevels().includes(b.dataset.cls)) return;
+    activeLevel=b.dataset.cls;
+    try{ const subs = subjectsForNav(activeLevel); if(subs && subs.length && !subs.includes(activeSubject)) activeSubject = subs[0]; }catch(e){}
+    buildClassMenu(); buildNavScope(); buildFamilyAccordion(); updatePoolInfo(); updateSelectAllBtn();
+  });
 }
 function buildNavScope(){
   const host=$('#navScope'); if(!host) return;
@@ -8599,7 +8618,7 @@ $('#juryBack').onclick = ()=>{
    Reprend la logique SRS : cartes dues + nouvelles (plafonnées/jour) ; à défaut,
    entraînement libre sur ces chapitres. */
 function startReviewForTopics(keys){
-  if(lockedLevel) keys = keys.filter(k => TOPICS[k] && TOPICS[k].level === lockedLevel);  // élève verrouillé : jamais de cartes hors de sa classe
+  if(lockedLevel){ const AL=allowedLevels(); keys = keys.filter(k => TOPICS[k] && AL.includes(TOPICS[k].level)); }  // élève : sa classe + années inférieures ; jamais au-dessus
   const set = new Set(keys);
   const d = SRS._d();
   const hMap = {}; QUESTIONS.forEach(q=>{ hMap[qHash(q.q)] = q; });
