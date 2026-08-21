@@ -1235,7 +1235,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/fireba
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app-check.js";
 import { getAuth, setPersistence, browserLocalPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, sendEmailVerification } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp, runTransaction, deleteDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-functions.js";
+/* Cloud Functions RETIRÉES : l'app fonctionne sur le tier GRATUIT Firebase (Spark). L'approbation de
+   classe et la suppression de compte sont 100 % côté client (voir setMemberStatus / admDeleteOne).
+   Seule limite du gratuit : le login Firebase d'un compte supprimé reste à retirer manuellement
+   dans la console → Authentication (les données, elles, sont bien effacées côté client). */
 
 const firebaseConfig = {
   apiKey: "AIzaSyBOs7FU54O37WkA9cvugGJmaWjHB6Zjg4o",
@@ -1259,9 +1262,6 @@ try {
     isTokenAutoRefreshEnabled: true
   });
 } catch (e) { console.warn('AppCheck init', e); }
-const fbFunctions = getFunctions(fbApp);                       // région par défaut us-central1 (= région de la Cloud Function deleteAccount)
-const deleteAccountFn = httpsCallable(fbFunctions, 'deleteAccount');
-const setClassApprovalFn = httpsCallable(fbFunctions, 'setClassApproval');
 const auth = getAuth(fbApp);
 auth.languageCode = 'fr';   // e-mails (vérification, reset) ET pages d'action Firebase en français
 // Persistance locale : la session reste active entre les rechargements et les fermetures
@@ -1500,13 +1500,9 @@ const FAMILIES = {
   /* ===== Sciences de l'Ingénieur — familles. subject:'si' OBLIGATOIRE (sinon rattaché à maths). Additif. ===== */
   "si_systemes":  { "name": "Ingénierie & systèmes",  "raw": "#14b8a6", "subject": "si" },
   "si_meca":      { "name": "Mécanique du solide",    "raw": "#f97316", "subject": "si" },
-  "si_asserv":    { "name": "Systèmes asservis",      "raw": "#a855f7", "subject": "si" },
-  /* ===== Contributions communautaires (photos de cours → cartes). subject:'contrib' (transversal).
-     Contenu NON vérifié par un professeur : chapitre volontairement séparé et étiqueté. ===== */
-  "contrib_com":  { "name": "Contributions citoyennes", "raw": "#10b981", "subject": "contrib" }
+  "si_asserv":    { "name": "Systèmes asservis",      "raw": "#a855f7", "subject": "si" }
 };
 const TOPICS = {
-  "contrib_citoyenne": { "name": "Contribution citoyenne", "family": "contrib_com", "raw": "#10b981", "subject": "contrib", "level": "tr" },
   "trigo": { "name": "1. Trigonométrie", "family": "geometrie", "raw": "#eab308" },
   "complexes_alg": { "name": "2. Nombres complexes — forme algébrique", "family": "algebre", "raw": "#f97316" },
   "second_degre": { "name": "3. Équations du second degré", "family": "algebre", "raw": "#fdba74" },
@@ -1600,8 +1596,7 @@ const SUBJECTS = {
   si:       { name:"Sciences de l'Ingénieur", order:3 },
   info:     { name:"Informatique",            order:4 },
   anglais:  { name:"Anglais",                 order:5, transversal:true },
-  francais: { name:"Français-Philosophie",    order:6, transversal:true },
-  contrib:  { name:"Contributions",           order:7, transversal:true }
+  francais: { name:"Français-Philosophie",    order:6, transversal:true }
 };
 const LEVELS = {
   tsi0: { name:"TSI0 · transition (bac pro)", short:"TSI0", order:0 },
@@ -5378,7 +5373,6 @@ const QUESTIONS = [
   {topic:"si_statique",mode:"flash",q:"Exprimer le torseur transmissible par une liaison sphérique à doigt.",answer:"Au centre $A$, doigt selon $\\vec{z}$, rainure dans le plan $(\\vec{y},\\vec{z})$ :\n$$\\{\\mathcal{T}_{1\\to2}\\}=\\begin{Bmatrix}X_{12}&0\\\\Y_{12}&M_{12}\\\\Z_{12}&0\\end{Bmatrix}_{A,\\mathcal{B}}$$\n4 inconnues.",exp:"2 degrés de liberté (2 rotations) : le doigt supprime une rotation par rapport à la rotule simple, d'où le moment transmis $M_{12}$.",qimg:"spherique_doigt"},
   {topic:"si_statique",mode:"flash",q:"Exprimer le torseur transmissible par une liaison cylindre-plan (linéaire rectiligne).",answer:"$\\forall M\\in\\text{plan}(A,\\vec{x},\\vec{y})$ :\n$$\\{\\mathcal{T}_{1\\to2}\\}=\\begin{Bmatrix}0&0\\\\0&M_{12}\\\\Z_{12}&0\\end{Bmatrix}_{M,\\mathcal{B}}$$\n2 inconnues : force normale $Z_{12}$ et moment $M_{12}$ selon $\\vec{y}$.",exp:"4 degrés de liberté ; le contact se fait suivant une ligne (droite parallèle à $\\vec{x}$).",qimg:"lin_rectiligne"},
 {topic:"si_liaisons",mode:"flash",q:"Tableau de synthèse — récapitule les 11 liaisons normalisées (schéma, degrés de liberté, torseur cinématique, torseur transmissible).",answer:"Voir le tableau de synthèse ci-dessous.",recap:"liaisons"},
-  {topic:"contrib_citoyenne",mode:"flash",q:"À quoi sert le chapitre « Contribution citoyenne » ?",answer:"Il rassemble des cartes proposées par la communauté — par exemple générées automatiquement à partir de photos de pages de cours partagées.",exp:"⚠️ Ces cartes ne sont PAS validées par un professeur : garde ton esprit critique. Le contenu vérifié se trouve dans les autres matières (Maths, Physique-Chimie, SI). Pour contribuer : partage une photo de ton cours, les cartes générées atterrissent ici."},
 {topic:"si_analyse",mode:"flash",q:"Qu'est-ce que le besoin auquel répond un système ?",answer:"C'est la raison d'être du système : le service qu'il doit rendre à ses utilisateurs (acteurs). On l'exprime en identifiant les acteurs qui interagissent avec le système et les services attendus — c'est l'objet du diagramme de cas d'utilisation (uc). Le besoin est le point de départ de toute la conception.",exp:"Exprimé par le client/utilisateur, le besoin est ensuite traduit en exigences techniques."},
   {topic:"si_analyse",mode:"flash",q:"Quelle est la différence entre un besoin et une exigence ?",answer:"Le besoin exprime une attente, souvent qualitative. L'exigence en est la traduction technique, qualifiée et quantifiée (un critère, un niveau/valeur, éventuellement une flexibilité). Un besoin se décline en plusieurs exigences.",exp:"« Traduire un besoin fonctionnel en exigences » est une compétence explicite du programme (A1)."},
   {topic:"si_analyse",mode:"flash",q:"Que signifie « qualifier et quantifier une exigence » ?",answer:"Qualifier = préciser le critère d'appréciation (la grandeur qui mesure l'exigence). Quantifier = lui associer un niveau : une valeur chiffrée avec son unité, et éventuellement une tolérance (flexibilité).",exp:"Une exigence non quantifiée n'est ni vérifiable ni évaluable."},
@@ -9143,7 +9137,7 @@ async function admBackfillUsernames(users){
 // (le filtre pendingC exige reqAt >= decAt).
 async function setMemberStatus(uid, status){
   if(!uid) return;
-  try{ await setClassApprovalFn({ uid, status }); }catch(e){ console.warn('setClassApproval CF indisponible → repli client', e); }
+  // Écriture client AUTORITATIVE (le verrou côté élève lit ce doc) — fonctionne sur le tier gratuit.
   await setDoc(doc(db,'users',uid), { profile:{ classStatus:status, classDecidedAt:Date.now(), classDecidedBy:(currentUser&&currentUser.email)||null } }, { merge:true });
 }
 // Affecte / déplace un élève dans une classe TSI0/1/2 (écrit son année — teacher-allowed).
@@ -9163,38 +9157,21 @@ async function clientPurgeUser(uid){
 async function admDeleteDuplicates(){
   const dups = ADM.discarded || [];
   if(!dups.length) return;
-  if(!confirm(`Supprimer définitivement ${dups.length} compte(s) en double (même e-mail) ?\n\nCette action est irréversible.`)) return;
+  if(!confirm(`Supprimer les DONNÉES de ${dups.length} compte(s) en double (même e-mail) ?\n\nProfil, progression, demandes et pseudo seront effacés (irréversible).`)) return;
   const btn=$('#admDelDup'); if(btn){ btn.disabled=true; btn.textContent='Suppression…'; }
-  let okN=0; const failed=[];
-  for(const u of dups){ try{ await deleteAccountFn({ uid:u.uid }); okN++; }catch(e){ failed.push(u); console.warn('delete', u.uid, e); } }
-  if(failed.length && confirm(`${okN} compte(s) supprimé(s) via le serveur, ${failed.length} échec(s) (fonction « deleteAccount » indisponible).\n\nSupprimer les DONNÉES de ces ${failed.length} compte(s) côté client ?\n\n⚠️ Le login Firebase restera à retirer via la console Authentication (ou en redéployant la fonction).`)){
-    let dOk=0; for(const u of failed){ try{ await clientPurgeUser(u.uid); dOk++; }catch(_){} }
-    alert(`Données supprimées pour ${dOk} compte(s). Logins Firebase à retirer via la console / redéploiement de la fonction.`);
-  }
+  let okN=0; for(const u of dups){ try{ await clientPurgeUser(u.uid); okN++; }catch(e){ console.warn('purge', u.uid, e); } }
+  alert(`Données supprimées pour ${okN}/${dups.length} compte(s).\n\nLes logins Firebase correspondants (vides, sans accès ni donnée) peuvent être retirés dans la console Firebase → Authentication.`);
   renderAdmin();
 }
 async function admDeleteOne(uid, label){
   if(!uid) return;
-  if(!confirm(`Supprimer définitivement le compte « ${label||uid} » ?\n\nCette action est irréversible (login Firebase + données).`)) return;
+  if(!confirm(`Supprimer le compte « ${label||uid} » ?\n\nToutes ses données (profil, progression, demandes, pseudo) seront effacées — irréversible.`)) return;
   try{
-    const res = await deleteAccountFn({ uid });
-    const d = (res && res.data) || {};
-    if(d.authError){ alert("Données supprimées, mais le login Firebase n'a pas pu être retiré :\n"+d.authError); }
+    const r = await clientPurgeUser(uid);
+    alert(`Données supprimées (profil + ${r.sessions} session(s) + ${r.usernames} pseudo(s)).\n\nL'élève n'a plus aucun accès ni donnée. Le login Firebase (vide) peut être retiré dans la console → Authentication.`);
     renderAdmin();
-    return;
-  }
-  catch(e){
-    const msg = (e && (e.message||e.code)) || e;
-    // Cloud Function indisponible (souvent « internal » = non déployée / plantée). Repli :
-    // suppression des DONNÉES côté client (teacher-allowed). Seul le login Firebase reste.
-    if(!confirm(`La fonction serveur de suppression est indisponible (${msg}).\n\nSupprimer maintenant les DONNÉES de l'élève (profil, progression, demandes, pseudo) ?\n\n⚠️ Le LOGIN Firebase ne pourra PAS être retiré tant que la Cloud Function « deleteAccount » n'est pas redéployée — l'élève n'aura toutefois plus aucun accès ni donnée.`)) return;
-    try{
-      const r = await clientPurgeUser(uid);
-      alert(`Données supprimées (doc + ${r.sessions} session(s) + ${r.usernames} pseudo(s)).\n\nIl reste à retirer le login Firebase via la console (Authentication) ou en redéployant la Cloud Function.`);
-    }catch(e2){
-      alert('Suppression impossible, même côté données : '+((e2&&(e2.message||e2.code))||e2)+'\n\n(Vérifie que tu es connecté avec un compte enseignant et que les règles Firestore sont publiées.)');
-      return;
-    }
+  }catch(e2){
+    alert('Suppression impossible : '+((e2&&(e2.message||e2.code))||e2)+'\n\n(Vérifie que tu es connecté avec le compte enseignant et que les règles Firestore sont publiées.)');
   }
   renderAdmin();
 }
