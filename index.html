@@ -1500,9 +1500,13 @@ const FAMILIES = {
   /* ===== Sciences de l'Ingénieur — familles. subject:'si' OBLIGATOIRE (sinon rattaché à maths). Additif. ===== */
   "si_systemes":  { "name": "Ingénierie & systèmes",  "raw": "#14b8a6", "subject": "si" },
   "si_meca":      { "name": "Mécanique du solide",    "raw": "#f97316", "subject": "si" },
-  "si_asserv":    { "name": "Systèmes asservis",      "raw": "#a855f7", "subject": "si" }
+  "si_asserv":    { "name": "Systèmes asservis",      "raw": "#a855f7", "subject": "si" },
+  /* ===== Contributions communautaires (photos de cours → cartes). subject:'contrib' (transversal).
+     Contenu NON vérifié par un professeur : chapitre volontairement séparé et étiqueté. ===== */
+  "contrib_com":  { "name": "Contributions citoyennes", "raw": "#10b981", "subject": "contrib" }
 };
 const TOPICS = {
+  "contrib_citoyenne": { "name": "Contribution citoyenne", "family": "contrib_com", "raw": "#10b981", "subject": "contrib", "level": "tr" },
   "trigo": { "name": "1. Trigonométrie", "family": "geometrie", "raw": "#eab308" },
   "complexes_alg": { "name": "2. Nombres complexes — forme algébrique", "family": "algebre", "raw": "#f97316" },
   "second_degre": { "name": "3. Équations du second degré", "family": "algebre", "raw": "#fdba74" },
@@ -1596,7 +1600,8 @@ const SUBJECTS = {
   si:       { name:"Sciences de l'Ingénieur", order:3 },
   info:     { name:"Informatique",            order:4 },
   anglais:  { name:"Anglais",                 order:5, transversal:true },
-  francais: { name:"Français-Philosophie",    order:6, transversal:true }
+  francais: { name:"Français-Philosophie",    order:6, transversal:true },
+  contrib:  { name:"Contributions",           order:7, transversal:true }
 };
 const LEVELS = {
   tsi0: { name:"TSI0 · transition (bac pro)", short:"TSI0", order:0 },
@@ -5362,6 +5367,7 @@ const QUESTIONS = [
   {topic:"si_statique",mode:"flash",q:"Exprimer le torseur transmissible par une liaison sphérique à doigt.",answer:"Au centre $A$, doigt selon $\\vec{z}$, rainure dans le plan $(\\vec{y},\\vec{z})$ :\n$$\\{\\mathcal{T}_{1\\to2}\\}=\\begin{Bmatrix}X_{12}&0\\\\Y_{12}&M_{12}\\\\Z_{12}&0\\end{Bmatrix}_{A,\\mathcal{B}}$$\n4 inconnues.",exp:"2 degrés de liberté (2 rotations) : le doigt supprime une rotation par rapport à la rotule simple, d'où le moment transmis $M_{12}$.",qimg:"spherique_doigt"},
   {topic:"si_statique",mode:"flash",q:"Exprimer le torseur transmissible par une liaison cylindre-plan (linéaire rectiligne).",answer:"$\\forall M\\in\\text{plan}(A,\\vec{x},\\vec{y})$ :\n$$\\{\\mathcal{T}_{1\\to2}\\}=\\begin{Bmatrix}0&0\\\\0&M_{12}\\\\Z_{12}&0\\end{Bmatrix}_{M,\\mathcal{B}}$$\n2 inconnues : force normale $Z_{12}$ et moment $M_{12}$ selon $\\vec{y}$.",exp:"4 degrés de liberté ; le contact se fait suivant une ligne (droite parallèle à $\\vec{x}$).",qimg:"lin_rectiligne"},
 {topic:"si_liaisons",mode:"flash",q:"Tableau de synthèse — récapitule les 11 liaisons normalisées (schéma, degrés de liberté, torseur cinématique, torseur transmissible).",answer:"Voir le tableau de synthèse ci-dessous.",recap:"liaisons"},
+  {topic:"contrib_citoyenne",mode:"flash",q:"À quoi sert le chapitre « Contribution citoyenne » ?",answer:"Il rassemble des cartes proposées par la communauté — par exemple générées automatiquement à partir de photos de pages de cours partagées.",exp:"⚠️ Ces cartes ne sont PAS validées par un professeur : garde ton esprit critique. Le contenu vérifié se trouve dans les autres matières (Maths, Physique-Chimie, SI). Pour contribuer : partage une photo de ton cours, les cartes générées atterrissent ici."},
 {topic:"si_analyse",mode:"flash",q:"Qu'est-ce que le besoin auquel répond un système ?",answer:"C'est la raison d'être du système : le service qu'il doit rendre à ses utilisateurs (acteurs). On l'exprime en identifiant les acteurs qui interagissent avec le système et les services attendus — c'est l'objet du diagramme de cas d'utilisation (uc). Le besoin est le point de départ de toute la conception.",exp:"Exprimé par le client/utilisateur, le besoin est ensuite traduit en exigences techniques."},
   {topic:"si_analyse",mode:"flash",q:"Quelle est la différence entre un besoin et une exigence ?",answer:"Le besoin exprime une attente, souvent qualitative. L'exigence en est la traduction technique, qualifiée et quantifiée (un critère, un niveau/valeur, éventuellement une flexibilité). Un besoin se décline en plusieurs exigences.",exp:"« Traduire un besoin fonctionnel en exigences » est une compétence explicite du programme (A1)."},
   {topic:"si_analyse",mode:"flash",q:"Que signifie « qualifier et quantifier une exigence » ?",answer:"Qualifier = préciser le critère d'appréciation (la grandeur qui mesure l'exigence). Quantifier = lui associer un niveau : une valeur chiffrée avec son unité, et éventuellement une tolérance (flexibilité).",exp:"Une exigence non quantifiée n'est ni vérifiable ni évaluable."},
