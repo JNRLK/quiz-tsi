@@ -908,8 +908,10 @@ window.MathJax = {
       <div class="top-actions">
         <span id="syncIndicator" class="sync-ind hidden"></span>
         <div class="tool-bar" role="group" aria-label="Outils">
+          <button class="btn ghost mini icon-only" id="homeIconBtn" aria-label="Accueil" title="Retour à l'accueil"><span class="bi" aria-hidden="true">🏠</span><span class="bl">Accueil</span></button>
           <button class="btn ghost mini icon-only" id="statsBtn" aria-label="Ma progression" title="Ma progression"><span class="bi" aria-hidden="true">📊</span><span class="bl">Ma progression</span></button>
           <button class="btn ghost mini icon-only" id="juryBtn" aria-label="Mot du jury" title="Mot du jury"><span class="bi" aria-hidden="true">📋</span><span class="bl">Mot du jury</span></button>
+          <button class="btn ghost mini icon-only" id="lbIconBtn" aria-label="Classement" title="Classement de ma classe"><span class="bi" aria-hidden="true">🏅</span><span class="bl">Classement</span></button>
           <button class="btn ghost mini icon-only" id="advBtn" aria-pressed="false" aria-label="Inclure l'approfondissement" title="Cartes théoriques avancées (approfondissement) — s'applique à tous les modes"><span class="bi" aria-hidden="true">➕</span><span class="bl">Approfondissement</span></button>
           <button class="btn ghost mini icon-only hidden" id="adminBtn" aria-label="Vue classe" title="Vue classe"><span class="bi" aria-hidden="true">🎓</span><span class="bl">Vue classe</span></button>
         </div>
@@ -7975,24 +7977,20 @@ function _lbFooter(){
       (leaving ? Leaderboard.unpublish() : Leaderboard.publish(_lbPseudo())).catch(()=>{}).finally(renderLeaderboard);
     });
   }
-  const examBtn=$('#examBtn'), after=$('#formuBtn')||$('#colleBtn')||$('#sprintBtn')||examBtn;
-  if(after && !$('#lbBtn')){
-    const b=document.createElement('button'); b.className='btn ghost'; b.id='lbBtn'; b.type='button';
-    b.title="Classement de ta classe (série et cartes de la semaine) — participation volontaire";
-    b.textContent='🏅 Classement'; after.insertAdjacentElement('afterend', b);
-    b.onclick=()=>{ if(typeof showLeaderboard==='function') showLeaderboard(); };
-  }
+  // Le bouton « Classement » vit dans la barre d'icônes de l'en-tête (#lbIconBtn), pas dans la rangée d'actions.
 })();
-/* Retour à l'accueil GLOBAL : le titre du site (logo) ramène à l'accueil depuis n'importe quel écran. */
+/* Retour à l'accueil GLOBAL + boutons d'en-tête (🏠 Accueil, 🏅 Classement). */
+function goHomeSite(){
+  const qz=$('#quizScreen');
+  if(qz && !qz.classList.contains('hidden') && typeof goHomeFromQuiz==='function'){ goHomeFromQuiz(); return; }
+  ['quizScreen','resultScreen','statsScreen','adminScreen','juryScreen','examScreen','formulaireScreen','leaderboardScreen'].forEach(id=>{ const e=$('#'+id); if(e) e.classList.add('hidden'); });
+  const st=$('#startScreen'); if(st){ st.classList.remove('hidden'); st.scrollIntoView({behavior:'smooth',block:'start'}); }
+}
 (function(){
-  const brand=document.querySelector('.brand'); if(!brand || brand._homeWired) return; brand._homeWired=1;
-  brand.style.cursor='pointer'; brand.setAttribute('title',"Revenir à l'accueil");
-  brand.addEventListener('click', ()=>{
-    const qz=$('#quizScreen');
-    if(qz && !qz.classList.contains('hidden') && typeof goHomeFromQuiz==='function'){ goHomeFromQuiz(); return; }
-    ['quizScreen','resultScreen','statsScreen','adminScreen','juryScreen','examScreen','formulaireScreen','leaderboardScreen'].forEach(id=>{ const e=$('#'+id); if(e) e.classList.add('hidden'); });
-    const st=$('#startScreen'); if(st){ st.classList.remove('hidden'); st.scrollIntoView({behavior:'smooth',block:'start'}); }
-  });
+  const brand=document.querySelector('.brand');
+  if(brand && !brand._homeWired){ brand._homeWired=1; brand.style.cursor='pointer'; brand.setAttribute('title',"Revenir à l'accueil"); brand.addEventListener('click', goHomeSite); }
+  const hb=$('#homeIconBtn'); if(hb) hb.onclick=goHomeSite;
+  const lb=$('#lbIconBtn'); if(lb) lb.onclick=()=>{ if(typeof showLeaderboard==='function') showLeaderboard(); };
 })();
 
 
