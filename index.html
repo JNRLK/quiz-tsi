@@ -7526,6 +7526,8 @@ function flushSession(reason){
       .then(()=>{ if(reason==='done') cloudOk('☁️ Session sauvegardée'); })
       .catch(err=>{ console.warn('flush save', err); if(reason==='done') cloudErr('⚠️ Session non sauvegardée'); });
   }
+  // Classement d'office : met à jour l'entrée de l'élève (sauf retrait explicite). Silencieux.
+  try{ if(currentUser && localStorage.getItem('quiztsi_lb_optin')!=='0' && typeof Leaderboard!=='undefined') Leaderboard.publish(_lbPseudo()).catch(()=>{}); }catch(e){}
   return rec;
 }
 function showResults(){
@@ -7884,11 +7886,12 @@ function renderFormulaire(){
   }
 })();
 
-/* ====================== CLASSEMENT DE CLASSE (opt-in, anonymisable) ====================== */
-/* Motivation #7. Chaque élève CHOISIT d'apparaître (défaut : non). On publie une entrée minimale
-   dans la collection `leaderboard/{uid}` : nom affiché (au choix), année de classe, série, cartes de la
-   semaine. Lecture de la collection filtrée côté client par année. Nécessite des règles Firestore
-   (fournies séparément) ; dégrade proprement si absentes. Aucune donnée sensible, désactivable à tout moment. */
+/* ====================== CLASSEMENT DE CLASSE (d'office, retrait possible) ====================== */
+/* Motivation #7. Participation AUTOMATIQUE (par défaut) : dès qu'un élève connecté révise, son entrée est
+   publiée dans `leaderboard/{uid}` (pseudo, année de classe, série, cartes de la semaine). Lecture de la
+   collection filtrée côté client par année. Un élève peut se RETIRER (lien discret en pied d'écran →
+   localStorage quiztsi_lb_optin='0'). Nécessite des règles Firestore (fournies) ; dégrade proprement si
+   absentes. Aucune donnée sensible (ni note ni e-mail). */
 function _lbClassYear(){
   if(typeof lockedLevel!=='undefined' && lockedLevel && /^tsi[012]$/.test(lockedLevel)) return lockedLevel;
   try{ const p=JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); if(p && (p.annee===0||p.annee)) return 'tsi'+p.annee; }catch(e){}
@@ -7914,13 +7917,13 @@ function renderLeaderboard(){
   const body=$('#lbBody'); if(!body) return;
   if(typeof currentUser==='undefined' || !currentUser){ body.innerHTML='<div class="empty-state">Connecte-toi pour voir le classement de ta classe.</div>'; return; }
   body.innerHTML='<div class="empty-state">Chargement du classement…</div>';
-  const optedIn = localStorage.getItem('quiztsi_lb_optin')==='1';
+  _lbFooter();
   Leaderboard.fetch().then(all=>{
     const myYear=_lbClassYear();
     let list=all.filter(e=>e && e.optIn && e.annee===myYear);
     list.sort((a,b)=>((b.streak||0)-(a.streak||0))||((b.week||0)-(a.week||0)));
     const yr={tsi0:'TSI0',tsi1:'TSI1',tsi2:'TSI2'}[myYear]||myYear;
-    if(!list.length){ body.innerHTML='<div class="empty-state">Personne dans le classement '+yr+' pour l’instant.'+(optedIn?'':'<br>Active ta participation ci-dessus pour ouvrir le bal !')+'</div>'; return; }
+    if(!list.length){ body.innerHTML='<div class="empty-state">Personne dans le classement '+yr+' pour l’instant — sois le premier en révisant un peu !</div>'; _lbFooter(); return; }
     let html='<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Classe '+yr+' · '+list.length+' participant'+(list.length>1?'s':'')+' · classé par série 🔥 puis cartes de la semaine</div>';
     list.forEach((e,i)=>{
       const me = e.uid===currentUser.uid;
@@ -7931,48 +7934,46 @@ function renderLeaderboard(){
         +'<div style="font-size:13px;color:#fb923c;font-weight:700;white-space:nowrap">🔥 '+(e.streak||0)+'</div>'
         +'<div style="font-size:12.5px;color:var(--muted);white-space:nowrap">'+(e.week||0)+' cette sem.</div></div>';
     });
-    body.innerHTML=html;
+    body.innerHTML=html; _lbFooter();
   }).catch(err=>{
-    body.innerHTML='<div class="empty-state">Classement momentanément indisponible.<br><span style="font-size:12px;color:var(--muted)">('+((err&&(err.code||err.message))||err)+' — les règles Firestore du classement ne sont peut-être pas encore publiées.)</span></div>';
+    body.innerHTML='<div class="empty-state">Classement momentanément indisponible.<br><span style="font-size:12px;color:var(--muted)">('+((err&&(err.code||err.message))||err)+' — les règles Firestore du classement ne sont peut-être pas encore publiées.)</span></div>'; _lbFooter();
   });
 }
 window.showLeaderboard = function(){
   ['startScreen','quizScreen','resultScreen','statsScreen','adminScreen','juryScreen','examScreen','formulaireScreen'].forEach(id=>{ const e=$('#'+id); if(e) e.classList.add('hidden'); });
   const scr=$('#leaderboardScreen'); if(!scr) return;
   scr.classList.remove('hidden'); scr.scrollIntoView({behavior:'smooth',block:'start'});
-  const chk=$('#lbOptIn'); if(chk) chk.checked = localStorage.getItem('quiztsi_lb_optin')==='1';
-  const nm=$('#lbName'); if(nm && !nm.value) nm.value = localStorage.getItem('quiztsi_lb_name')||'';
-  if(localStorage.getItem('quiztsi_lb_optin')==='1' && typeof currentUser!=='undefined' && currentUser){
-    Leaderboard.publish((nm&&nm.value)|| _lbPseudo()).catch(()=>{}).finally(renderLeaderboard);
+  const participating = localStorage.getItem('quiztsi_lb_optin')!=='0';   // d'office : participe par défaut (sauf retrait explicite)
+  if(participating && typeof currentUser!=='undefined' && currentUser){
+    Leaderboard.publish(_lbPseudo()).catch(()=>{}).finally(renderLeaderboard);
   } else renderLeaderboard();
 };
+function _lbFooter(){
+  const foot=$('#lbFoot'); if(!foot) return;
+  if(typeof currentUser==='undefined' || !currentUser){ foot.innerHTML=''; return; }
+  const out = localStorage.getItem('quiztsi_lb_optin')==='0';
+  foot.innerHTML = out
+    ? 'Tu n’apparais pas dans le classement. <a href="#" data-lb-optout="in" style="color:var(--accent);cursor:pointer">Réapparaître</a>'
+    : 'Tu apparais automatiquement dans le classement de ta classe (ton pseudo, ta série et tes cartes de la semaine — rien d’autre). <a href="#" data-lb-optout="out" style="color:var(--muted);cursor:pointer;text-decoration:underline">Me retirer</a>';
+}
 /* Écran + bouton injectés (aucune modif de structure HTML) */
 (function(){
   const anchor = document.getElementById('juryScreen') || document.getElementById('startScreen');
   if(anchor && !document.getElementById('leaderboardScreen')){
     const scr=document.createElement('div'); scr.className='card hidden'; scr.id='leaderboardScreen';
-    scr.innerHTML='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">'
+    scr.innerHTML='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">'
       +'<p class="section-label" style="margin:0">🏅 Classement de ma classe</p>'
-      +'<button id="lbBack" class="btn ghost" style="margin-left:auto;padding:5px 12px;font-size:13px">← Retour</button></div>'
-      +'<div style="background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px">'
-      +'<label class="toggle" style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);cursor:pointer"><input type="checkbox" id="lbOptIn"> Apparaître dans le classement de ma classe</label>'
-      +'<input id="lbName" type="text" maxlength="24" placeholder="Nom affiché (laisse vide pour ton pseudo)" style="width:100%;margin-top:9px;padding:8px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg,#fff);color:var(--ink);font-size:14px;box-sizing:border-box">'
-      +'<div style="font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.5">Participation volontaire, désactivable à tout moment. Seuls ton nom affiché, ta série et tes cartes de la semaine sont partagés — avec ta classe uniquement. Aucune note, aucun e-mail.</div></div>'
-      +'<div id="lbBody"></div>';
+      +'<button id="lbHome" class="btn ghost" style="margin-left:auto;padding:5px 12px;font-size:13px">🏠 Accueil</button></div>'
+      +'<div id="lbBody"></div>'
+      +'<div id="lbFoot" style="font-size:11.5px;color:var(--muted);margin-top:16px;line-height:1.6;text-align:center"></div>';
     anchor.parentNode.appendChild(scr);
-    document.getElementById('lbBack').onclick=()=>{ scr.classList.add('hidden'); const st=$('#startScreen'); if(st){ st.classList.remove('hidden'); st.scrollIntoView({behavior:'smooth',block:'start'}); } };
-    const chk=document.getElementById('lbOptIn'), nm=document.getElementById('lbName');
-    chk.addEventListener('change', ()=>{
-      if(chk.checked){
-        if(typeof currentUser==='undefined' || !currentUser){ alert('Connecte-toi d’abord pour apparaître dans le classement.'); chk.checked=false; return; }
-        localStorage.setItem('quiztsi_lb_optin','1');
-        Leaderboard.publish((nm&&nm.value)||_lbPseudo()).catch(e=>{ alert('Impossible de publier ton entrée (règles Firestore ?).'); }).finally(renderLeaderboard);
-      } else {
-        localStorage.setItem('quiztsi_lb_optin','0');
-        Leaderboard.unpublish().finally(renderLeaderboard);
-      }
+    document.getElementById('lbHome').onclick=()=>{ scr.classList.add('hidden'); const st=$('#startScreen'); if(st){ st.classList.remove('hidden'); st.scrollIntoView({behavior:'smooth',block:'start'}); } };
+    // pied de page : retrait / réapparition (délégation sur les liens data-lb-optout)
+    scr.addEventListener('click', (ev)=>{ const t=ev.target.closest && ev.target.closest('[data-lb-optout]'); if(!t) return; ev.preventDefault();
+      const leaving = t.dataset.lbOptout==='out';
+      localStorage.setItem('quiztsi_lb_optin', leaving?'0':'1');
+      (leaving ? Leaderboard.unpublish() : Leaderboard.publish(_lbPseudo())).catch(()=>{}).finally(renderLeaderboard);
     });
-    nm.addEventListener('change', ()=>{ localStorage.setItem('quiztsi_lb_name', nm.value||''); if(localStorage.getItem('quiztsi_lb_optin')==='1'){ Leaderboard.publish(nm.value||_lbPseudo()).catch(()=>{}).finally(renderLeaderboard); } });
   }
   const examBtn=$('#examBtn'), after=$('#formuBtn')||$('#colleBtn')||$('#sprintBtn')||examBtn;
   if(after && !$('#lbBtn')){
@@ -7981,6 +7982,17 @@ window.showLeaderboard = function(){
     b.textContent='🏅 Classement'; after.insertAdjacentElement('afterend', b);
     b.onclick=()=>{ if(typeof showLeaderboard==='function') showLeaderboard(); };
   }
+})();
+/* Retour à l'accueil GLOBAL : le titre du site (logo) ramène à l'accueil depuis n'importe quel écran. */
+(function(){
+  const brand=document.querySelector('.brand'); if(!brand || brand._homeWired) return; brand._homeWired=1;
+  brand.style.cursor='pointer'; brand.setAttribute('title',"Revenir à l'accueil");
+  brand.addEventListener('click', ()=>{
+    const qz=$('#quizScreen');
+    if(qz && !qz.classList.contains('hidden') && typeof goHomeFromQuiz==='function'){ goHomeFromQuiz(); return; }
+    ['quizScreen','resultScreen','statsScreen','adminScreen','juryScreen','examScreen','formulaireScreen','leaderboardScreen'].forEach(id=>{ const e=$('#'+id); if(e) e.classList.add('hidden'); });
+    const st=$('#startScreen'); if(st){ st.classList.remove('hidden'); st.scrollIntoView({behavior:'smooth',block:'start'}); }
+  });
 })();
 
 
