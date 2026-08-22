@@ -8423,7 +8423,38 @@ const JURY_DATA = [
   {concours:'centrale', year:2024, subject:'si', theme:'Informatique & numérique', type:'synthese',
    text:"Méthodes numériques : ne pas confondre listes Python et vecteurs Numpy, ni dérivation arrière et avant. Dans une boucle « for », l'instruction i+=1 est inutile et fautive. La méthode des rectangles cumule des aires, elle ne donne pas la valeur instantanée."},
   {concours:'centrale', year:2024, subject:'si', theme:'Informatique & numérique', type:'citation',
-   text:"Lecture d'un graphe d'états (SysML) : les états orthogonaux (parallèles) sont mal maîtrisés et compliquent le calcul de la durée d'un cycle."}
+   text:"Lecture d'un graphe d'états (SysML) : les états orthogonaux (parallèles) sont mal maîtrisés et compliquent le calcul de la durée d'un cycle."},
+  /* ——— Centrale-Supélec TSI 2026 (Mathématiques) ——— */
+  {concours:'centrale', year:2026, theme:'Algèbre linéaire', type:'synthese',
+   text:"Synthèse : une erreur persistante à corriger. Certains candidats affirment que si le produit de deux matrices $AB = 0$, alors l'une des deux matrices est nulle. C'est faux : il est facile de construire deux matrices non nulles dont le produit est nul. Un contre-exemple classique : deux matrices de projection sur des sous-espaces disjoints."},
+  {concours:'centrale', year:2026, theme:'Algèbre linéaire', type:'citation',
+   text:"Beaucoup d'erreurs ont été notées dans la résolution de systèmes linéaires, notamment pour la recherche du noyau d'une matrice. Le calcul du rang d'une matrice échelonnée doit être connu et justifié sans ambiguïté."},
+  {concours:'centrale', year:2026, theme:'Analyse', type:'citation',
+   text:"L'équation du plan tangent en un point $M_0$ d'une surface explicite $z=f(x,y)$ est rarement correctement écrite. Le plan tangent passe par $M_0$ et a pour vecteur normal le gradient de la fonction ; vérifier que le gradient en $M_0$ est bien orthogonal au plan tangent."},
+  {concours:'centrale', year:2026, theme:'Cours & théorèmes', type:'citation',
+   text:"La maîtrise des notions de sous-espaces (noyau, image, orthogonal d'une matrice) est essentielle. Trop de candidats confondent l'orthogonal d'un sous-espace avec son complémentaire algébrique — ce ne sont que des cas particuliers l'un de l'autre."},
+  {concours:'centrale', year:2026, theme:'Rédaction', type:'citation',
+   text:"Trop de productions écrites ont été pénalisées par un manque de présentation : écriture difficilement lisible, non-respect de la langue, manque de clarté de l'expression, défaut de propreté, identification insuffisante des questions, résultats non clairement mis en évidence. Chaque résultat doit être encadré ou souligné."},
+  {concours:'centrale', year:2026, theme:'Analyse', type:'citation',
+   text:"La différence entre convexité et stricte convexité est mal comprise. Certains candidats ne traitent la différence que pour des fonctions particulières ; pourtant, une fonction convexe n'est pas forcément strictement convexe — la fonction constante en témoigne."},
+  {concours:'centrale', year:2026, theme:'Algèbre linéaire', type:'citation',
+   text:"Les relations entre trace et déterminant d'une matrice M et ses valeurs propres sont souvent confondues. La trace égale la somme des valeurs propres ; le déterminant égale leur produit. Ces propriétés fondamentales doivent être maîtrisées et citées précisément."},
+  {concours:'centrale', year:2026, theme:'Cours & théorèmes', type:'citation',
+   text:"Quand on prouve une équivalence, il faut préciser si l'on raisonne par équivalence ou par implication double, auquel cas chaque sens doit être clairement indiqué et prouvé séparément. Ne jamais confondre ces deux approches — la rigueur logique est attendue."},
+
+  /* ——— Centrale-Supélec TSI 2026 (Physique-Chimie) ——— */
+  {concours:'centrale', year:2026, subject:'physique', theme:'Électricité & électromagnétisme', type:'citation',
+   text:"Les conventions récepteur et générateur doivent être clairement appliquées. Beaucoup de candidats confondent tension et potentiel, et perdent des points en raison de manque de rigueur sur les signes et les orientations des circuits."},
+  {concours:'centrale', year:2026, subject:'physique', theme:'Thermodynamique', type:'citation',
+   text:"L'application numérique doit être vérifiée par un test de vraisemblance : vérifier que le résultat obtenu a un ordre de grandeur physique raisonnable. Trop de candidats obtiennent des résultats aberrants (ex. une température en kelvin incohérente) sans les questionner."},
+  {concours:'centrale', year:2026, subject:'physique', theme:'Méthode & rédaction', type:'citation',
+   text:"En physique-chimie comme ailleurs, chaque calcul doit être accompagné d'une justification : quelle formule ? quelles hypothèses ? Beaucoup de copies ne sont qu'une succession de calculs sans aucune explication — la clarté est une compétence essentielle."},
+
+  /* ——— Centrale-Supélec TSI 2026 (Sciences de l'Ingénieur) ——— */
+  {concours:'centrale', year:2026, subject:'si', theme:'Statique & dynamique', type:'citation',
+   text:"La cinématique et la dynamique doivent être rigoureusement distinguées. Ne pas confondre la condition de non-glissement (cinématique) avec l'équation de la dynamique. Les hypothèses simplificatrices doivent être énoncées et justifiées."},
+  {concours:'centrale', year:2026, subject:'si', theme:'Asservissement (SLCI)', type:'citation',
+   text:"La modélisation d'un système (fonction de transfert, équation différentielle) exige de la rigueur. Beaucoup de candidats oublient ou mal appliquent les conditions initiales, ce qui invalide la solution. Toujours clarifier le domaine de validité du modèle."}
 ];
 
 const JURY_THEMES_BY_SUBJECT = {
