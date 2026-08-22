@@ -7884,6 +7884,106 @@ function renderFormulaire(){
   }
 })();
 
+/* ====================== CLASSEMENT DE CLASSE (opt-in, anonymisable) ====================== */
+/* Motivation #7. Chaque élève CHOISIT d'apparaître (défaut : non). On publie une entrée minimale
+   dans la collection `leaderboard/{uid}` : nom affiché (au choix), année de classe, série, cartes de la
+   semaine. Lecture de la collection filtrée côté client par année. Nécessite des règles Firestore
+   (fournies séparément) ; dégrade proprement si absentes. Aucune donnée sensible, désactivable à tout moment. */
+function _lbClassYear(){
+  if(typeof lockedLevel!=='undefined' && lockedLevel && /^tsi[012]$/.test(lockedLevel)) return lockedLevel;
+  try{ const p=JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); if(p && (p.annee===0||p.annee)) return 'tsi'+p.annee; }catch(e){}
+  return (typeof activeLevel!=='undefined') ? activeLevel : 'tsi1';
+}
+function _lbPseudo(){
+  try{ const p=JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); if(p && p.pseudo) return p.pseudo; }catch(e){}
+  if(typeof currentUser!=='undefined' && currentUser){ if(currentUser.displayName) return currentUser.displayName; if(currentUser.email) return currentUser.email.split('@')[0]; }
+  return 'Élève';
+}
+function _lbWeekCards(){ try{ const d=SRS._d(), t0=Date.now()-7*86400000; return (d.reviewLog||[]).filter(r=>r&&r.t>=t0).length; }catch(e){ return 0; } }
+const Leaderboard = {
+  async publish(name){
+    if(typeof currentUser==='undefined' || !currentUser) return;
+    const entry={ name:String(name||_lbPseudo()).replace(/[<>]/g,'').slice(0,24), annee:_lbClassYear(),
+      streak:(SRS&&SRS.streakCount?SRS.streakCount():0), week:_lbWeekCards(), optIn:true, updatedAt:serverTimestamp() };
+    await setDoc(doc(db,'leaderboard',currentUser.uid), entry, {merge:true});
+  },
+  async unpublish(){ if(typeof currentUser==='undefined'||!currentUser) return; try{ await setDoc(doc(db,'leaderboard',currentUser.uid),{optIn:false},{merge:true}); }catch(e){} },
+  async fetch(){ const qs=await getDocs(collection(db,'leaderboard')); return qs.docs.map(d=>({uid:d.id, ...d.data()})); }
+};
+function renderLeaderboard(){
+  const body=$('#lbBody'); if(!body) return;
+  if(typeof currentUser==='undefined' || !currentUser){ body.innerHTML='<div class="empty-state">Connecte-toi pour voir le classement de ta classe.</div>'; return; }
+  body.innerHTML='<div class="empty-state">Chargement du classement…</div>';
+  const optedIn = localStorage.getItem('quiztsi_lb_optin')==='1';
+  Leaderboard.fetch().then(all=>{
+    const myYear=_lbClassYear();
+    let list=all.filter(e=>e && e.optIn && e.annee===myYear);
+    list.sort((a,b)=>((b.streak||0)-(a.streak||0))||((b.week||0)-(a.week||0)));
+    const yr={tsi0:'TSI0',tsi1:'TSI1',tsi2:'TSI2'}[myYear]||myYear;
+    if(!list.length){ body.innerHTML='<div class="empty-state">Personne dans le classement '+yr+' pour l’instant.'+(optedIn?'':'<br>Active ta participation ci-dessus pour ouvrir le bal !')+'</div>'; return; }
+    let html='<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Classe '+yr+' · '+list.length+' participant'+(list.length>1?'s':'')+' · classé par série 🔥 puis cartes de la semaine</div>';
+    list.forEach((e,i)=>{
+      const me = e.uid===currentUser.uid;
+      const rank = i===0?'🥇':i===1?'🥈':i===2?'🥉':('<span style="color:var(--muted)">'+(i+1)+'</span>');
+      html+='<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;margin-bottom:6px;background:'+(me?'color-mix(in srgb,var(--accent) 14%,var(--panel-2))':'var(--panel-2)')+';border:1px solid '+(me?'var(--accent)':'var(--line)')+'">'
+        +'<div style="width:28px;text-align:center;font-size:16px;font-weight:700">'+rank+'</div>'
+        +'<div style="flex:1;font-weight:'+(me?'700':'600')+';font-size:14px">'+String(e.name||'Élève').replace(/[<>]/g,'')+(me?' <span style="font-size:11px;color:var(--accent)">(toi)</span>':'')+'</div>'
+        +'<div style="font-size:13px;color:#fb923c;font-weight:700;white-space:nowrap">🔥 '+(e.streak||0)+'</div>'
+        +'<div style="font-size:12.5px;color:var(--muted);white-space:nowrap">'+(e.week||0)+' cette sem.</div></div>';
+    });
+    body.innerHTML=html;
+  }).catch(err=>{
+    body.innerHTML='<div class="empty-state">Classement momentanément indisponible.<br><span style="font-size:12px;color:var(--muted)">('+((err&&(err.code||err.message))||err)+' — les règles Firestore du classement ne sont peut-être pas encore publiées.)</span></div>';
+  });
+}
+window.showLeaderboard = function(){
+  ['startScreen','quizScreen','resultScreen','statsScreen','adminScreen','juryScreen','examScreen','formulaireScreen'].forEach(id=>{ const e=$('#'+id); if(e) e.classList.add('hidden'); });
+  const scr=$('#leaderboardScreen'); if(!scr) return;
+  scr.classList.remove('hidden'); scr.scrollIntoView({behavior:'smooth',block:'start'});
+  const chk=$('#lbOptIn'); if(chk) chk.checked = localStorage.getItem('quiztsi_lb_optin')==='1';
+  const nm=$('#lbName'); if(nm && !nm.value) nm.value = localStorage.getItem('quiztsi_lb_name')||'';
+  if(localStorage.getItem('quiztsi_lb_optin')==='1' && typeof currentUser!=='undefined' && currentUser){
+    Leaderboard.publish((nm&&nm.value)|| _lbPseudo()).catch(()=>{}).finally(renderLeaderboard);
+  } else renderLeaderboard();
+};
+/* Écran + bouton injectés (aucune modif de structure HTML) */
+(function(){
+  const anchor = document.getElementById('juryScreen') || document.getElementById('startScreen');
+  if(anchor && !document.getElementById('leaderboardScreen')){
+    const scr=document.createElement('div'); scr.className='card hidden'; scr.id='leaderboardScreen';
+    scr.innerHTML='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">'
+      +'<p class="section-label" style="margin:0">🏅 Classement de ma classe</p>'
+      +'<button id="lbBack" class="btn ghost" style="margin-left:auto;padding:5px 12px;font-size:13px">← Retour</button></div>'
+      +'<div style="background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px">'
+      +'<label class="toggle" style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);cursor:pointer"><input type="checkbox" id="lbOptIn"> Apparaître dans le classement de ma classe</label>'
+      +'<input id="lbName" type="text" maxlength="24" placeholder="Nom affiché (laisse vide pour ton pseudo)" style="width:100%;margin-top:9px;padding:8px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg,#fff);color:var(--ink);font-size:14px;box-sizing:border-box">'
+      +'<div style="font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.5">Participation volontaire, désactivable à tout moment. Seuls ton nom affiché, ta série et tes cartes de la semaine sont partagés — avec ta classe uniquement. Aucune note, aucun e-mail.</div></div>'
+      +'<div id="lbBody"></div>';
+    anchor.parentNode.appendChild(scr);
+    document.getElementById('lbBack').onclick=()=>{ scr.classList.add('hidden'); const st=$('#startScreen'); if(st){ st.classList.remove('hidden'); st.scrollIntoView({behavior:'smooth',block:'start'}); } };
+    const chk=document.getElementById('lbOptIn'), nm=document.getElementById('lbName');
+    chk.addEventListener('change', ()=>{
+      if(chk.checked){
+        if(typeof currentUser==='undefined' || !currentUser){ alert('Connecte-toi d’abord pour apparaître dans le classement.'); chk.checked=false; return; }
+        localStorage.setItem('quiztsi_lb_optin','1');
+        Leaderboard.publish((nm&&nm.value)||_lbPseudo()).catch(e=>{ alert('Impossible de publier ton entrée (règles Firestore ?).'); }).finally(renderLeaderboard);
+      } else {
+        localStorage.setItem('quiztsi_lb_optin','0');
+        Leaderboard.unpublish().finally(renderLeaderboard);
+      }
+    });
+    nm.addEventListener('change', ()=>{ localStorage.setItem('quiztsi_lb_name', nm.value||''); if(localStorage.getItem('quiztsi_lb_optin')==='1'){ Leaderboard.publish(nm.value||_lbPseudo()).catch(()=>{}).finally(renderLeaderboard); } });
+  }
+  const examBtn=$('#examBtn'), after=$('#formuBtn')||$('#colleBtn')||$('#sprintBtn')||examBtn;
+  if(after && !$('#lbBtn')){
+    const b=document.createElement('button'); b.className='btn ghost'; b.id='lbBtn'; b.type='button';
+    b.title="Classement de ta classe (série et cartes de la semaine) — participation volontaire";
+    b.textContent='🏅 Classement'; after.insertAdjacentElement('afterend', b);
+    b.onclick=()=>{ if(typeof showLeaderboard==='function') showLeaderboard(); };
+  }
+})();
+
+
 document.addEventListener('keydown', e=>{
   if(!EXAM || EXAM.done || $('#examScreen').classList.contains('hidden')) return;
   const tag=(e.target.tagName||'').toLowerCase(); if(tag==='input'||tag==='textarea') return;
