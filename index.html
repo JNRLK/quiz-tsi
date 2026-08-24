@@ -911,6 +911,7 @@ window.MathJax = {
           <button class="btn ghost mini icon-only" id="homeIconBtn" aria-label="Accueil" title="Retour à l'accueil"><span class="bi" aria-hidden="true">🏠</span><span class="bl">Accueil</span></button>
           <button class="btn ghost mini icon-only" id="statsBtn" aria-label="Ma progression" title="Ma progression"><span class="bi" aria-hidden="true">📊</span><span class="bl">Ma progression</span></button>
           <button class="btn ghost mini icon-only" id="juryBtn" aria-label="Mot du jury" title="Mot du jury"><span class="bi" aria-hidden="true">📋</span><span class="bl">Mot du jury</span></button>
+          <button class="btn ghost mini icon-only" id="coursIconBtn" aria-label="Cours" title="Lire le cours chapitre par chapitre"><span class="bi" aria-hidden="true">📚</span><span class="bl">Cours</span></button>
           <button class="btn ghost mini icon-only" id="lbIconBtn" aria-label="Classement" title="Classement de ma classe"><span class="bi" aria-hidden="true">🏅</span><span class="bl">Classement</span></button>
           <button class="btn ghost mini icon-only" id="advBtn" aria-pressed="false" aria-label="Inclure l'approfondissement" title="Cartes théoriques avancées (approfondissement) — s'applique à tous les modes"><span class="bi" aria-hidden="true">➕</span><span class="bl">Approfondissement</span></button>
           <button class="btn ghost mini icon-only hidden" id="adminBtn" aria-label="Vue classe" title="Vue classe"><span class="bi" aria-hidden="true">🎓</span><span class="bl">Vue classe</span></button>
@@ -7984,6 +7985,112 @@ function _lbFooter(){
   }
   // Le bouton « Classement » vit dans la barre d'icônes de l'en-tête (#lbIconBtn), pas dans la rangée d'actions.
 })();
+
+/* ====================== MODE COURS (parcourir les fiches comme un livre) ======================
+   Les 547 fiches de NOTION_HTML n'étaient accessibles qu'en ratant une carte. Cet écran permet de
+   les lire chapitre par chapitre : Chapitres → Notions du chapitre → Fiche (avec précédent/suivant).
+   L'index est reconstruit depuis CARD_NOTION : une fiche appartient au chapitre des cartes qui la
+   référencent, et l'ordre des cartes dans QUESTIONS donne l'ordre pédagogique. Lecture seule :
+   aucune écriture SRS, aucun énoncé touché. */
+let _courseIdx = null, _courseState = {topic:null, i:0};
+function courseIndex(){
+  if(_courseIdx) return _courseIdx;
+  const idx = {}, seen = {};
+  if(typeof QUESTIONS==='undefined' || typeof CARD_NOTION==='undefined' || typeof NOTION_HTML==='undefined') return (_courseIdx = idx);
+  for(const q of QUESTIONS){
+    const k = CARD_NOTION[qHash(q.q)];
+    if(!k || !NOTION_HTML[k]) continue;
+    if(!idx[q.topic]){ idx[q.topic] = []; seen[q.topic] = new Set(); }
+    if(!seen[q.topic].has(k)){ seen[q.topic].add(k); idx[q.topic].push(k); }
+  }
+  return (_courseIdx = idx);
+}
+function courseTitle(k){ return (typeof NOTION_TITLE!=='undefined' && NOTION_TITLE[k]) ? NOTION_TITLE[k] : k; }
+function renderCourseChapters(){
+  const body = $('#coursBody'); if(!body) return;
+  const idx = courseIndex();
+  const order = Object.keys(TOPICS);                       // ordre de déclaration = ordre du programme
+  const keys = Object.keys(idx).filter(t => inActiveScope(t) && idx[t].length)
+                               .sort((a,b) => order.indexOf(a) - order.indexOf(b));
+  const sname = (typeof SUBJECTS!=='undefined' && SUBJECTS[activeSubject]) ? SUBJECTS[activeSubject].name : '';
+  if(!keys.length){ body.innerHTML = '<div class="empty-state">Aucune fiche de cours pour cette matière.</div>'; return; }
+  const nFiches = keys.reduce((n,t)=>n+idx[t].length, 0);
+  let html = `<div style="font-size:12.5px;color:var(--muted);margin-bottom:12px">${sname} · ${keys.length} chapitre${keys.length>1?'s':''} · ${nFiches} fiche${nFiches>1?'s':''} de cours</div>`;
+  for(const t of keys){
+    const info = TOPICS[t] || {name:t, raw:'#888'};
+    html += `<button type="button" data-ctopic="${t}" style="display:flex;align-items:center;gap:11px;width:100%;text-align:left;
+      background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;font-family:inherit;color:var(--ink)">
+      <span style="width:10px;height:10px;border-radius:3px;background:${info.raw};flex:none"></span>
+      <span style="flex:1;font-size:14.5px;font-weight:600">${info.name}</span>
+      <span style="font-size:12px;color:var(--muted);white-space:nowrap">${idx[t].length} fiche${idx[t].length>1?'s':''}</span>
+      <span style="color:var(--muted)">›</span></button>`;
+  }
+  body.innerHTML = html;
+  body.querySelectorAll('[data-ctopic]').forEach(b => b.onclick = () => { _courseState = {topic:b.dataset.ctopic, i:0}; renderCourseNotions(); });
+  const bk = $('#coursBack'); if(bk) bk.style.display = 'none';
+}
+function renderCourseNotions(){
+  const body = $('#coursBody'); if(!body) return;
+  const t = _courseState.topic, list = courseIndex()[t] || [];
+  const info = TOPICS[t] || {name:t, raw:'#888'};
+  let html = `<div style="display:flex;align-items:center;gap:9px;margin-bottom:12px">
+      <span style="width:10px;height:10px;border-radius:3px;background:${info.raw}"></span>
+      <b style="font-size:15px">${info.name}</b>
+      <span style="font-size:12px;color:var(--muted);margin-left:auto">${list.length} fiche${list.length>1?'s':''}</span></div>`;
+  list.forEach((k,i) => {
+    html += `<button type="button" data-cnote="${i}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+      background:var(--panel-2);border:1px solid var(--line);border-radius:11px;padding:11px 13px;margin-bottom:7px;cursor:pointer;font-family:inherit;color:var(--ink)">
+      <span style="width:22px;height:22px;border-radius:50%;background:color-mix(in srgb,${info.raw} 22%,transparent);
+        display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;flex:none">${i+1}</span>
+      <span style="flex:1;font-size:14px">${courseTitle(k)}</span>
+      <span style="color:var(--muted)">›</span></button>`;
+  });
+  body.innerHTML = html;
+  body.querySelectorAll('[data-cnote]').forEach(b => b.onclick = () => { _courseState.i = +b.dataset.cnote; renderCourseSheet(); });
+  const bk = $('#coursBack'); if(bk){ bk.style.display = ''; bk.textContent = '← Chapitres'; bk.onclick = renderCourseChapters; }
+  const sc = $('#coursScreen'); if(sc) sc.scrollIntoView({behavior:'smooth', block:'start'});
+}
+function renderCourseSheet(){
+  const body = $('#coursBody'); if(!body) return;
+  const t = _courseState.topic, list = courseIndex()[t] || [], i = _courseState.i, k = list[i];
+  if(!k) return renderCourseNotions();
+  const info = TOPICS[t] || {name:t, raw:'#888'};
+  const nav = `<div style="display:flex;align-items:center;gap:8px;margin-top:16px">
+      <button type="button" id="coursPrev" class="btn ghost" style="padding:7px 13px;font-size:13px"${i===0?' disabled style="opacity:.4;padding:7px 13px;font-size:13px"':''}>◀ Précédent</button>
+      <span style="font-size:12px;color:var(--muted);margin:0 auto">${i+1} / ${list.length}</span>
+      <button type="button" id="coursNext" class="btn ghost" style="padding:7px 13px;font-size:13px"${i===list.length-1?' disabled style="opacity:.4;padding:7px 13px;font-size:13px"':''}>Suivant ▶</button>
+    </div>`;
+  body.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-bottom:10px">${info.name}</div>`
+    + `<div class="course-sheet" style="background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:16px 18px">${NOTION_HTML[k]}</div>` + nav;
+  const p = $('#coursPrev'), n = $('#coursNext');
+  if(p && i>0) p.onclick = () => { _courseState.i--; renderCourseSheet(); };
+  if(n && i<list.length-1) n.onclick = () => { _courseState.i++; renderCourseSheet(); };
+  const bk = $('#coursBack'); if(bk){ bk.style.display = ''; bk.textContent = '← Notions'; bk.onclick = renderCourseNotions; }
+  if(typeof typeset==='function') typeset(body);
+  const sc = $('#coursScreen'); if(sc) sc.scrollIntoView({behavior:'smooth', block:'start'});
+}
+window.showCourse = function(){
+  ['startScreen','quizScreen','resultScreen','statsScreen','adminScreen','juryScreen','examScreen','formulaireScreen','leaderboardScreen'].forEach(id=>{ const e=$('#'+id); if(e) e.classList.add('hidden'); });
+  const sc = $('#coursScreen'); if(!sc) return;
+  sc.classList.remove('hidden'); sc.scrollIntoView({behavior:'smooth', block:'start'});
+  renderCourseChapters();
+};
+/* Écran injecté (aucune modification de la structure HTML existante) */
+(function(){
+  const anchor = document.getElementById('juryScreen') || document.getElementById('startScreen');
+  if(anchor && !document.getElementById('coursScreen')){
+    const scr = document.createElement('div'); scr.className = 'card hidden'; scr.id = 'coursScreen';
+    scr.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">'
+      + '<p class="section-label" style="margin:0">📚 Cours</p>'
+      + '<button id="coursBack" class="btn ghost" style="padding:5px 12px;font-size:13px;display:none">← Chapitres</button>'
+      + '<button id="coursHome" class="btn ghost" style="margin-left:auto;padding:5px 12px;font-size:13px">🏠 Accueil</button></div>'
+      + '<div id="coursBody"></div>';
+    anchor.parentNode.appendChild(scr);
+    document.getElementById('coursHome').onclick = () => { scr.classList.add('hidden'); const st=$('#startScreen'); if(st){ st.classList.remove('hidden'); st.scrollIntoView({behavior:'smooth',block:'start'}); } };
+  }
+  const cb = $('#coursIconBtn'); if(cb) cb.onclick = () => { if(typeof showCourse==='function') showCourse(); };
+})();
+
 /* Retour à l'accueil GLOBAL + boutons d'en-tête (🏠 Accueil, 🏅 Classement). */
 function goHomeSite(){
   const qz=$('#quizScreen');
