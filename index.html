@@ -1632,6 +1632,17 @@ function effLevel(){
   if(lockedLevel) return allowedLevels().includes(activeLevel) ? activeLevel : lockedLevel;  // élève : année choisie parmi celles autorisées
   return activeLevel;                                     // admin : navigation libre
 }
+/* Scope « matière choisie » indépendant de la matière active de l'accueil : permet aux écrans
+   Cours et Progression d'avoir leur propre sélecteur sans perturber la sélection de révision. */
+function scopeLevelFor(subject){
+  if(isTransversal(subject)) return 'tr';
+  const AL = allowedLevels();
+  return AL.includes(activeLevel) ? activeLevel : (lockedLevel || activeLevel);
+}
+function inScopeOf(topicKey, subject){
+  const t = TOPICS[topicKey];
+  return !!t && t.subject === subject && t.level === scopeLevelFor(subject);
+}
 function inActiveScope(topicKey){ const t = TOPICS[topicKey]; return !!t && t.subject === activeSubject && t.level === effLevel(); }
 function subjectsWithContent(){ return Object.keys(SUBJECTS).filter(s => isTransversal(s) ? hasContent(s,'tr') : ['tsi0','tsi1','tsi2'].some(l=>hasContent(s,l))).sort((a,b)=>SUBJECTS[a].order-SUBJECTS[b].order); }
 function levelsWithContent(subject){ if(isTransversal(subject)) return []; return ['tsi0','tsi1','tsi2'].filter(l=>hasContent(subject,l)).sort((a,b)=>LEVELS[a].order-LEVELS[b].order); }
@@ -6470,13 +6481,31 @@ function renderDailyWidget(){
   const ge=$('#goalEdit'); if(ge) ge.onclick=()=>{ const goals=[10,20,30,50,80]; const cur=getDailyGoal(); const next=goals[(goals.indexOf(cur)+1)%goals.length]||20; setDailyGoal(next); renderDailyWidget(); };
 }
 
+let _radarSubject = null;
+/* Sélecteur de matière du radar (sinon la progression n'est visible que pour la matière active). */
+function radarSubjects(){
+  return Object.keys(SUBJECTS).filter(s => Object.keys(TOPICS).some(t => inScopeOf(t, s)
+           && QUESTIONS.some(q => q.topic === t)))
+         .sort((a,b) => SUBJECTS[a].order - SUBJECTS[b].order);
+}
+function radarSubjectBar(cur){
+  const subs = radarSubjects(); if(subs.length < 2) return '';
+  return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 10px">' + subs.map(s => {
+    const on = s === cur;
+    return '<button type="button" data-rsub="' + s + '" style="padding:5px 12px;border-radius:20px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:'
+      + (on?'700':'500') + ';border:1px solid ' + (on?'var(--accent)':'var(--line)') + ';background:'
+      + (on?'color-mix(in srgb,var(--accent) 18%,transparent)':'transparent') + ';color:' + (on?'var(--ink)':'var(--muted)') + '">'
+      + SUBJECTS[s].name + '</button>';
+  }).join('') + '</div>';
+}
 /* ====================== RADAR DE MAÎTRISE PAR FAMILLE ======================
    Pour la matière active : score de maîtrise (0-100 %) par famille, agrégé sur les cartes du périmètre
    (inActiveScope). Score par carte : jamais vue 0 · en apprentissage 0,3 · jeune 0,6 · mature (≥21 j) 1. */
-function familyMastery(){
+function familyMastery(subject){
+  const sub = subject || activeSubject;
   const d = SRS._d(), fams = {};
   QUESTIONS.forEach(q=>{
-    if(!inActiveScope(q.topic)) return;
+    if(!inScopeOf(q.topic, sub)) return;
     const t = TOPICS[q.topic]; if(!t) return;
     const fam = t.family, F = FAMILIES[fam]; if(!F) return;
     const c = d.cards[qHash(q.q)];
@@ -8033,7 +8062,27 @@ function _lbFooter(){
    L'index est reconstruit depuis CARD_NOTION : une fiche appartient au chapitre des cartes qui la
    référencent, et l'ordre des cartes dans QUESTIONS donne l'ordre pédagogique. Lecture seule :
    aucune écriture SRS, aucun énoncé touché. */
-let _courseIdx = null, _courseState = {topic:null, i:0};
+let _courseIdx = null, _courseState = {topic:null, i:0}, _courseSubject = null;
+/* Sélecteur de matière propre à l'écran Cours (sinon on ne voit que la matière active de l'accueil). */
+function courseSubjects(){
+  const idx = courseIndex();
+  return Object.keys(SUBJECTS).filter(s => Object.keys(idx).some(t => inScopeOf(t, s) && idx[t].length))
+                              .sort((a,b) => SUBJECTS[a].order - SUBJECTS[b].order);
+}
+function courseSubjectBar(){
+  const subs = courseSubjects(); if(subs.length < 2) return '';
+  const cur = _courseSubject || activeSubject;
+  return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">' + subs.map(s => {
+    const on = s === cur;
+    return '<button type="button" data-csub="' + s + '" style="padding:6px 13px;border-radius:20px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:'
+      + (on?'700':'500') + ';border:1px solid ' + (on?'var(--accent)':'var(--line)') + ';background:'
+      + (on?'color-mix(in srgb,var(--accent) 18%,transparent)':'transparent') + ';color:' + (on?'var(--ink)':'var(--muted)') + '">'
+      + SUBJECTS[s].name + '</button>';
+  }).join('') + '</div>';
+}
+function wireCourseSubjectBar(host){
+  host.querySelectorAll('[data-csub]').forEach(b => b.onclick = () => { _courseSubject = b.dataset.csub; renderCourseChapters(); });
+}
 function courseIndex(){
   if(_courseIdx) return _courseIdx;
   const idx = {}, seen = {};
@@ -8051,12 +8100,14 @@ function renderCourseChapters(){
   const body = $('#coursBody'); if(!body) return;
   const idx = courseIndex();
   const order = Object.keys(TOPICS);                       // ordre de déclaration = ordre du programme
-  const keys = Object.keys(idx).filter(t => inActiveScope(t) && idx[t].length)
+  const sub = _courseSubject || (_courseSubject = activeSubject);
+  const keys = Object.keys(idx).filter(t => inScopeOf(t, sub) && idx[t].length)
                                .sort((a,b) => order.indexOf(a) - order.indexOf(b));
-  const sname = (typeof SUBJECTS!=='undefined' && SUBJECTS[activeSubject]) ? SUBJECTS[activeSubject].name : '';
-  if(!keys.length){ body.innerHTML = '<div class="empty-state">Aucune fiche de cours pour cette matière.</div>'; return; }
+  const sname = (typeof SUBJECTS!=='undefined' && SUBJECTS[sub]) ? SUBJECTS[sub].name : '';
+  let html = courseSubjectBar();
+  if(!keys.length){ body.innerHTML = html + '<div class="empty-state">Aucune fiche de cours pour cette matière.</div>'; wireCourseSubjectBar(body); return; }
   const nFiches = keys.reduce((n,t)=>n+idx[t].length, 0);
-  let html = `<div style="font-size:12.5px;color:var(--muted);margin-bottom:12px">${sname} · ${keys.length} chapitre${keys.length>1?'s':''} · ${nFiches} fiche${nFiches>1?'s':''} de cours</div>`;
+  html += `<div style="font-size:12.5px;color:var(--muted);margin-bottom:12px">${sname} · ${keys.length} chapitre${keys.length>1?'s':''} · ${nFiches} fiche${nFiches>1?'s':''} de cours</div>`;
   for(const t of keys){
     const info = TOPICS[t] || {name:t, raw:'#888'};
     html += `<button type="button" data-ctopic="${t}" style="display:flex;align-items:center;gap:11px;width:100%;text-align:left;
@@ -8068,6 +8119,7 @@ function renderCourseChapters(){
   }
   body.innerHTML = html;
   body.querySelectorAll('[data-ctopic]').forEach(b => b.onclick = () => { _courseState = {topic:b.dataset.ctopic, i:0}; renderCourseNotions(); });
+  wireCourseSubjectBar(body);
   const bk = $('#coursBack'); if(bk) bk.style.display = 'none';
 }
 function renderCourseNotions(){
@@ -8429,10 +8481,12 @@ async function renderStats(){
 
     // Répartition par maturité
     try{
-      const _fams = familyMastery();
+      const _rsub = _radarSubject || (_radarSubject = activeSubject);
+      const _fams = familyMastery(_rsub);
       if(_fams.length>=3){
-        const _sn = (SUBJECTS[activeSubject]||{}).name || '';
+        const _sn = (SUBJECTS[_rsub]||{}).name || '';
         html += `<p class="section-label">Maîtrise par famille — ${_sn}</p>`;
+        html += radarSubjectBar(_rsub);
         html += masteryRadarSVG(_fams);
         html += `<p style="font-size:11.5px;color:var(--muted);margin:2px 0 20px;line-height:1.5;text-align:center">Plus l'aire est grande, mieux la famille est maîtrisée. Un sommet rentré = famille à retravailler en priorité.</p>`;
       }
@@ -8500,6 +8554,7 @@ async function renderStats(){
   body.innerHTML = html;
   const lg=$('#statsLogin'); if(lg) lg.onclick=openAuth;
   const spb=$('#shareProgBtn'); if(spb) spb.onclick=()=>window.shareProgress&&window.shareProgress();
+  body.querySelectorAll('[data-rsub]').forEach(b => b.onclick = () => { _radarSubject = b.dataset.rsub; renderStats(); });
   typeset(body);
 }
 function showStats(){
