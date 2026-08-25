@@ -1670,6 +1670,30 @@ function classeCourante(){
   try{ const p=JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); if(p && (p.annee===0||p.annee)) return 'tsi'+p.annee; }catch(e){}
   return 'tsi1';
 }
+/* Passage en année supérieure (ou correction d'année). À distinguer de la NAVIGATION, qui sert
+   seulement à consulter le programme d'une autre année : ici l'élève déclare sa classe réelle.
+   Écrit le profil LOCAL et le profil DISTANT — sans ce dernier, applyPreferredLevel() rétablit
+   l'ancienne année au prochain chargement (users/{uid}.profile.annee était figé à l'inscription,
+   et rien ne permettait de le changer : tout élève passant de TSI1 en TSI2 restait classé en TSI1). */
+async function declarerAnnee(lvl){
+  if(!/^tsi[012]$/.test(lvl)) return false;
+  const n = Number(lvl.slice(3));
+  let p = {};
+  try{ p = JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); }catch(e){}
+  p.annee = n; if(!p.filiere) p.filiere = 'TSI';
+  try{ localStorage.setItem('quiztsi_profile', JSON.stringify(p)); }catch(e){}
+  activeLevel = lvl;
+  if(typeof lockedLevel!=='undefined' && lockedLevel) lockedLevel = lvl;   // l'élève suit sa nouvelle classe
+  try{
+    if(typeof currentUser!=='undefined' && currentUser)
+      await setDoc(doc(db,'users',currentUser.uid), {profile:{annee:n, filiere:p.filiere||'TSI'}}, {merge:true});
+  }catch(e){ console.warn('année non synchronisée (règles Firestore)', e); }
+  try{ if(typeof currentUser!=='undefined' && currentUser && localStorage.getItem('quiztsi_lb_optin')!=='0'
+        && typeof Leaderboard!=='undefined') await Leaderboard.publish(_lbPseudo()); }catch(e){}
+  try{ buildClassMenu(); buildNavScope(); buildFamilyAccordion(); updatePoolInfo(); updateSelectAllBtn(); }catch(e){}
+  return true;
+}
+
 /* Seul point d'écriture de la classe : met à jour l'état, le profil local ET le classement. */
 function changerClasse(lvl){
   if(!/^tsi[012]$/.test(lvl)) return false;
@@ -8652,9 +8676,26 @@ function _lbFooter(){
   const foot=$('#lbFoot'); if(!foot) return;
   if(typeof currentUser==='undefined' || !currentUser){ foot.innerHTML=''; return; }
   const out = localStorage.getItem('quiztsi_lb_optin')==='0';
-  foot.innerHTML = out
+  const an = classeCourante();
+  const NOM = {tsi0:'TSI0', tsi1:'TSI1', tsi2:'TSI2'};
+  const autres = ['tsi0','tsi1','tsi2'].filter(l=>l!==an)
+    .map(l=>'<a href="#" data-lb-annee="'+l+'" style="color:var(--accent);cursor:pointer">'+NOM[l]+'</a>').join(' · ');
+  foot.innerHTML = (out
     ? 'Tu n’apparais pas dans le classement. <a href="#" data-lb-optout="in" style="color:var(--accent);cursor:pointer">Réapparaître</a>'
-    : 'Tu apparais automatiquement dans le classement de ta classe (ton pseudo, ta série et tes cartes de la semaine — rien d’autre). <a href="#" data-lb-optout="out" style="color:var(--muted);cursor:pointer;text-decoration:underline">Me retirer</a>';
+    : 'Tu apparais automatiquement dans le classement de ta classe (ton pseudo, ta série et tes cartes de la semaine — rien d’autre). <a href="#" data-lb-optout="out" style="color:var(--muted);cursor:pointer;text-decoration:underline">Me retirer</a>')
+    + '<div style="margin-top:9px;padding-top:9px;border-top:1px solid var(--line)">'
+    + 'Tu es classé en <b>' + (NOM[an]||an) + '</b>. Passé en année supérieure ? Déclare ta classe : ' + autres
+    + '</div>';
+  foot.querySelectorAll('[data-lb-annee]').forEach(a=>{
+    a.onclick = async (ev)=>{
+      ev.preventDefault();
+      const lvl = a.getAttribute('data-lb-annee');
+      if(!confirm('Déclarer que tu es maintenant en ' + NOM[lvl] + ' ?\n\nTu apparaîtras désormais dans le classement de cette classe, et l\'application ouvrira son programme.')) return;
+      foot.innerHTML = 'Mise à jour…';
+      await declarerAnnee(lvl);
+      renderLeaderboard();
+    };
+  });
 }
 /* Écran + bouton injectés (aucune modif de structure HTML) */
 (function(){
