@@ -5489,7 +5489,7 @@ const QUESTIONS = [
 /* Bascule d'écran : une seule liste, pour qu'un écran ajouté plus tard ne soit pas oublié
    dans l'une des vues (c'était le cas de coursScreen, absent de toutes les listes). */
 const ALL_SCREENS = ['startScreen','quizScreen','resultScreen','statsScreen','adminScreen','juryScreen',
-                     'examScreen','formulaireScreen','leaderboardScreen','coursScreen','colleScreen'];
+                     'examScreen','formulaireScreen','leaderboardScreen','coursScreen','colleScreen','colleHistoScreen'];
 function hideScreens(){ ALL_SCREENS.forEach(id=>{ const e=$('#'+id); if(e) e.classList.add('hidden'); }); }
 let selected = new Set(); // P1 : opt-in — aucun chapitre coché par défaut
 let selectedMode = 'all';
@@ -8116,7 +8116,7 @@ function startColle(){
     phase:0, res:{}, hints:0, tTotal:0, elargi
   };
   showColleScreen(); renderProg(); renderPhase();
-  if(elargi) note("Aucun chapitre coché n'a de colle complète : le sujet est tiré dans la matière.", 'var(--muted)');
+  if(elargi) avertitElargi();
 }
 
 /* ---------- bandeau de progression : les trois temps de la khôlle ---------- */
@@ -8134,8 +8134,22 @@ function renderProg(){
     + '<div style="display:flex;gap:6px;margin-bottom:16px">'+[0,1,2].map(etape).join('')+'</div>';
 }
 
+/* L'avertissement doit s'afficher DANS l'écran de colle : #poolInfo appartient à l'écran d'accueil,
+   que showColleScreen() vient de masquer — le message y était donc invisible. */
+function avertitElargi(){
+  const prog=$('#colleProg'); if(!prog || document.getElementById('colleElargi')) return;
+  const d=document.createElement('div');
+  d.id='colleElargi';
+  d.style.cssText='display:flex;gap:8px;align-items:flex-start;background:color-mix(in srgb,#f97316 12%,transparent);'
+    +'border:1px solid color-mix(in srgb,#f97316 35%,transparent);border-radius:10px;padding:9px 12px;'
+    +'margin-bottom:12px;font-size:12.5px;line-height:1.5;color:var(--ink)';
+  d.innerHTML='<span>⚠️</span><span>Aucun chapitre coché n\'a de colle complète : le sujet a été tiré ailleurs dans la matière.</span>';
+  prog.insertAdjacentElement('afterend', d);
+}
+
 function renderPhase(){
   renderProg();
+  if(colleS.elargi) avertitElargi();
   $('#colleStep').textContent = 'temps '+(colleS.phase+1)+' sur 3';
   colleS.hints = 0;
   if(colleS.phase===0) renderCours();
@@ -8258,6 +8272,7 @@ function colleBilan(){
   renderProg();
   const R=colleS.res;
   const note = Math.round(((R.cours?R.cours.pts:0)+(R.chauffe?R.chauffe.pts:0)+(R.dur?R.dur.pts:0))*10)/10;
+  enregistreColle(note);
 
   // le diagnostic porte sur le PROFIL, pas seulement sur le total
   const part   = R.cours ? R.cours.ok/Math.max(1,R.cours.tot) : 0;
@@ -8307,10 +8322,166 @@ function colleBilan(){
     + '<div style="margin-bottom:18px">'+ligneCours+ligneEx(R.chauffe,'Exercice de chauffe',BAREME.chauffe)+ligneEx(R.dur,'Exercice difficile',BAREME.dur)+'</div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
     +   '<button class="btn" id="colleAgain">Une autre colle</button>'
+    +   '<button class="btn ghost" id="colleHisto">📋 Mes colles</button>'
     +   '<button class="btn ghost" id="colleHome">Retour à l\'accueil</button>'
     + '</div>';
+  typeset($('#colleBody'));          // les intitulés d'exercices contiennent des formules
   $('#colleAgain').onclick=()=>{ colleStop(); startColle(); };
   $('#colleHome').onclick =()=>{ colleStop(); backToStart(); };
+  $('#colleHisto').onclick=()=>{ colleStop(); showColleHisto(); };
+}
+
+/* ====================== HISTORIQUE DES COLLES ======================
+   Chaque colle terminée est archivée : date, chapitre, note, et pour chacun des trois temps
+   le résultat, le temps passé et l'intitulé exact du sujet — pour pouvoir revenir dessus. */
+const HISTO_MAX = 300;                     // au-delà, on oublie les plus anciennes
+
+function enregistreColle(note){
+  const R = colleS.res, topic = colleS.topic;
+  const abrege = s => {
+    let t = String(s||'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+    if(t.length <= 260) return t;      // en dessous, TOUTES les questions étaient coupées
+    t = t.slice(0,260);
+    // On rejoue les délimiteurs pour retenir la dernière position où aucune formule n'est ouverte.
+    // Un simple comptage de parité ne voit pas $$…$$ : ses deux dollars ouvrants font un compte pair.
+    let i=0, sur=0, ouvert=null;
+    while(i < t.length){
+      if(t[i]==='\\'){ i+=2; continue; }                                  // \$ n'est pas un délimiteur
+      if(t.startsWith('$$', i)){ ouvert = (ouvert==='$$') ? null : (ouvert || '$$'); i+=2; }
+      else if(t[i]==='$'){        ouvert = (ouvert==='$')  ? null : (ouvert || '$');  i+=1; }
+      else i+=1;
+      if(!ouvert) sur=i;
+    }
+    if(ouvert) t = t.slice(0, sur);
+    return t.replace(/\s+$/,'') + '…';
+  };
+  const entree = {
+    ts: Date.now(),
+    topic,
+    note,
+    tot: colleS.tTotal,
+    c: R.cours   ? { ok:R.cours.ok, tot:R.cours.tot, sec:R.cours.sec, pts:R.cours.pts, q:abrege(colleS.cours.q) } : null,
+    h: R.chauffe ? { g:R.chauffe.g, sec:R.chauffe.sec, hints:R.chauffe.hints, pts:R.chauffe.pts, t:R.chauffe.ex.t } : null,
+    x: R.dur     ? { g:R.dur.g,     sec:R.dur.sec,     hints:R.dur.hints,     pts:R.dur.pts,     t:R.dur.ex.t } : null
+  };
+  colleRecord(d=>{ d.colleLog.push(entree); if(d.colleLog.length>HISTO_MAX) d.colleLog = d.colleLog.slice(-HISTO_MAX); });
+}
+function colleLog(){ const d=SRS._d(); return Array.isArray(d.colleLog) ? d.colleLog : []; }
+
+function fmtDate(ts){
+  const d=new Date(ts), j=['dim','lun','mar','mer','jeu','ven','sam'][d.getDay()];
+  const m=['janv','févr','mars','avr','mai','juin','juil','août','sept','oct','nov','déc'][d.getMonth()];
+  return j+' '+d.getDate()+' '+m+' à '+String(d.getHours()).padStart(2,'0')+'h'+String(d.getMinutes()).padStart(2,'0');
+}
+function fmtNote(n){ return String(Math.round(n*10)/10).replace('.', ','); }
+
+/* courbe d'évolution des notes — SVG autonome, sans dépendance */
+function courbeNotes(log){
+  const pts = log.slice(-25).map(e=>e.note);
+  if(pts.length < 2) return '';
+  const W=300, H=64, PAD=6;
+  const x = i => PAD + i*(W-2*PAD)/(pts.length-1);
+  const y = v => H-PAD - (v/20)*(H-2*PAD);
+  const d = pts.map((v,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1)).join(' ');
+  const aire = d+' L'+x(pts.length-1).toFixed(1)+' '+(H-PAD)+' L'+PAD+' '+(H-PAD)+' Z';
+  const moy = pts.reduce((a,b)=>a+b,0)/pts.length;
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:64px;overflow:visible" aria-label="évolution des notes">'
+    + '<line x1="'+PAD+'" y1="'+y(moy).toFixed(1)+'" x2="'+(W-PAD)+'" y2="'+y(moy).toFixed(1)+'" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" opacity=".5"/>'
+    + '<path d="'+aire+'" fill="var(--accent)" opacity=".12"/>'
+    + '<path d="'+d+'" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'
+    + pts.map((v,i)=>'<circle cx="'+x(i).toFixed(1)+'" cy="'+y(v).toFixed(1)+'" r="2.6" fill="var(--accent)"/>').join('')
+    + '</svg>';
+}
+
+(function(){
+  const anchor = document.getElementById('juryScreen') || document.getElementById('startScreen');
+  if(!anchor || document.getElementById('colleHistoScreen')) return;
+  const scr=document.createElement('div');
+  scr.className='card hidden'; scr.id='colleHistoScreen';
+  scr.innerHTML =
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">'
+    +   '<p class="section-label" style="margin:0">📋 Mes colles</p>'
+    +   '<button id="colleHistoBack" class="btn ghost" style="margin-left:auto;padding:5px 12px;font-size:13px">← Retour</button>'
+    + '</div><div id="colleHistoBody"></div>';
+  anchor.parentNode.appendChild(scr);
+  document.getElementById('colleHistoBack').onclick=()=>{ scr.classList.add('hidden'); backToStart(); };
+})();
+
+function showColleHisto(){
+  hideScreens();
+  const s=$('#colleHistoScreen'); if(!s) return;
+  s.classList.remove('hidden'); s.scrollIntoView({behavior:'smooth',block:'start'});
+  renderColleHisto();
+}
+
+function renderColleHisto(){
+  const body=$('#colleHistoBody'); if(!body) return;
+  const log=colleLog();
+  if(!log.length){
+    body.innerHTML='<div class="empty-state">Aucune colle passée pour l\'instant.<br>'
+      +'Lance une colle blanche depuis l\'accueil : elle sera archivée ici avec ta note et ton temps.</div>';
+    return;
+  }
+  const notes=log.map(e=>e.note);
+  const moy=notes.reduce((a,b)=>a+b,0)/notes.length;
+  const best=Math.max(...notes);
+  const tps=log.reduce((a,e)=>a+(e.tot||0),0);
+  const chiffre=(v,l)=>'<div style="flex:1;min-width:74px;text-align:center">'
+    +'<div style="font-size:21px;font-weight:700;color:var(--accent);line-height:1.15">'+v+'</div>'
+    +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+l+'</div></div>';
+
+  let html='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'
+    + chiffre(log.length, log.length>1?'colles':'colle')
+    + chiffre(fmtNote(moy), 'moyenne')
+    + chiffre(fmtNote(best), 'meilleure')
+    + chiffre(Math.round(tps/60)+' min', 'au tableau')
+    + '</div>';
+  if(log.length>1) html+='<div style="margin-bottom:6px">'+courbeNotes(log)
+    + '<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:2px">'
+    + (log.length>25?'25 dernières colles':'évolution des notes')+' · pointillé = moyenne</div></div>';
+
+  const sym=g=> g==='seul'?'✓' : g==='aide'?'↗' : '✗';
+  const mot=g=> g==='seul'?'trouvé seul' : g==='aide'?'avec relances' : 'pas trouvé';
+  html+='<div style="margin-top:16px">';
+  log.slice().reverse().forEach((e,i)=>{
+    const t=TOPICS[e.topic]||{name:e.topic, raw:'#888'};
+    const detail='colleD'+i;
+    html+='<div style="border:1px solid var(--line);border-radius:11px;margin-bottom:9px;overflow:hidden">'
+      + '<button type="button" data-d="'+detail+'" style="width:100%;display:flex;align-items:center;gap:10px;padding:11px 13px;background:none;border:0;cursor:pointer;text-align:left;font:inherit;color:var(--ink)">'
+      +   '<span style="width:9px;height:9px;border-radius:3px;background:'+(t.raw||'#888')+';flex:none"></span>'
+      +   '<span style="flex:1;min-width:0">'
+      +     '<span style="display:block;font-weight:600;font-size:14px">'+t.name+'</span>'
+      +     '<span style="display:block;font-size:11.5px;color:var(--muted);margin-top:2px">'+fmtDate(e.ts)+' · '+fmtSec(e.tot||0)+'</span>'
+      +   '</span>'
+      +   '<span style="font-size:17px;font-weight:700;color:var(--accent);white-space:nowrap">'+fmtNote(e.note)+'<span style="font-size:11px;color:var(--muted)">/20</span></span>'
+      +   '<span data-fleche style="color:var(--muted);font-size:12px">▾</span>'
+      + '</button>'
+      + '<div id="'+detail+'" class="hidden" style="padding:0 13px 12px;font-size:13px;line-height:1.55">';
+    if(e.c) html+='<div style="padding:8px 0;border-top:1px solid var(--line)">'
+      + '<b style="font-weight:600">Question de cours</b> <span style="color:var(--muted)">— '+e.c.ok+'/'+e.c.tot+' points · '+fmtSec(e.c.sec)+' · '+fmtNote(e.c.pts)+'/6</span>'
+      + '<div style="color:var(--muted);margin-top:3px">'+e.c.q+'</div></div>';
+    if(e.h) html+='<div style="padding:8px 0;border-top:1px solid var(--line)">'
+      + '<b style="font-weight:600">'+sym(e.h.g)+' Exercice de chauffe</b> <span style="color:var(--muted)">— '+mot(e.h.g)+' · '+fmtSec(e.h.sec)
+      + (e.h.hints?' · '+e.h.hints+' relance'+(e.h.hints>1?'s':''):'')+' · '+fmtNote(e.h.pts)+'/6</span>'
+      + '<div style="color:var(--muted);margin-top:3px">'+e.h.t+'</div></div>';
+    if(e.x) html+='<div style="padding:8px 0;border-top:1px solid var(--line)">'
+      + '<b style="font-weight:600">'+sym(e.x.g)+' Exercice difficile</b> <span style="color:var(--muted)">— '+mot(e.x.g)+' · '+fmtSec(e.x.sec)
+      + (e.x.hints?' · '+e.x.hints+' relance'+(e.x.hints>1?'s':''):'')+' · '+fmtNote(e.x.pts)+'/8</span>'
+      + '<div style="color:var(--muted);margin-top:3px">'+e.x.t+'</div></div>';
+    html+='</div></div>';
+  });
+  html+='</div>';
+  body.innerHTML=html;
+  body.querySelectorAll('button[data-d]').forEach(b=>{
+    b.onclick=()=>{
+      const z=document.getElementById(b.getAttribute('data-d'));
+      const ouvert=!z.classList.contains('hidden');
+      z.classList.toggle('hidden');
+      const fl = b.querySelector('[data-fleche]');   // marqueur explicite : 'span:last-child'
+      if(fl) fl.textContent = ouvert ? '▾' : '▴';    // désignait la ligne date+durée et l'écrasait
+      if(!ouvert) typeset(z);          // composition à l'ouverture, pas pour 300 entrées d'un coup
+    };
+  });
 }
 
 /* ====================== FORMULAIRE / RECHERCHE ====================== */
@@ -8378,6 +8549,12 @@ function renderFormulaire(){
     f.title="Formulaire : rechercher une notion ou une formule dans tes cartes";
     f.textContent='📖 Formulaire'; ($('#colleBtn')||after).insertAdjacentElement('afterend', f);
     f.onclick=()=>{ if(typeof showFormulaire==='function') showFormulaire(); };
+  }
+  if(!$('#colleHistoBtn')){
+    const h=document.createElement('button'); h.className='btn ghost'; h.id='colleHistoBtn'; h.type='button';
+    h.title="Historique de tes colles : note, temps par partie et sujets traités";
+    h.textContent='📋 Mes colles'; ($('#formuBtn')||$('#colleBtn')||after).insertAdjacentElement('afterend', h);
+    h.onclick=()=>{ if(typeof showColleHisto==='function') showColleHisto(); };
   }
 })();
 
