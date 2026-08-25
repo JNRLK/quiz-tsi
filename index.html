@@ -8020,7 +8020,17 @@ const COLLE_EX = [{"topic":"trigo","t":"Une équation trigonométrique","min":10
 
 /* identifiant stable (chapitre + intitulé), pour l'historique — sans rapport avec qHash des cartes */
 function exHash(e){ const s=e.topic+'|'+(e.t||e.q); let h=0; for(let i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))|0; } return 'x'+(h>>>0).toString(36); }
-function colleHist(){ const d=SRS._d(); if(!d.colleEx) d.colleEx={}; return d.colleEx; }
+function colleHist(){ const d=SRS._d(); return d.colleEx || {}; }
+/* Écriture de l'historique. SRS._d() reconstruit un objet à chaque appel et SRS._save(d) EXIGE
+   cet objet en argument : l'appeler sans argument écrit « undefined » dans le stockage et détruit
+   toute la progression de l'élève. On lit, on modifie et on sauve donc le même objet. */
+function colleRecord(fn){
+  const d = SRS._d();
+  if(!d.colleEx) d.colleEx = {};
+  if(!d.colleLog) d.colleLog = [];
+  fn(d);
+  SRS._save(d);
+}
 
 let colleS = null;
 let _colleT = null, _colleT0 = 0;
@@ -8231,9 +8241,8 @@ function colleShowSol(ex, kind){
       const g=b.getAttribute('data-g'), max=BAREME[kind];
       colleS.res[kind]={ g, sec, hints:colleS.hints, ex, pts: g==='seul'?max : g==='aide'?max*0.6 : 0 };
       colleS.tTotal+=sec;
-      const H=colleHist(), h=exHash(ex);
-      H[h]={ n:((H[h]&&H[h].n)||0)+1, ko:g==='ko', aide:g==='aide', t:Date.now() };
-      SRS._save();
+      colleRecord(d=>{ const h=exHash(ex), p=d.colleEx[h];
+        d.colleEx[h]={ n:((p&&p.n)||0)+1, ko:g==='ko', aide:g==='aide', t:Date.now() }; });
       colleS.phase++;
       if(colleS.phase<3) renderPhase(); else colleBilan();
     };
