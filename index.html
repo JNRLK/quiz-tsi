@@ -1656,6 +1656,39 @@ function applyPreferredLevel(p){
   activeLevel = lvl;         // élève : atterrit sur SA classe…
   lockedLevel = lvl;         // …et y reste verrouillé (ne voit que les cartes de sa classe ; les autres années sont masquées)
 }
+/* ─── ANNÉE DE CLASSE : UNE SEULE SOURCE DE VÉRITÉ ───
+   L'année vivait en quatre exemplaires (lockedLevel, activeLevel, quiztsi_profile.annee, et le champ
+   `annee` du document leaderboard) que rien ne resynchronisait : changer de classe dans l'application
+   ne touchait ni le profil ni le classement, qui restait donc figé sur l'année déclarée à l'inscription.
+   Désormais tout passe par ces deux fonctions. */
+function classeCourante(){
+  // 1. élève verrouillé sur la classe qu'il a rejointe : elle fait foi, il ne peut pas en changer
+  if(typeof lockedLevel!=='undefined' && lockedLevel && /^tsi[012]$/.test(lockedLevel)) return lockedLevel;
+  // 2. sinon, la classe effectivement choisie dans l'application (c'est le choix le plus récent)
+  if(typeof activeLevel!=='undefined' && activeLevel && /^tsi[012]$/.test(activeLevel)) return activeLevel;
+  // 3. en dernier recours seulement, l'année déclarée à l'inscription
+  try{ const p=JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); if(p && (p.annee===0||p.annee)) return 'tsi'+p.annee; }catch(e){}
+  return 'tsi1';
+}
+/* Seul point d'écriture de la classe : met à jour l'état, le profil local ET le classement. */
+function changerClasse(lvl){
+  if(!/^tsi[012]$/.test(lvl)) return false;
+  if(typeof lockedLevel!=='undefined' && lockedLevel && typeof allowedLevels==='function' && !allowedLevels().includes(lvl)) return false;
+  const verrouille = (typeof lockedLevel!=='undefined' && !!lockedLevel);
+  activeLevel = lvl;
+  // Un élève VERROUILLÉ qui ouvre une année antérieure ne change pas de classe : il révise du
+  // programme plus ancien. Écrire son année ici le reverrouillerait sur la mauvaise classe au
+  // prochain chargement (applyPreferredLevel lit ce champ) et le sortirait de son classement.
+  if(!verrouille){
+    try{ const p=JSON.parse(localStorage.getItem('quiztsi_profile')||'{}');
+         p.annee = Number(lvl.slice(3));
+         localStorage.setItem('quiztsi_profile', JSON.stringify(p)); }catch(e){}
+    // republication silencieuse : sans elle, l'entrée du classement garde l'ancienne année
+    try{ if(typeof currentUser!=='undefined' && currentUser && localStorage.getItem('quiztsi_lb_optin')!=='0'
+          && typeof Leaderboard!=='undefined') Leaderboard.publish(_lbPseudo()).catch(()=>{}); }catch(e){}
+  }
+  return true;
+}
 /* Matières disponibles pour une classe (année) : celles qui ont du contenu à ce niveau + les transversales. */
 function subjectsForLevel(level){ return Object.keys(SUBJECTS).filter(s => isTransversal(s) ? hasContent(s,'tr') : hasContent(s,level)).sort((a,b)=>SUBJECTS[a].order-SUBJECTS[b].order); }
 /* Une matière a-t-elle au moins une RUBRIQUE déclarée (avec ou sans carte) à ce niveau ? */
@@ -6703,8 +6736,7 @@ function buildClassMenu(){
     return `<button class="class-card${activeLevel===l?' on':''}${mine}" data-cls="${l}"><span class="cc-y">${LEVELS[l].short}</span><span class="cc-s">${CLS_SUB[l]}</span>${soon?'<span class="cc-soon">bientôt</span>':''}${lockedLevel===l?'<span class="cc-soon" style="background:var(--accent);color:#fff">ta classe</span>':''}</button>`;
   }).join('');
   host.querySelectorAll('[data-cls]').forEach(b=>b.onclick=()=>{
-    if(lockedLevel && !allowedLevels().includes(b.dataset.cls)) return;
-    activeLevel=b.dataset.cls;
+    if(!changerClasse(b.dataset.cls)) return;      // met aussi à jour le profil et le classement
     try{ const subs = subjectsForNav(activeLevel); if(subs && subs.length && !subs.includes(activeSubject)) activeSubject = subs[0]; }catch(e){}
     buildClassMenu(); buildNavScope(); buildFamilyAccordion(); updatePoolInfo(); updateSelectAllBtn();
   });
@@ -8564,11 +8596,7 @@ function renderFormulaire(){
    collection filtrée côté client par année. Un élève peut se RETIRER (lien discret en pied d'écran →
    localStorage quiztsi_lb_optin='0'). Nécessite des règles Firestore (fournies) ; dégrade proprement si
    absentes. Aucune donnée sensible (ni note ni e-mail). */
-function _lbClassYear(){
-  if(typeof lockedLevel!=='undefined' && lockedLevel && /^tsi[012]$/.test(lockedLevel)) return lockedLevel;
-  try{ const p=JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); if(p && (p.annee===0||p.annee)) return 'tsi'+p.annee; }catch(e){}
-  return (typeof activeLevel!=='undefined') ? activeLevel : 'tsi1';
-}
+function _lbClassYear(){ return classeCourante(); }
 function _lbPseudo(){
   try{ const p=JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); if(p && p.pseudo) return p.pseudo; }catch(e){}
   if(typeof currentUser!=='undefined' && currentUser){ if(currentUser.displayName) return currentUser.displayName; if(currentUser.email) return currentUser.email.split('@')[0]; }
