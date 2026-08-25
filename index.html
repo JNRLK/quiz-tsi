@@ -8011,9 +8011,28 @@ function _colleEl(){ let el=document.getElementById('colleChrono');
     el.style.cssText='position:fixed;top:14px;right:14px;z-index:70;background:var(--panel-2);border:1px solid var(--accent);border-radius:22px;padding:6px 14px;font-family:ui-monospace,monospace;font-size:15px;font-weight:700;color:var(--accent);box-shadow:0 2px 10px #0003;display:none';
     document.body.appendChild(el); }
   return el; }
-function _colleTick(){ const s=Math.max(0,Math.floor((Date.now()-_colleStart)/1000)); _colleEl().textContent='🎤 '+Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
-function colleResetChrono(){ const el=_colleEl(); el.style.display='block'; _colleStart=Date.now(); _colleTick(); clearInterval(_colleTimer); _colleTimer=setInterval(_colleTick,1000); }
-function colleStopChrono(){ clearInterval(_colleTimer); const el=document.getElementById('colleChrono'); if(el) el.style.display='none'; }
+function _colleTick(){
+  const s=Math.max(0,Math.floor((Date.now()-_colleStart)/1000));
+  const el=_colleEl();
+  el.innerHTML='<span style="font-size:11px;opacity:.75;letter-spacing:.04em">ta réponse orale</span> '
+    + '<b>'+Math.floor(s/60)+':'+String(s%60).padStart(2,'0')+'</b>';
+  el.style.color = s>=60 ? '#f97316' : 'var(--accent)';     // au-delà d'une minute, on traîne
+}
+function colleResetChrono(){ const el=_colleEl(); el.style.display='block'; _colleStart=Date.now(); _colleTick(); clearInterval(_colleTimer); _colleTimer=setInterval(_colleTick,1000); colleBanner(); }
+/* Consigne visible : sans elle, l'élève voit un chrono apparaître et croit à une révision normale. */
+function colleBanner(){
+  const host = $('#qText'); if(!host || !window.colleMode) return;
+  if(document.getElementById('colleTip')) return;
+  const tip = document.createElement('div');
+  tip.id = 'colleTip';
+  tip.style.cssText = 'display:flex;align-items:flex-start;gap:9px;background:color-mix(in srgb,var(--accent) 10%,transparent);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:12px;padding:10px 13px;margin-bottom:14px;font-size:13px;line-height:1.55;color:var(--ink);font-family:\'Lexend\',system-ui,sans-serif';
+  tip.innerHTML = '<span style="font-size:17px;line-height:1">🎤</span><span><b>Colle blanche</b> — réponds <b>à voix haute</b>, comme au tableau devant le colleur : '
+    + 'énonce la définition ou le théorème en entier, avec ses hypothèses. Le chronomètre mesure ton temps de réponse '
+    + '(vise <b>moins d\'une minute</b> par question). Puis affiche la réponse et évalue-toi honnêtement.</span>';
+  host.parentNode.insertBefore(tip, host);
+}
+function colleStopChrono(){ clearInterval(_colleTimer); const el=document.getElementById('colleChrono'); if(el) el.style.display='none';
+  const tip=document.getElementById('colleTip'); if(tip) tip.remove(); }
 function startColle(){
   if(typeof revisionAllowed==='function' && !revisionAllowed()){ showAccessGate(); return; }
   if(selected.size===0){ const pi=$('#poolInfo'); if(pi){ pi.textContent='Sélectionne au moins un chapitre pour la colle.'; pi.style.color='#f87171'; } const fa=$('#famAccordion'); if(fa) fa.scrollIntoView({behavior:'smooth',block:'center'}); return; }
@@ -8093,8 +8112,8 @@ function renderFormulaire(){
   const examBtn=$('#examBtn'); const after = $('#sprintBtn') || examBtn; if(!after) return;
   if(!$('#colleBtn')){
     const b=document.createElement('button'); b.className='btn ghost'; b.id='colleBtn'; b.type='button';
-    b.title="Entraînement oral type khôlle : une question, un chrono, tu réponds à voix haute puis tu t'auto-évalues";
-    b.textContent='🎤 Colle'; after.insertAdjacentElement('afterend', b); b.onclick=startColle;
+    b.title="Colle blanche : tu réponds à voix haute comme au tableau, chronométré, puis tu t'auto-évalues";
+    b.textContent='🎤 Colle blanche'; after.insertAdjacentElement('afterend', b); b.onclick=startColle;
   }
   if(!$('#formuBtn')){
     const f=document.createElement('button'); f.className='btn ghost'; f.id='formuBtn'; f.type='button';
