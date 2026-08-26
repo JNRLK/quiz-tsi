@@ -8753,7 +8753,7 @@ function renderPassage(){
   if(!s._chronoPassage){ s._chronoPassage=true; oralChrono(s.e.duree*60, ()=>{}); }
   // en maths-info, le passage commence par les 5 minutes d'informatique
   if(s.e.python && s.python===null){ renderPython(); return; }
-  if(s.i < s.planche.parties.length){ renderQuestion(); return; }
+  if(s.i < s.planche.parties.length){ oralQuestion(); return; }
   renderGrille();
 }
 
@@ -8811,7 +8811,7 @@ function oralRelance(liste){
   typeset(d);
 }
 
-function renderQuestion(){
+function oralQuestion(){
   const s=oralS, q=s.planche.parties[s.i], p=s.planche;
   $('#oralStep').textContent = 'question '+(s.i+1)+' sur '+p.parties.length;
   s.hints=0;
