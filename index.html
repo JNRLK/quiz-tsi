@@ -8715,15 +8715,32 @@ const ORAL_PLANCHES = [{"ep":"maths_info","topic":"calcul_matriciel","titre":"Au
      • PC-informatique    — 30 min de préparation puis 30 min, situation fortement contextualisée.
    Les TP (3 h en PC, 4 h en S2I) ne sont pas simulables ici : ils supposent un système réel et du
    matériel de laboratoire. Ils ne figurent donc pas dans ce mode. */
+const CONCOURS = {
+  centrale: { nom:'Centrale-Supélec', ic:'🎓',
+              sous:"Deux oraux de maths et deux de physique-chimie, dont un de chaque AVEC informatique." },
+  ccinp:    { nom:'CCINP', ic:'🏛',
+              sous:"Un oral par matière : un exercice préparé, puis un second sans préparation." }
+};
 const ORAL_EP = {
-  maths:      { nom:'Mathématiques',        court:'Maths',      duree:30, prepa:0,  python:false,
+  /* ─ Centrale-Supélec (rapports de jury TSI 2024) ─ */
+  maths:      { concours:'centrale', nom:'Mathématiques',        court:'Maths',      duree:30, prepa:0,  python:false,
                 sous:"Un ou deux exercices au tableau, sans préparation.", ic:'∫' },
-  maths_info: { nom:'Mathématiques-info',   court:'Maths-info', duree:30, prepa:30, python:true,
+  maths_info: { concours:'centrale', nom:'Mathématiques-info',   court:'Maths-info', duree:30, prepa:30, python:true,
                 sous:"30 min de préparation, puis 5 min de Python avant le tableau.", ic:'⌨' },
-  pc:         { nom:'Physique-chimie',      court:'Physique',   duree:30, prepa:0,  python:false,
+  pc:         { concours:'centrale', nom:'Physique-chimie',      court:'Physique',   duree:30, prepa:0,  python:false,
                 sous:"Un exercice court, sans préparation.", ic:'⚛' },
-  pc_info:    { nom:'Physique-chimie-info', court:'PC-info',    duree:30, prepa:30, python:true,
-                sous:"30 min de préparation, situation contextualisée avec Python.", ic:'🔬' }
+  pc_info:    { concours:'centrale', nom:'Physique-chimie-info', court:'PC-info',    duree:30, prepa:30, python:true,
+                sous:"30 min de préparation, situation contextualisée avec Python.", ic:'🔬' },
+  /* ─ CCINP (règlement session 2026 + rapports d'oraux TSI) : une seule épreuve par matière,
+       30 min de préparation puis 30 min d'interrogation. Le passage se déroule en DEUX temps —
+       présentation de l'exercice préparé (~20 min), puis un SECOND exercice remis sur place,
+       traité sans préparation. En maths, l'exercice préparé porte une question Python. ─ */
+  ccinp_maths: { concours:'ccinp', nom:'Mathématiques',   court:'Maths',    duree:30, prepa:30, python:true, froid:true, coef:9,
+                 base:'maths', sousBase:'maths_info',
+                 sous:"30 min de préparation (exercice avec Python), puis un second exercice à froid.", ic:'∫' },
+  ccinp_pc:    { concours:'ccinp', nom:'Physique-chimie', court:'Physique', duree:30, prepa:30, python:false, froid:true, coef:7,
+                 base:'pc', sousBase:'pc_info',
+                 sous:"30 min de préparation, puis un exercice court remis sur place.", ic:'⚛' }
 };
 /* Barème sur 20. La part informatique reprend la fourchette annoncée par le jury (20 à 25 %).
    La part « communication » traduit ce que les rapports répètent : le jury note aussi la façon
@@ -8794,7 +8811,11 @@ function startOral(){
   clearInterval(_oralT); _oralT=null;
   oralS = null;
   $('#oralChrono').textContent=''; $('#oralStep').textContent='choix de l\'épreuve';
-  const dispo = ep => ORAL_PLANCHES.filter(p=>p.ep===ep && inActiveScope(p.topic)).length;
+  const dispo = ep => {
+    const e = ORAL_EP[ep];
+    const src = e.base ? e.base : ep;          // les épreuves CCINP puisent dans le vivier Centrale
+    return ORAL_PLANCHES.filter(p=>(p.ep===src || (e.sousBase && p.ep===e.sousBase)) && inActiveScope(p.topic)).length;
+  };
   const carte = k => {
     const e = ORAL_EP[k], n = dispo(k);
     return '<button type="button" data-ep="'+k+'" '+(n?'':'disabled ')
@@ -8810,15 +8831,27 @@ function startOral(){
       +     ' · '+(n? n+' sujet'+(n>1?'s':'') : 'aucun sujet dans cette matière')+'</span>'
       + '</span></button>';
   };
+  const groupe = ck => {
+    const c = CONCOURS[ck];
+    const eps = Object.keys(ORAL_EP).filter(k=>ORAL_EP[k].concours===ck);
+    return '<div style="margin-bottom:18px">'
+      + '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">'
+      +   '<span style="font-size:15px">'+c.ic+'</span>'
+      +   '<b style="font-size:15px">'+c.nom+'</b></div>'
+      + '<p style="font-size:12px;color:var(--muted);margin:0 0 10px;line-height:1.5">'+c.sous+'</p>'
+      + eps.map(carte).join('')
+      + '</div>';
+  };
   $('#oralBody').innerHTML =
       '<p style="font-size:13px;color:var(--muted);line-height:1.6;margin:10px 0 16px">'
-    +   'Format réel des épreuves orales de Centrale-Supélec en TSI. Le jury n\'attend pas la réussite '
-    +   'immédiate mais une <b>réflexion organisée</b> : expose ta stratégie à voix haute, et sers-toi '
-    +   'de ses relances — elles sont là pour t\'aider, jamais pour te piéger.</p>'
-    + Object.keys(ORAL_EP).map(carte).join('')
-    + '<p style="font-size:11.5px;color:var(--muted);margin-top:14px;line-height:1.5">'
-    +   'Les épreuves de travaux pratiques (3 h en physique-chimie, 4 h en sciences industrielles) ne '
-    +   'figurent pas ici : elles supposent un système réel et du matériel de laboratoire.</p>';
+    +   'Le format réel des épreuves orales en TSI, concours par concours. Le jury n\'attend pas la '
+    +   'réussite immédiate mais une <b>réflexion organisée</b> : expose ta stratégie à voix haute, et '
+    +   'sers-toi de ses relances — elles sont là pour t\'aider, jamais pour te piéger.</p>'
+    + Object.keys(CONCOURS).map(groupe).join('')
+    + '<p style="font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.5">'
+    +   'Les travaux pratiques ne figurent pas ici : 3 h de physique-chimie et 4 h de sciences '
+    +   'industrielles à Centrale, 3 h de TP de sciences industrielles au CCINP — ils supposent un '
+    +   'système réel et du matériel de laboratoire.</p>';
   $('#oralBody').querySelectorAll('button[data-ep]').forEach(b=>{
     b.onclick = ()=> lancerOral(b.getAttribute('data-ep'));
   });
@@ -8826,7 +8859,8 @@ function startOral(){
 
 function lancerOral(ep){
   const e = ORAL_EP[ep];
-  let pool = ORAL_PLANCHES.filter(p=>p.ep===ep && inActiveScope(p.topic));
+  const srcEp = e.base ? e.base : ep;
+  let pool = ORAL_PLANCHES.filter(p=>(p.ep===srcEp || (e.sousBase && p.ep===e.sousBase)) && inActiveScope(p.topic));
   if(selected.size){
     const cible = pool.filter(p=>selected.has(p.topic));
     if(cible.length) pool = cible;             // on respecte les chapitres cochés quand c'est possible
@@ -8858,7 +8892,14 @@ function lancerOral(ep){
   pool = pool.map(p=>({p, vu:(H[exHash({topic:p.topic,t:p.titre})]||{}).t||0, z:Math.random()}))
              .sort((a,b)=> a.vu-b.vu || a.z-b.z).map(o=>o.p);
   const planche = pool[0];
-  oralS = { ep, e, planche, phase: e.prepa? 'prepa':'passage', i:0, res:[], hints:0,
+  // Au CCINP, l'examinateur remet un SECOND exercice à l'issue de la présentation : court, traité
+  // sans préparation, il évalue « la réactivité et l'autonomie face à une résolution de problème ».
+  let froid = null;
+  if(e.froid){
+    const autres = pool.filter(p=>p!==planche);
+    if(autres.length) froid = autres[Math.floor(Math.random()*autres.length)];
+  }
+  oralS = { ep, e, planche, froid, jf:0, phase: e.prepa? 'prepa':'passage', i:0, res:[], hints:0,
             tPrepa:0, tPassage:0, python:null, fini:false, _alerte:false, contrainte };
   if(e.prepa) renderPrepa(); else renderPassage();
 }
@@ -8872,8 +8913,13 @@ function renderPrepa(){
       '<div style="display:flex;gap:8px;align-items:flex-start;background:color-mix(in srgb,var(--accent) 9%,transparent);'
     +   'border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-radius:11px;padding:11px 14px;margin:10px 0 16px;font-size:13px;line-height:1.55">'
     +   '<span>⏱</span><span><b>Tu es en préparation.</b> Tu disposes de '+s.e.prepa+' minutes avec le sujet complet. '
-    +   'Lis <b>tout</b> l\'énoncé — les questions sont souvent indépendantes. '
-    +   (s.e.python ? 'Traite la partie Python maintenant : au tableau, elle passe en premier et vaut environ un quart de la note. ' : '')
+    +   (s.e.concours==='ccinp'
+        ? "Le but n'est pas de tout résoudre : c'est de <b>mettre au point une stratégie</b> et de rassembler "
+          + "les éléments de cours utiles. Tu présenteras ensuite au tableau pendant une vingtaine de minutes, "
+          + "puis l'examinateur te remettra un <b>second exercice, sans préparation</b>. "
+          + (s.e.python ? "L'aide-mémoire Python reste disponible pendant tout l'oral. " : "")
+        : "Lis <b>tout</b> l'énoncé — les questions sont souvent indépendantes. "
+          + (s.e.python ? 'Traite la partie Python maintenant : au tableau, elle passe en premier et vaut environ un quart de la note. ' : ''))
     +   'Cherche au brouillon, tu exposeras ensuite.</span></div>'
     + '<h3 style="margin:0 0 4px;font-size:17px">'+p.titre+'</h3>'
     + '<div style="font-size:12px;color:var(--muted);margin-bottom:12px">'+((TOPICS[p.topic]||{}).name||p.topic)+'</div>'
@@ -8900,15 +8946,23 @@ function renderPassage(){
   // en maths-info, le passage commence par les 5 minutes d'informatique
   if(s.e.python && s.python===null){ renderPython(); return; }
   if(s.i < s.planche.parties.length){ oralQuestion(); return; }
+  if(s.froid && s.jf < s.froid.parties.length){ oralQuestion(true); return; }
   renderGrille();
 }
 
 function renderPython(){
   const s=oralS, py=s.planche.python;
-  $('#oralStep').textContent = 'informatique · 5 min · ~'+Math.round(ORAL_BAREME.python/20*100)+' % de la note';
+  const ccinp = s.e.concours==='ccinp';
+  $('#oralStep').textContent = ccinp
+    ? 'question Python de l\'exercice préparé'
+    : 'informatique · 5 min · ~'+Math.round(ORAL_BAREME.python/20*100)+' % de la note';
   s.hints=0;
   $('#oralBody').innerHTML =
-      '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Le passage commence devant l\'ordinateur. Explique ton code, ne le récite pas.</div>'
+      '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">'
+    + (ccinp
+        ? "La question Python est en relation étroite avec l'énoncé mathématique : ce n'est jamais de l'informatique pure. Explique ce qu'elle apporte au raisonnement."
+        : "Le passage commence devant l'ordinateur. Explique ton code, ne le récite pas.")
+    + '</div>'
     + '<h3 style="margin:0 0 10px;font-size:16px">Partie informatique</h3>'
     + '<div class="colle-enonce">'+py.enonce+'</div>'
     + (py.amorce||'')
@@ -8957,14 +9011,26 @@ function oralRelance(liste){
   typeset(d);
 }
 
-function oralQuestion(){
-  const s=oralS, q=s.planche.parties[s.i], p=s.planche;
-  $('#oralStep').textContent = 'question '+(s.i+1)+' sur '+p.parties.length;
+function oralQuestion(froid){
+  const s=oralS;
+  const p = froid ? s.froid : s.planche;
+  const k = froid ? s.jf : s.i;
+  const q = p.parties[k];
+  $('#oralStep').textContent = froid
+    ? 'exercice à froid · question '+(k+1)+' sur '+p.parties.length
+    : 'question '+(k+1)+' sur '+p.parties.length;
   s.hints=0;
   $('#oralBody').innerHTML =
-      '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">'+((TOPICS[p.topic]||{}).name||p.topic)+' · '+p.titre+'</div>'
-    + (s.i===0 && p.contexte ? '<div class="colle-enonce" style="margin-bottom:12px">'+p.contexte+'</div>' : '')
-    + '<div class="colle-enonce"><b>'+(s.i+1)+'.</b> '+q.q+'</div>'
+      (froid && k===0
+        ? '<div style="display:flex;gap:9px;align-items:flex-start;background:color-mix(in srgb,#f97316 12%,transparent);'
+          + 'border:1px solid color-mix(in srgb,#f97316 35%,transparent);border-radius:11px;padding:11px 14px;margin:6px 0 14px;font-size:13px;line-height:1.55">'
+          + '<span>📄</span><span><b>L\'examinateur te remet un second exercice.</b> Sans préparation : '
+          + 'il évalue ta réactivité et ton autonomie. Lis-le à voix haute, dis quelles notions du cours '
+          + 'il mobilise, puis annonce ta stratégie avant de calculer.</span></div>'
+        : '')
+    + '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">'+((TOPICS[p.topic]||{}).name||p.topic)+' · '+p.titre+'</div>'
+    + (k===0 && p.contexte ? '<div class="colle-enonce" style="margin-bottom:12px">'+p.contexte+'</div>' : '')
+    + '<div class="colle-enonce"><b>'+(k+1)+'.</b> '+q.q+'</div>'
     + '<div id="oralHints"></div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">'
     +   '<button class="btn ghost" id="oralHintBtn" style="font-size:13px;padding:9px 14px">💡 Relance <span style="opacity:.65">(1/'+q.relances.length+')</span></button>'
@@ -8974,7 +9040,8 @@ function oralQuestion(){
   $('#oralSolBtn').onclick=()=>{
     const sec=oralEcoule();
     $('#oralSolBtn').disabled=true; $('#oralHintBtn').disabled=true;
-    const part = (20 - (s.e.python?ORAL_BAREME.python:0) - ORAL_BAREME.communication) / p.parties.length;
+    const nTotal = s.planche.parties.length + (s.froid ? s.froid.parties.length : 0);
+    const part = (20 - (s.e.python?ORAL_BAREME.python:0) - ORAL_BAREME.communication) / nTotal;
     $('#oralSol').innerHTML =
         '<div class="reveal-ans" style="margin-top:16px"><span class="rl">Corrigé</span>'+q.sol+'</div>'
       + '<div style="margin-top:16px"><div style="display:flex;gap:8px;flex-wrap:wrap">'
@@ -8985,8 +9052,10 @@ function oralQuestion(){
     $('#oralSol').querySelectorAll('button[data-g]').forEach(b=>{
       b.onclick=()=>{
         const g=b.getAttribute('data-g');
-        s.res.push({ g, sec, hints:s.hints, q:q.q, pts: g==='seul'?part : g==='aide'?part*0.6 : 0 });
-        s.i++; s.hints=0; renderPassage();
+        s.res.push({ g, sec, hints:s.hints, q:q.q, froid:!!froid,
+                      pts: g==='seul'?part : g==='aide'?part*0.6 : 0 });
+        if(froid) s.jf++; else s.i++;
+        s.hints=0; renderPassage();
       };
     });
     typeset($('#oralSol'));
