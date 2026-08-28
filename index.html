@@ -7545,9 +7545,15 @@ function qHTML(t){
   /* Un « < » BRUT suivi d'une lettre (ex. « $p<m\\le n$ ») est avalé par innerHTML : le navigateur
      y voit le début d'une balise et fait disparaître toute la fin de l'énoncé. On l'échappe AVANT
      de reconstituer les vraies balises (\lt b\gt → <b>). q n'est pas modifié → qHash/SRS intacts. */
+  /* Les énoncés littéraires portent une mise en forme légitime : titres d'œuvres en italique,
+     termes en gras. On la PRÉSERVE, tout en continuant d'échapper les « < » bruts : les balises
+     autorisées sont mises de côté, l'échappement s'applique, puis elles sont rétablies. */
+  const GARDE = [];
   const s = String(t == null ? '' : t)
+    .replace(/<\/?(?:b|i|em|strong|sup|sub)>/g, m => { GARDE.push(m); return '\u0001' + (GARDE.length - 1) + '\u0002'; })
     .replace(/<(?=[a-zA-Z])/g, '&lt;')
-    .replace(/\\lt\s*(\/?)(b|i|em|strong)\s*\\gt/g, '<$1$2>');
+    .replace(/\\lt\s*(\/?)(b|i|em|strong)\s*\\gt/g, '<$1$2>')
+    .replace(/\u0001(\d+)\u0002/g, (_, k) => GARDE[+k]);
   /* SUR-ÉCHAPPEMENT LaTeX : quelques énoncés importés contiennent « \\to », « \\vec », « \\alpha »…
      Or pour MathJax « \\ » est un SAUT DE LIGNE : la formule s'affiche cassée (« $f'\\to\\ell$ »).
      Réparation à l'AFFICHAGE seulement — q n'est jamais modifié, donc qHash/SRS intacts. Appliquée
