@@ -1513,7 +1513,14 @@ const FAMILIES = {
   /* ===== familles introduites par le programme de seconde année ===== */
   "ph_ondulatoire": { "name": "Optique ondulatoire", "raw": "#38bdf8", "subject": "physique" },
   "ph_emag": { "name": "Électromagnétisme", "raw": "#a78bfa", "subject": "physique" },
-  "si_energie2": { "name": "Énergie & puissance", "raw": "#f59e0b", "subject": "si" }
+  "si_energie2": { "name": "Énergie & puissance", "raw": "#f59e0b", "subject": "si" },
+  /* ===== familles des matières transversales (mêmes contenus en TSI1 et TSI2) ===== */
+  "fr_oeuvres": { "name": "Thème & œuvres", "raw": "#f43f5e", "subject": "francais" },
+  "fr_methode": { "name": "Méthodes de l'écrit", "raw": "#fb7185", "subject": "francais" },
+  "en_langue": { "name": "Langue & grammaire", "raw": "#3b82f6", "subject": "anglais" },
+  "en_voc": { "name": "Vocabulaire", "raw": "#60a5fa", "subject": "anglais" },
+  "en_civ": { "name": "Civilisation", "raw": "#93c5fd", "subject": "anglais" },
+  "en_methode": { "name": "Méthodes & épreuves", "raw": "#2563eb", "subject": "anglais" }
 };
 const TOPICS = {
   "trigo": { "name": "1. Trigonométrie", "family": "geometrie", "raw": "#eab308" },
@@ -1635,7 +1642,35 @@ const TOPICS = {
   "s2_machines_elec": { "name": "6. Machines électriques et modulateurs de puissance", "family": "si_energie2", "raw": "#f59e0b", "subject": "si", "level": "tsi2" },
   "s2_monophase_tri": { "name": "7. Régimes monophasé et triphasé", "family": "si_energie2", "raw": "#fbbf24", "subject": "si", "level": "tsi2" },
   "s2_ia_systemes": { "name": "8. Intelligence artificielle appliquée aux systèmes", "family": "si_systemes", "raw": "#2dd4bf", "subject": "si", "level": "tsi2" },
-  "s2_numerique": { "name": "9. Résolution numérique et simulation", "family": "si_systemes", "raw": "#5eead4", "subject": "si", "level": "tsi2" }
+  "s2_numerique": { "name": "9. Résolution numérique et simulation", "family": "si_systemes", "raw": "#5eead4", "subject": "si", "level": "tsi2" },
+  /* ===== FRANÇAIS-PHILOSOPHIE — thème 2026-2027 « Les arcanes de la création » :
+     Platon (Ion ; La République, livre X), Zola (L'Œuvre), Woolf (Un lieu à soi).
+     Le thème est le MÊME en première et en seconde année, d'où level:'tr'.
+     ATTENTION : il change à chaque année scolaire — à mettre à jour chaque été. ===== */
+  "fr_theme": { "name": "1. Le thème : les arcanes de la création", "family": "fr_oeuvres", "raw": "#f43f5e", "subject": "francais", "level": "tr" },
+  "fr_platon_ion": { "name": "2. Platon — Ion", "family": "fr_oeuvres", "raw": "#fb7185", "subject": "francais", "level": "tr" },
+  "fr_platon_rep": { "name": "3. Platon — La République, livre X", "family": "fr_oeuvres", "raw": "#fda4af", "subject": "francais", "level": "tr" },
+  "fr_zola": { "name": "4. Zola — L'Œuvre", "family": "fr_oeuvres", "raw": "#e11d48", "subject": "francais", "level": "tr" },
+  "fr_woolf": { "name": "5. Woolf — Un lieu à soi", "family": "fr_oeuvres", "raw": "#9f1239", "subject": "francais", "level": "tr" },
+  "fr_notions": { "name": "6. Notions et problématiques du thème", "family": "fr_oeuvres", "raw": "#be123c", "subject": "francais", "level": "tr" },
+  "fr_resume": { "name": "7. Méthode : le résumé de texte", "family": "fr_methode", "raw": "#fb7185", "subject": "francais", "level": "tr" },
+  "fr_dissertation": { "name": "8. Méthode : la dissertation", "family": "fr_methode", "raw": "#f43f5e", "subject": "francais", "level": "tr" },
+  "fr_citations": { "name": "9. Citations et références du thème", "family": "fr_oeuvres", "raw": "#f43f5e", "subject": "francais", "level": "tr" },
+  /* ===== ANGLAIS — la CPGE n'a pas de programme de contenu en langue mais des compétences :
+     langue, vocabulaire thématique, civilisation, méthodes d'épreuve. Commun aux deux années. ===== */
+  "en_temps": { "name": "1. Temps, aspects et concordance", "family": "en_langue", "raw": "#3b82f6", "subject": "anglais", "level": "tr" },
+  "en_modaux": { "name": "2. Modaux et expression de la modalité", "family": "en_langue", "raw": "#60a5fa", "subject": "anglais", "level": "tr" },
+  "en_syntaxe": { "name": "3. Structures et syntaxe", "family": "en_langue", "raw": "#93c5fd", "subject": "anglais", "level": "tr" },
+  "en_faux_amis": { "name": "4. Faux amis et pièges de traduction", "family": "en_langue", "raw": "#2563eb", "subject": "anglais", "level": "tr" },
+  "en_idiomes": { "name": "5. Expressions idiomatiques et connecteurs", "family": "en_langue", "raw": "#1d4ed8", "subject": "anglais", "level": "tr" },
+  "en_voc_sciences": { "name": "6. Vocabulaire : sciences, techniques, ingénierie", "family": "en_voc", "raw": "#60a5fa", "subject": "anglais", "level": "tr" },
+  "en_voc_societe": { "name": "7. Vocabulaire : société, éducation, santé", "family": "en_voc", "raw": "#93c5fd", "subject": "anglais", "level": "tr" },
+  "en_voc_eco": { "name": "8. Vocabulaire : économie, entreprise, travail", "family": "en_voc", "raw": "#bfdbfe", "subject": "anglais", "level": "tr" },
+  "en_voc_enviro": { "name": "9. Vocabulaire : environnement et énergie", "family": "en_voc", "raw": "#3b82f6", "subject": "anglais", "level": "tr" },
+  "en_civ_uk": { "name": "10. Civilisation : Royaume-Uni", "family": "en_civ", "raw": "#93c5fd", "subject": "anglais", "level": "tr" },
+  "en_civ_us": { "name": "11. Civilisation : États-Unis", "family": "en_civ", "raw": "#bfdbfe", "subject": "anglais", "level": "tr" },
+  "en_oral": { "name": "12. Méthode : résumé et commentaire d'article", "family": "en_methode", "raw": "#2563eb", "subject": "anglais", "level": "tr" },
+  "en_traduction": { "name": "13. Méthode : thème et version", "family": "en_methode", "raw": "#1e40af", "subject": "anglais", "level": "tr" }
 };
 
 /* ============== MATIÈRES & ANNÉES — socle infrastructure multi-matières (additif) ==============
