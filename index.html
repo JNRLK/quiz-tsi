@@ -1747,6 +1747,14 @@ function hasTopics(subject, level){ return Object.keys(TOPICS).some(k => TOPICS[
    déclarée — permet d'exposer une matière « en préparation » (ex. Physique-Chimie TSI1) avec ses
    chapitres et un badge « bientôt », avant toute carte. N'affecte pas le filtrage du pool (poolFilter). */
 function subjectsForNav(level){ return Object.keys(SUBJECTS).filter(s => isTransversal(s) ? (hasContent(s,'tr')||hasTopics(s,'tr')) : (hasContent(s,level)||hasTopics(s,level))).sort((a,b)=>SUBJECTS[a].order-SUBJECTS[b].order); }
+/* Chapitres de la numérotation du cahier de prépa qui n'ont pas de cartes en propre : leurs notions
+   sont traitées dans un chapitre voisin. Plutôt que d'afficher « 0/0 » (ou de les masquer, ce qui
+   trouerait la numérotation), on renvoie l'élève à l'endroit où le contenu se trouve réellement. */
+const CHAP_RENVOI = {
+  second_degre:'polynomes', recurrence:'ensembles', complexes_exp:'complexes_alg',
+  systeme_matrice:'systemes', operations_vecteurs:'vecteurs',
+  limites_fonctions:'limites_continuite', limites_suites:'suites', derivation_dl1:'derivation'
+};
 /* La classe a-t-elle du contenu « cœur » (hors langues transversales) ? sinon badge « bientôt ». */
 function levelHasOwnContent(level){ return Object.keys(SUBJECTS).some(s => !isTransversal(s) && hasContent(s,level)); }
 /* ============================================================================================ */
@@ -6999,18 +7007,35 @@ function buildFamilyAccordion(){
         s.newCards>0?`<span class="tn-new">✨ ${s.newCards} nouvelle${s.newCards>1?'s':''}</span>`:'',
         `<span class="tn-ok">✅ ${s.learned}/${s.total}</span>`,
       ].filter(Boolean).join('');
+      const renvoi = (s.total===0 && CHAP_RENVOI[key] && TOPICS[CHAP_RENVOI[key]]) ? CHAP_RENVOI[key] : null;
       info.innerHTML=`
-        <div class="topic-name" style="color:${on?t.raw:'var(--ink)'}">${t.name} ${annalesBadge(key)}</div>
-        <div class="topic-bar"><i style="width:${pct}%;background:${t.raw}"></i></div>
-        <div class="topic-nums">${numsHtml}</div>`;
-      // toute la zone d'info est tappable pour sélectionner (cible large sur mobile, pas seulement la pastille)
-      info.style.cursor='pointer';
-      info.onclick=e=>{ e.stopPropagation();
-        if(selected.has(key)){ selected.delete(key); }
-        else selected.add(key);
-        buildFamilyAccordion(); updatePoolInfo();
-      };
+        <div class="topic-name" style="color:${on?t.raw:'var(--ink)'}">${t.name} ${annalesBadge(key)}</div>`
+        + (renvoi
+            ? `<div class="topic-nums" style="line-height:1.45">↪ contenu traité dans <b style="color:${TOPICS[renvoi].raw}">${TOPICS[renvoi].name}</b></div>`
+            : `<div class="topic-bar"><i style="width:${pct}%;background:${t.raw}"></i></div>
+               <div class="topic-nums">${numsHtml}</div>`);
+      if(renvoi){
+        // un chapitre sans carte ne se sélectionne pas : on emmène l'élève là où le contenu se trouve
+        info.style.cursor='pointer';
+        info.onclick=e=>{ e.stopPropagation();
+          selected.add(renvoi);
+          buildFamilyAccordion(); updatePoolInfo();
+          const cible=document.querySelector('[data-topic="'+renvoi+'"]');
+          if(cible) cible.scrollIntoView({behavior:'smooth', block:'center'});
+        };
+        selBt.disabled = true; selBt.style.opacity = '.35'; selBt.style.cursor = 'not-allowed';
+        selBt.setAttribute('aria-label', t.name+' — chapitre sans carte, voir '+TOPICS[renvoi].name);
+      } else {
+        // toute la zone d'info est tappable pour sélectionner (cible large sur mobile, pas seulement la pastille)
+        info.style.cursor='pointer';
+        info.onclick=e=>{ e.stopPropagation();
+          if(selected.has(key)){ selected.delete(key); }
+          else selected.add(key);
+          buildFamilyAccordion(); updatePoolInfo();
+        };
+      }
 
+      row.setAttribute('data-topic', key);
       row.appendChild(selBt);
       row.appendChild(info);
 
