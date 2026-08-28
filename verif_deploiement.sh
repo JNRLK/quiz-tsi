@@ -40,33 +40,49 @@ PY
 
 node --check /tmp/_verif_mod.mjs && echo "✓ le module ES compile" || ERR=1
 
-# Intégrité des grands tableaux de données. Une virgule double — [a,,b] — est du JavaScript
-# PARFAITEMENT VALIDE : elle crée un trou, l'élément vaut undefined, et la première boucle qui
-# le traverse lève un TypeError qui tue le module. node --check ne peut donc pas la voir.
-node -e '
-const fs=require("fs"); const src=fs.readFileSync("index.html","utf8");
-let ko=0;
-for(const nom of ["QUESTIONS","ORAL_PLANCHES","COLLE_EX","COLLE_COURS"]){
-  const i=src.indexOf("const "+nom);
-  if(i<0) continue;
-  const m=/\n\];|\n\s*\];/.exec(src.slice(i));
-  let bloc;
-  if(m) bloc=src.slice(i, i+m.index+3);
-  else { const j=src.indexOf("\n", i); bloc=src.slice(i, j); }
-  let arr;
-  try{ arr=new Function("FIG","FIG3D","P","L10","return "+nom+";\n"+bloc.replace("const "+nom,"var "+nom))
-         (()=>"",()=>"",(r,d)=>[0,0],x=>0); }
-  catch(e){
-    try{ arr=new Function("FIG","FIG3D","P","L10", bloc+"; return "+nom+";")(()=>"",()=>"",(r,d)=>[0,0],x=>0); }
-    catch(e2){ console.log("  ⚠ "+nom+" non évaluable : "+e2.message.slice(0,60)); continue; }
-  }
-  if(!Array.isArray(arr)) continue;
-  let trous=0; for(let k=0;k<arr.length;k++) if(arr[k]===undefined) trous++;
-  if(trous){ console.log("❌ "+nom+" : "+trous+" trou(s) — virgule double ? Le module plantera au chargement."); ko=1; }
-  else console.log("✓ "+nom+" : "+arr.length+" éléments, aucun trou");
-}
-process.exit(ko);
-' || ERR=1
+# Trous de tableau : « [a,,b] » est du JavaScript PARFAITEMENT VALIDE (l'élément vaut undefined),
+# donc node --check ne le voit pas — mais la première boucle qui traverse le tableau plante et tue
+# tout le module. C'est ce qui a rendu le site inutilisable en v206. On cherche donc les virgules
+# consécutives en ignorant le contenu des chaînes de caractères et des commentaires.
+python3 - <<'PYEOF' || ERR=1
+import re, sys
+src = open('index.html', encoding='utf-8').read()
+m = re.search(r'<script type="module">(.*?)</script>', src, re.S)
+code = m.group(1)
+
+hors = []          # positions des virgules situées hors chaîne et hors commentaire
+i, n = 0, len(code)
+chaine = None; ligne = 1
+while i < n:
+    c = code[i]
+    if c == '\n': ligne += 1
+    if chaine:
+        if c == '\\': i += 2; continue
+        if c == chaine: chaine = None
+        i += 1; continue
+    if c in '"\'`': chaine = c; i += 1; continue
+    if code.startswith('//', i):
+        j = code.find('\n', i); i = n if j < 0 else j; continue
+    if code.startswith('/*', i):
+        j = code.find('*/', i); i = n if j < 0 else j + 2; continue
+    if c == ',': hors.append((i, ligne))
+    i += 1
+
+# deux virgules hors chaîne séparées uniquement par des espaces ou un commentaire
+pb = []
+for k in range(len(hors) - 1):
+    a, la = hors[k]; b, _ = hors[k + 1]
+    entre = code[a + 1:b]
+    if re.fullmatch(r'[\s]*(?:/\*.*?\*/[\s]*)*', entre, re.S):
+        pb.append((la, code[max(0, a - 70):b + 40].replace('\n', ' ')))
+if pb:
+    print(f"❌ {len(pb)} virgule(s) double(s) — trou de tableau, le module plantera au chargement :")
+    for la, ctx in pb[:5]:
+        print(f"     ligne {la} du module : …{ctx}…")
+    sys.exit(1)
+print("✓ aucune virgule double (aucun trou de tableau)")
+PYEOF
+
 node --check /tmp/_verif_cls.js && echo "✓ les scripts classiques compilent" || ERR=1
 node --check sw.js && echo "✓ sw.js compile" || ERR=1
 
