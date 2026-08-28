@@ -1509,7 +1509,11 @@ const FAMILIES = {
   /* ===== Sciences de l'Ingénieur — familles. subject:'si' OBLIGATOIRE (sinon rattaché à maths). Additif. ===== */
   "si_systemes":  { "name": "Ingénierie & systèmes",  "raw": "#14b8a6", "subject": "si" },
   "si_meca":      { "name": "Mécanique du solide",    "raw": "#f97316", "subject": "si" },
-  "si_asserv":    { "name": "Systèmes asservis",      "raw": "#a855f7", "subject": "si" }
+  "si_asserv":    { "name": "Systèmes asservis",      "raw": "#a855f7", "subject": "si" },
+  /* ===== familles introduites par le programme de seconde année ===== */
+  "ph_ondulatoire": { "name": "Optique ondulatoire", "raw": "#38bdf8", "subject": "physique" },
+  "ph_emag": { "name": "Électromagnétisme", "raw": "#a78bfa", "subject": "physique" },
+  "si_energie2": { "name": "Énergie & puissance", "raw": "#f59e0b", "subject": "si" }
 };
 const TOPICS = {
   "trigo": { "name": "1. Trigonométrie", "family": "geometrie", "raw": "#eab308" },
@@ -1589,7 +1593,49 @@ const TOPICS = {
   "si_liaisons":       { "name": "4. Liaisons & schéma cinématique",              "family": "si_meca",     "raw": "#f97316", "subject": "si", "level": "tsi1" },
   "si_cinematique":    { "name": "5. Cinématique des solides",                    "family": "si_meca",     "raw": "#fb923c", "subject": "si", "level": "tsi1" },
   "si_statique":       { "name": "6. Statique des solides",                       "family": "si_meca",     "raw": "#fdba74", "subject": "si", "level": "tsi1" },
-  "si_slci":           { "name": "7. Systèmes asservis (SLCI)",                   "family": "si_asserv",   "raw": "#a855f7", "subject": "si", "level": "tsi1" }
+  "si_slci":           { "name": "7. Systèmes asservis (SLCI)",                   "family": "si_asserv",   "raw": "#a855f7", "subject": "si", "level": "tsi1" },
+  /* ===== MATHÉMATIQUES — seconde année (programme officiel 2021) ===== */
+  "m2_algebre_compl": { "name": "1. Compléments d'algèbre linéaire", "family": "algebre", "raw": "#8b5cf6", "subject": "maths", "level": "tsi2" },
+  "m2_determinants": { "name": "2. Déterminants", "family": "algebre", "raw": "#a78bfa", "subject": "maths", "level": "tsi2" },
+  "m2_reduction": { "name": "3. Réduction des endomorphismes", "family": "algebre", "raw": "#c4b5fd", "subject": "maths", "level": "tsi2" },
+  "m2_courbes": { "name": "4. Fonctions vectorielles et courbes paramétrées", "family": "geometrie", "raw": "#0ea5e9", "subject": "maths", "level": "tsi2" },
+  "m2_integ_quelconque": { "name": "5. Intégration sur un intervalle quelconque", "family": "analyse", "raw": "#ef4444", "subject": "maths", "level": "tsi2" },
+  "m2_series_num": { "name": "6. Séries numériques", "family": "analyse", "raw": "#f87171", "subject": "maths", "level": "tsi2" },
+  "m2_series_entieres": { "name": "7. Séries entières", "family": "analyse", "raw": "#fca5a5", "subject": "maths", "level": "tsi2" },
+  "m2_prehilbertien": { "name": "8. Espaces préhilbertiens réels et euclidiens", "family": "geometrie", "raw": "#38bdf8", "subject": "maths", "level": "tsi2" },
+  "m2_fourier": { "name": "9. Séries de Fourier", "family": "analyse", "raw": "#dc2626", "subject": "maths", "level": "tsi2" },
+  "m2_proba_denombrable": { "name": "10. Probabilités sur un univers dénombrable", "family": "proba_denom", "raw": "#fb7185", "subject": "maths", "level": "tsi2" },
+  "m2_va_discretes": { "name": "11. Variables aléatoires discrètes", "family": "proba_denom", "raw": "#fda4af", "subject": "maths", "level": "tsi2" },
+  "m2_edl_lineaires": { "name": "12. Équations différentielles linéaires", "family": "analyse", "raw": "#b91c1c", "subject": "maths", "level": "tsi2" },
+  "m2_fonctions_pv": { "name": "13. Fonctions de plusieurs variables", "family": "analyse", "raw": "#ef4444", "subject": "maths", "level": "tsi2" },
+  /* ===== PHYSIQUE-CHIMIE — seconde année (programme officiel 2021) ===== */
+  "p2_statique_fluides": { "name": "1. Statique des fluides et identités thermodynamiques", "family": "ph_thermo", "raw": "#f97316", "subject": "physique", "level": "tsi2" },
+  "p2_diagrammes": { "name": "2. Diagrammes d'état des fluides réels purs", "family": "ph_thermo", "raw": "#fb923c", "subject": "physique", "level": "tsi2" },
+  "p2_ecoulement": { "name": "3. Fluide en écoulement stationnaire dans une conduite", "family": "ph_thermo", "raw": "#fdba74", "subject": "physique", "level": "tsi2" },
+  "p2_thermo_indus": { "name": "4. Thermodynamique industrielle", "family": "ph_thermo", "raw": "#ea580c", "subject": "physique", "level": "tsi2" },
+  "p2_conduction": { "name": "5. Transfert d'énergie par conduction thermique", "family": "ph_thermo", "raw": "#c2410c", "subject": "physique", "level": "tsi2" },
+  "p2_stabilite": { "name": "6. Stabilité des systèmes linéaires et rétroaction", "family": "ph_signaux", "raw": "#eab308", "subject": "physique", "level": "tsi2" },
+  "p2_oscillateurs": { "name": "7. Oscillateurs", "family": "ph_signaux", "raw": "#facc15", "subject": "physique", "level": "tsi2" },
+  "p2_electro_num": { "name": "8. Électronique numérique", "family": "ph_signaux", "raw": "#fde047", "subject": "physique", "level": "tsi2" },
+  "p2_ondes_lumineuses": { "name": "9. Modèle scalaire des ondes lumineuses", "family": "ph_ondulatoire", "raw": "#38bdf8", "subject": "physique", "level": "tsi2" },
+  "p2_interferences": { "name": "10. Superposition d'ondes et trous d'Young", "family": "ph_ondulatoire", "raw": "#7dd3fc", "subject": "physique", "level": "tsi2" },
+  "p2_electrostatique": { "name": "11. Électrostatique", "family": "ph_emag", "raw": "#a78bfa", "subject": "physique", "level": "tsi2" },
+  "p2_magnetostatique": { "name": "12. Magnétostatique", "family": "ph_emag", "raw": "#c4b5fd", "subject": "physique", "level": "tsi2" },
+  "p2_maxwell": { "name": "13. Équations de Maxwell", "family": "ph_emag", "raw": "#8b5cf6", "subject": "physique", "level": "tsi2" },
+  "p2_propagation_em": { "name": "14. Propagation des ondes électromagnétiques", "family": "ph_emag", "raw": "#7c3aed", "subject": "physique", "level": "tsi2" },
+  "p2_thermo_chimique": { "name": "15. Thermodynamique d'un système en réaction chimique", "family": "ph_chimie", "raw": "#22c55e", "subject": "physique", "level": "tsi2" },
+  "p2_oxydo_thermo": { "name": "16. Étude thermodynamique des réactions d'oxydo-réduction", "family": "ph_chimie", "raw": "#4ade80", "subject": "physique", "level": "tsi2" },
+  "p2_pot_ph": { "name": "17. Diagrammes potentiel-pH", "family": "ph_chimie", "raw": "#86efac", "subject": "physique", "level": "tsi2" },
+  /* ===== SCIENCES DE L'INGÉNIEUR — seconde année (semestres 3 et 4) ===== */
+  "s2_dynamique": { "name": "1. Dynamique des solides et matrice d'inertie", "family": "si_meca", "raw": "#fdba74", "subject": "si", "level": "tsi2" },
+  "s2_rdm": { "name": "2. Résistance des matériaux et sollicitations", "family": "si_meca", "raw": "#fb923c", "subject": "si", "level": "tsi2" },
+  "s2_correction": { "name": "3. Correction des systèmes asservis", "family": "si_asserv", "raw": "#a855f7", "subject": "si", "level": "tsi2" },
+  "s2_perf_asserv": { "name": "4. Performances : stabilité, précision, rapidité", "family": "si_asserv", "raw": "#c084fc", "subject": "si", "level": "tsi2" },
+  "s2_multiphysique": { "name": "5. Modélisation multiphysique (flux et effort)", "family": "si_systemes", "raw": "#14b8a6", "subject": "si", "level": "tsi2" },
+  "s2_machines_elec": { "name": "6. Machines électriques et modulateurs de puissance", "family": "si_energie2", "raw": "#f59e0b", "subject": "si", "level": "tsi2" },
+  "s2_monophase_tri": { "name": "7. Régimes monophasé et triphasé", "family": "si_energie2", "raw": "#fbbf24", "subject": "si", "level": "tsi2" },
+  "s2_ia_systemes": { "name": "8. Intelligence artificielle appliquée aux systèmes", "family": "si_systemes", "raw": "#2dd4bf", "subject": "si", "level": "tsi2" },
+  "s2_numerique": { "name": "9. Résolution numérique et simulation", "family": "si_systemes", "raw": "#5eead4", "subject": "si", "level": "tsi2" }
 };
 
 /* ============== MATIÈRES & ANNÉES — socle infrastructure multi-matières (additif) ==============
