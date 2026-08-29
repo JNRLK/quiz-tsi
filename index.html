@@ -230,7 +230,7 @@ window.MathJax = {
   .goal-bar>i{display:block; height:100%; transition:width .6s}
 
   /* ---- Paliers / badges de progression ---- */
-  .achv-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(148px,1fr)); gap:10px; margin:6px 0 20px}
+  .achv-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(138px,1fr)); gap:10px; margin:6px 0 20px}
   .achv{background:var(--bg-deep); border:1px solid var(--line); border-radius:14px; padding:12px 14px}
   .achv.locked{opacity:.55}
   .achv .ah{font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px}
@@ -238,6 +238,13 @@ window.MathJax = {
   .achv .abar{height:6px; border-radius:99px; background:var(--panel-2); overflow:hidden}
   .achv .abar>i{display:block; height:100%; transition:width .6s}
   .achv .an{font-size:11px; color:var(--muted); margin-top:6px}
+  .achv .aq{font-size:10.5px; color:var(--muted); opacity:.85; margin:-5px 0 7px; line-height:1.3}
+  .hm-months{display:flex; gap:3px; height:13px; margin-bottom:3px; overflow:hidden}
+  .hm-mon{width:13px; flex:none; font-size:9.5px; color:var(--muted); white-space:nowrap; position:relative}
+  .hm-mon>b{position:absolute; left:0; top:0; font-weight:600}
+  .hm-foot{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:9px; font-size:11.5px; color:var(--muted)}
+  .hm-key{display:flex; align-items:center; gap:4px}
+  .hm-key i{display:inline-block; width:11px; height:11px; border-radius:3px}
   .achv .dots{margin-top:7px; font-size:12px; letter-spacing:2px}
 
   /* ---- Examen blanc (chronométré) ---- */
@@ -9652,6 +9659,16 @@ function activityHeatmap(extDays){
     cols += `<div class="hm-col">${col}</div>`;
   }
 
+  // Bandeau des mois : on étiquette la colonne où le mois change, sinon la grille est illisible.
+  const MOIS = ['janv','févr','mars','avr','mai','juin','juil','août','sept','oct','nov','déc'];
+  let months='', dernierMois=-1;
+  for(let w=0; w<WEEKS; w++){
+    const dt=new Date(start); dt.setDate(start.getDate()+w*7);
+    const m=dt.getMonth();
+    const neuf = (m!==dernierMois); if(neuf) dernierMois=m;
+    months += `<div class="hm-mon">${neuf?`<b>${MOIS[m]}</b>`:''}</div>`;
+  }
+
   // objectif hebdo : jours actifs depuis lundi
   let activeThisWeek=0;
   for(let d=0; d<=dow; d++){ const dt=new Date(today); dt.setDate(today.getDate()-dow+d);
@@ -9659,44 +9676,172 @@ function activityHeatmap(extDays){
   const pct=Math.min(100, Math.round(activeThisWeek/WEEKLY_GOAL*100));
   const reached = activeThisWeek>=WEEKLY_GOAL;
 
+  /* Ce que la grille seule ne dit pas : le volume réellement produit et le record tenu. Ce sont
+     ces deux chiffres qui rendent l'effort visible, la grille n'en donnant qu'une impression. */
+  const cles = Object.keys(days).filter(k=>days[k]>0).sort();
+  const totalActions = cles.reduce((a,k)=>a+days[k],0);
+  const joursActifs  = cles.length;
+  let record=0, courant=0, prec=null;
+  cles.forEach(k=>{
+    if(prec){ const veille=new Date(prec+'T12:00:00'); veille.setDate(veille.getDate()+1);
+              courant = (veille.toISOString().slice(0,10)===k) ? courant+1 : 1; }
+    else courant = 1;
+    if(courant>record) record=courant; prec=k;
+  });
+  // Semaines consécutives où l'objectif a été tenu (la semaine en cours ne compte que si déjà atteint).
+  let semainesTenues=0;
+  for(let w=0; w<WEEKS; w++){
+    const fin=new Date(today); fin.setDate(today.getDate()-dow-w*7);      // lundi de la semaine visée
+    let n=0;
+    for(let d=0; d<7; d++){ const dt=new Date(fin); dt.setDate(fin.getDate()+d);
+      if(dt>today) break;
+      if((days[dt.toISOString().slice(0,10)]||0)>0) n++; }
+    if(n>=WEEKLY_GOAL) semainesTenues++; else break;
+  }
+
   let html = `<p class="section-label" style="margin-top:22px">Activité (4 derniers mois)</p>`;
-  html += `<div class="heatmap">${cols}</div>`;
+  html += `<div style="overflow-x:auto"><div style="min-width:max-content">
+      <div class="hm-months">${months}</div>
+      <div class="heatmap" style="overflow:visible">${cols}</div>
+    </div></div>`;
+  html += `<div class="hm-foot">
+      <span>🗓️ <b style="color:var(--ink)">${joursActifs}</b> jour${joursActifs!==1?'s':''} actif${joursActifs!==1?'s':''}</span>
+      <span>⚡ <b style="color:var(--ink)">${totalActions}</b> révision${totalActions!==1?'s':''}</span>
+      <span>🏅 record : <b style="color:var(--ink)">${record}</b> jour${record!==1?'s':''} d'affilée</span>
+      <span class="hm-key">moins ${palette.map(c=>`<i style="background:${c}"></i>`).join('')} plus</span>
+    </div>`;
   html += `<div class="goal-row">
-    <span class="goal-lbl">Objectif hebdo : <b style="color:${reached?'#4ade80':'var(--ink)'}">${activeThisWeek}/${WEEKLY_GOAL}</b> jours actifs ${reached?'✓':''}</span>
+    <span class="goal-lbl">${reached
+        ? `Objectif hebdo atteint : <b style="color:#4ade80">${activeThisWeek} jour${activeThisWeek!==1?'s':''} actif${activeThisWeek!==1?'s':''}</b> cette semaine ✓`
+        : `Objectif hebdo : <b style="color:var(--ink)">${activeThisWeek}/${WEEKLY_GOAL}</b> jours actifs`}</span>
     <div class="goal-bar"><i style="width:${pct}%;background:${reached?'#22c55e':'#a78bfa'}"></i></div>
   </div>`;
+  if(semainesTenues>=2){
+    html += `<p style="font-size:11.5px;color:#4ade80;margin:-2px 0 6px">✓ Objectif tenu <b>${semainesTenues} semaines d'affilée</b>.</p>`;
+  }
   return html;
 }
 
 /* ---- Paliers / badges de progression (additif, lecture seule des stats) ---- */
-function solidFamiliesCount(){
+/* Familles « solides ». L'ancienne règle moyennait un score sur TOUTES les cartes de la famille,
+   les cartes jamais vues comptant 0,15 : avec une banque de 2 105 cartes, la moyenne ne pouvait
+   pas atteindre le seuil de 0,7 et le compteur affichait 0 en permanence — un palier inatteignable,
+   donc décourageant. On mesure désormais le travail RÉELLEMENT fait : parmi les cartes de la famille
+   déjà vues, quelle proportion est solidement installée (intervalle ≥ 7 jours) ? Une famille compte
+   dès 8 cartes vues et 70 % d'entre elles installées. Renvoie aussi le nombre de familles entamées,
+   qui donne au compteur son dénominateur. */
+function solidFamiliesStats(){
   try{
     const d=SRS._d(), fam={};
-    QUESTIONS.forEach(q=>{ const t=TOPICS[q.topic]; if(!t) return; const F=FAMILIES[t.family]; if(!F) return;
-      const c=d.cards[qHash(q.q)]; let s=0;
-      if(c){ const ivl=c.interval||0; if(c.state==='learning'||c.state==='relearning')s=0.3; else if(ivl>=21)s=1; else if(ivl>0||(c.reps||0)>0)s=0.6; else s=0.15; }
-      (fam[t.family]||(fam[t.family]={s:0,n:0})); fam[t.family].s+=s; fam[t.family].n++; });
-    return Object.values(fam).filter(f=>f.n>0 && (f.s/f.n)>=0.7).length;
-  }catch(e){ return 0; }
+    QUESTIONS.forEach(q=>{
+      const t=TOPICS[q.topic]; if(!t) return;
+      const F=FAMILIES[t.family]; if(!F) return;
+      const c=d.cards[qHash(q.q)];
+      const vue = !!(c && ((c.reps||0)>0 || (c.interval||0)>0 || c.state==='learning' || c.state==='relearning'));
+      if(!vue) return;
+      const f = (fam[t.family] || (fam[t.family]={vues:0, solides:0}));
+      f.vues++;
+      if((c.interval||0) >= 7) f.solides++;
+    });
+    const list = Object.values(fam);
+    return { solid: list.filter(f=>f.vues>=8 && (f.solides/f.vues)>=0.7).length,
+             entamees: list.filter(f=>f.vues>=8).length };
+  }catch(e){ return {solid:0, entamees:0}; }
 }
+function solidFamiliesCount(){ return solidFamiliesStats().solid; }
 function progressStats(answered){
   const streak = (typeof SRS!=='undefined' && SRS.streakCount) ? SRS.streakCount() : 0;
-  let mature = 0; try{ mature = SRS.maturityCounts(allQuestionHashes()).mature || 0; }catch(e){}
+  let mature = 0, young = 0, vues = 0;
+  try{ const c = SRS.maturityCounts(allQuestionHashes());
+       mature = c.mature||0; young = c.young||0; vues = (c.mature||0)+(c.young||0)+(c.learning||0); }catch(e){}
   const totalCards = (typeof QUESTIONS!=='undefined') ? QUESTIONS.length : 0;
   const pctMature = totalCards ? Math.round(mature/totalCards*100) : 0;
   let ret=0; try{ const r=SRS.trueRetention(30); ret = (r && r.mature!=null) ? r.mature : 0; }catch(e){}
-  return { streak, mature, pctMature, ret, solidFam: solidFamiliesCount(), answered:(answered||0) };
+  const fam = solidFamiliesStats();
+  // Épreuves blanches : colles et oraux vivent dans le même journal, distingués par le drapeau `oral`.
+  let colles=0, oraux=0, colleBest=null, oralBest=null, colleMoy=null;
+  try{
+    const log = (typeof colleLog==='function') ? colleLog() : [];
+    const notes = e => (typeof e.note==='number' && typeof e.tot==='number' && e.tot>0) ? (e.note/e.tot*20) : null;
+    const cL = log.filter(e=>!e.oral), oL = log.filter(e=>e.oral);
+    colles = cL.length; oraux = oL.length;
+    const nc = cL.map(notes).filter(n=>n!==null), no = oL.map(notes).filter(n=>n!==null);
+    if(nc.length){ colleBest = Math.max.apply(null, nc); colleMoy = nc.reduce((a,b)=>a+b,0)/nc.length; }
+    if(no.length){ oralBest = Math.max.apply(null, no); }
+  }catch(e){}
+  return { streak, mature, young, vues, totalCards, pctMature, ret,
+           solidFam: fam.solid, famEntamees: fam.entamees,
+           colles, oraux, colleBest, oralBest, colleMoy,
+           answered:(answered||0) };
+}
+/* Colles et oraux blancs : ces modes produisent une NOTE et un temps par partie, la donnée la plus
+   parlante du site, et le tableau de bord les ignorait complètement. Bloc affiché seulement si au
+   moins une épreuve a été passée. Lecture seule du journal, aucun effet de bord. */
+function epreuvesBlanchesBloc(){
+  let log=[];
+  try{ log = (typeof colleLog==='function') ? colleLog() : []; }catch(e){ return ''; }
+  if(!log.length) return '';
+  const sur20 = e => (typeof e.note==='number' && typeof e.tot==='number' && e.tot>0) ? (e.note/e.tot*20) : null;
+  const n1 = v => String(Math.round(v*10)/10).replace('.', ',');
+  const colles = log.filter(e=>!e.oral), oraux = log.filter(e=>e.oral);
+
+  const bloc = (titre, arr, couleur) => {
+    if(!arr.length) return '';
+    const notes = arr.map(sur20).filter(v=>v!==null);
+    if(!notes.length) return `<div class="ret-card"><div class="rv" style="color:${couleur}">${arr.length}</div><div class="rk">${titre}</div></div>`;
+    const moy = notes.reduce((a,b)=>a+b,0)/notes.length;
+    const best = Math.max.apply(null, notes);
+    // Progression : moyenne des 3 dernières comparée aux 3 précédentes — le signal que l'effort paie.
+    let delta = '';
+    if(notes.length>=4){
+      const rec=notes.slice(-3), old=notes.slice(-6,-3);
+      if(old.length){
+        const d=(rec.reduce((a,b)=>a+b,0)/rec.length)-(old.reduce((a,b)=>a+b,0)/old.length);
+        if(Math.abs(d)>=0.3) delta = `<div class="rh" style="color:${d>0?'#4ade80':'#fbbf24'}">${d>0?'▲ +':'▼ '}${n1(Math.abs(d))} pt depuis les précédentes</div>`;
+      }
+    }
+    return `<div class="ret-card">
+        <div class="rv" style="color:${couleur}">${n1(moy)}<span style="font-size:15px;opacity:.6">/20</span></div>
+        <div class="rk">${titre}</div>
+        <div class="rn">${arr.length} passée${arr.length!==1?'s':''} · record ${n1(best)}/20</div>
+        ${delta}
+      </div>`;
+  };
+
+  let html = `<p class="section-label" style="margin-top:22px">Épreuves blanches</p>`;
+  html += `<div class="ret-cards">` + bloc('Colles', colles, '#f472b6') + bloc('Oraux blancs', oraux, '#38bdf8') + `</div>`;
+  try{
+    const notes = log.filter(e=>sur20(e)!==null).map(e=>({note:sur20(e)}));
+    if(notes.length>1){ const c=courbeNotes(notes); if(c) html += `<div style="margin:2px 0 6px">${c}</div>`; }
+  }catch(e){}
+  html += `<p style="font-size:11.5px;color:var(--muted);margin:0 0 18px;line-height:1.5">Une colle et un oral blanc valent chacun une note sur 20, décomposée par partie et chronométrée. <a href="#" id="statsColleLink" style="color:var(--accent, #a78bfa)">Voir le détail de mes épreuves</a></p>`;
+  return html;
 }
 function progressBadges(answered){
   const s = progressStats(answered);
+  const n20 = v => (v==null) ? '' : String(Math.round(v*10)/10).replace('.', ',');
+  /* Paliers calibrés sur une année de prépa : les seuils d'origine (100 cartes, 1 000 réponses)
+     étaient franchis dès les premiers mois et affichaient « Palier max atteint » toute l'année,
+     supprimant justement le retour d'effort que ces cartes doivent donner. */
   const tracks = [
-    {ic:'🔥', name:"Jours d'affilée",   val:s.streak,    unit:'',  col:'#fb923c', tiers:[3,7,14,30]},
-    {ic:'🎯', name:'Cartes maîtrisées', val:s.mature,    unit:'',  col:'#22c55e', tiers:[10,25,50,100]},
-    {ic:'📚', name:'Réponses',          val:s.answered,  unit:'',  col:'#60a5fa', tiers:[50,200,500,1000]},
-    {ic:'🏆', name:'Programme',         val:s.pctMature, unit:'%', col:'#a78bfa', tiers:[25,50,75,100]},
-    {ic:'🧠', name:'Rétention',         val:s.ret,       unit:'%', col:'#2dd4bf', tiers:[70,80,90,95]},
-    {ic:'🗺️', name:'Familles solides',  val:s.solidFam,  unit:'',  col:'#f59e0b', tiers:[1,3,6,10]},
+    {ic:'🔥', name:"Jours d'affilée",   val:s.streak,    unit:'',  col:'#fb923c', tiers:[3,7,21,60],
+     hint:'une révision par jour suffit à tenir la série'},
+    {ic:'🎯', name:'Cartes maîtrisées', val:s.mature,    unit:'',  col:'#22c55e', tiers:[50,150,400,800],
+     hint:s.young ? (s.young+' autre'+(s.young>1?'s':'')+' en cours de consolidation') : ''},
+    {ic:'📚', name:'Réponses',          val:s.answered,  unit:'',  col:'#60a5fa', tiers:[200,1000,3000,6000]},
+    {ic:'🏆', name:'Programme',         val:s.pctMature, unit:'%', col:'#a78bfa', tiers:[25,50,75,100],
+     hint:s.totalCards ? (s.mature+' cartes maîtrisées sur '+s.totalCards) : ''},
+    {ic:'🧠', name:'Rétention',         val:s.ret,       unit:'%', col:'#2dd4bf', tiers:[70,80,90,95],
+     hint:'sur les cartes maîtrisées, 30 derniers jours'},
+    {ic:'🗺️', name:'Familles solides',  val:s.solidFam,  unit:'',  col:'#f59e0b', tiers:[1,3,6,10],
+     hint:s.famEntamees ? ('sur '+s.famEntamees+' famille'+(s.famEntamees>1?'s':'')+' entamée'+(s.famEntamees>1?'s':'')) : 'dès 8 cartes vues dans une famille'},
   ];
+  // Épreuves blanches : n'apparaissent qu'une fois la première passée, pour ne pas afficher des zéros.
+  if(s.colles) tracks.push({ic:'🎓', name:'Colles',        val:s.colles, unit:'', col:'#f472b6', tiers:[1,5,15,30],
+     hint:(s.colleBest!=null ? 'record '+n20(s.colleBest)+'/20' : '')
+        + (s.colleMoy!=null ? ' · moyenne '+n20(s.colleMoy)+'/20' : '')});
+  if(s.oraux)  tracks.push({ic:'🎤', name:'Oraux blancs',  val:s.oraux,  unit:'', col:'#38bdf8', tiers:[1,5,15,30],
+     hint:s.oralBest!=null ? ('record '+n20(s.oralBest)+'/20') : ''});
   let cards='';
   tracks.forEach(t=>{
     const reached = t.tiers.filter(x=> t.val>=x).length;       // paliers atteints (0..4)
@@ -9707,6 +9852,7 @@ function progressBadges(answered){
     cards += `<div class="achv ${reached?'':'locked'}">
         <div class="ah">${t.ic} ${t.name}</div>
         <div class="av" style="color:${reached?t.col:'var(--muted)'}">${t.val}${t.unit}</div>
+        ${t.hint ? `<div class="aq">${t.hint}</div>` : ''}
         <div class="abar"><i style="width:${pct}%;background:${t.col}"></i></div>
         <div class="an">${next ? ('Prochain palier : '+next+t.unit) : 'Palier max atteint ✓'}</div>
         <div class="dots">${dots}</div>
@@ -9869,6 +10015,7 @@ async function renderStats(){
 
   html += activityHeatmap(cloudDays);
   html += progressBadges(answered);
+  html += epreuvesBlanchesBloc();
 
   if(sparkVals.length){
     html += `<p class="section-label">Progression (derniers quiz)</p><div class="spark">`;
@@ -9905,6 +10052,7 @@ async function renderStats(){
   body.innerHTML = html;
   const lg=$('#statsLogin'); if(lg) lg.onclick=openAuth;
   const spb=$('#shareProgBtn'); if(spb) spb.onclick=()=>window.shareProgress&&window.shareProgress();
+  const scl=$('#statsColleLink'); if(scl) scl.onclick=(e)=>{ e.preventDefault(); if(typeof showColleHisto==='function') showColleHisto(); };
   body.querySelectorAll('[data-rsub]').forEach(b => b.onclick = () => { _radarSubject = b.dataset.rsub; renderStats(); });
   typeset(body);
 }
