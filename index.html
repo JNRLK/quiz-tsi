@@ -435,6 +435,9 @@ window.MathJax = {
   .choices{display:flex; flex-direction:column; gap:11px}
   /* Amorce des QCM à énoncé-prémisse (voir isPremiseQ) : discrète, jamais dans l'énoncé lui-même. */
   .qcm-lead{margin:0 0 10px; font-size:13px; font-style:italic; color:var(--muted); letter-spacing:.01em}
+  /* Cartes QCM revues en FLASHCARD : l'enonce renvoie a une liste (« Parmi ces… ») que toFlashCard() retire ; on la reaffiche, sans marquer la bonne reponse. */
+  .flash-props{margin:0 0 12px; padding-left:22px; font-size:15px; line-height:1.65; color:inherit}
+  .flash-props li{margin:3px 0}
   .choice{
     text-align:left; cursor:pointer; border:1.5px solid var(--line); background:var(--bg-deep); color:var(--ink);
     border-radius:14px; padding:15px 17px; font-size:16.5px; font-family:inherit; transition:.16s;
@@ -7560,6 +7563,14 @@ function isPremiseQ(t){
   return PREMISE_OPS.test(x);       // « $\cos(a+b)=$ »
 }
 const PREMISE_LEAD = 'Choisis la proposition qui complète l\u2019énoncé.';
+/* Cartes QCM servies en FLASHCARD (revision) : toFlashCard() retire les propositions, mais
+   certains enonces y renvoient explicitement (« Parmi ces… », « Lequel de ces… ») et deviennent
+   incomprehensibles sans elles. On ne reaffiche la liste QUE dans ce cas : partout ailleurs le
+   rappel LIBRE (sans propositions) reste preferable pour la memorisation. Aucun enonce modifie
+   -> qHash et progression FSRS intacts. */
+const NEEDS_CHOICES_RE = /(parmi\s|\blequel\b|\blaquelle\b|\blesquels\b|\blesquelles\b|ces\s+propositions|ces\s+affirmations|propositions?\s+suivantes?|affirmations?\s+suivantes?|énoncés?\s+suivants?)/i;
+function needsChoicesQ(t){ return typeof t === 'string' && NEEDS_CHOICES_RE.test(t); }
+const FLASH_PROPS_LEAD = 'Propositions de la question d\u2019origine (une seule est correcte) :';
 function renderQCM(zone, q){
   if(isPremiseQ(q && q.q)){
     const lead = document.createElement('p');
@@ -7741,7 +7752,12 @@ function flashHint(q){
     : "Énonce ce point de mémoire — définition, formule ou théorème — puis révèle pour t'auto-évaluer.";
 }
 function renderFlash(zone, q){
-  zone.innerHTML = `<p class="flash-hint">${flashHint(q)}</p>
+  let props = '';
+  if(q.choices && q.choices.length && needsChoicesQ(q.q)){
+    if(!q._flashProps) q._flashProps = shuffle(q.choices.map(c=>c.t));
+    props = `<p class="qcm-lead">${FLASH_PROPS_LEAD}</p><ul class="flash-props">${q._flashProps.map(t=>`<li>${t}</li>`).join('')}</ul>`;
+  }
+  zone.innerHTML = `<p class="flash-hint">${flashHint(q)}</p>${props}
     <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
       <button class="btn" id="revealBtn">Afficher la réponse</button>
       <button class="btn ghost" id="dunnoBtn" type="button" style="font-size:13px; padding:9px 14px">🤷 Je ne sais pas</button>
