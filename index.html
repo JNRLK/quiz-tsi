@@ -6207,7 +6207,28 @@ const SRS = {
            qu'aux statistiques de rétention) jusqu'à repasser sous le seuil. Les cartes, elles, ne
            sont jamais tronquées : c'est la progression. */
         let log = (dd.reviewLog||[]).slice(-1000);
-        const paquet = { cards: dd.cards, streak: dd.streak || null, daily: dd.daily || null, reviewLog: log };
+        /* CAUSE RACINE du « invalid-argument » : chaque entrée SRS locale stocke l'ÉNONCÉ
+           complet de sa carte (champ q, format historique). Envoyé au cloud, c'est du poids
+           mort — le hash est la clé, l'énoncé se retrouve localement dans QUESTIONS — et sur
+           ~1500 cartes vues ça représente des centaines de Ko : le document users/{uid}
+           (progression + statistiques + profil) crevait la limite Firestore de 1 Mio et
+           CHAQUE sauvegarde échouait. On envoie donc des cartes allégées : sans énoncé,
+           S/D arrondis à 4 décimales, sans champs nuls. Le stockage LOCAL est intouché. */
+        const slim = {};
+        for(const h in dd.cards){
+          const c = dd.cards[h]; if(!c) continue;
+          const o = {};
+          for(const k in c){
+            if(k === 'q') continue;                       // énoncé : reconstructible localement
+            let v = c[k];
+            if(v === undefined || v === null) continue;   // Firestore refuse undefined ; null inutile
+            if((k === 'S' || k === 'D') && typeof v === 'number' && isFinite(v)) v = Math.round(v*10000)/10000;
+            if(typeof v === 'number' && !isFinite(v)) continue;  // NaN/Infinity : refusés ou toxiques
+            o[k] = v;
+          }
+          slim[h] = o;
+        }
+        const paquet = { cards: slim, streak: dd.streak || null, daily: dd.daily || null, reviewLog: log };
         const octets = o => { try{ return new Blob([JSON.stringify(o)]).size; }catch(_){ return JSON.stringify(o).length; } };
         let rogne = 0;
         while(log.length > 50 && octets(paquet) > 800*1024){
@@ -6215,8 +6236,21 @@ const SRS = {
           paquet.reviewLog = log; rogne++;
         }
         if(rogne) console.warn('SRS : journal rogné à '+log.length+' entrées pour tenir sous la limite Firestore');
-        await Cloud.saveSRS(paquet);
-        cloudOk('☁️ SRS sauvegardé');
+        try{
+          await Cloud.saveSRS(paquet);
+          cloudOk('☁️ SRS sauvegardé');
+        }catch(e1){
+          /* Dernier filet : si le document déborde ENCORE (le surpoids vient alors du reste
+             du doc : statistiques agrégées, profil…), on retente sans le journal — la
+             PROGRESSION passe avant tout, le journal ne sert qu'aux stats de rétention. */
+          const c1 = (e1 && (e1.code || e1.name)) ? String(e1.code || e1.name) : '';
+          if(/invalid-argument/i.test(c1) && paquet.reviewLog.length){
+            console.warn('SRS : document trop gros malgré l\'allègement — nouvel essai sans le journal');
+            paquet.reviewLog = [];
+            await Cloud.saveSRS(paquet);
+            cloudOk('☁️ SRS sauvegardé (journal reporté)');
+          } else throw e1;
+        }
       }catch(e){
         console.warn('SRS cloud sync', e);
         /* Le code Firebase est ce qui permet de trancher : permission-denied (règles ou App Check),
@@ -6238,6 +6272,10 @@ const SRS = {
       if(!cc || typeof cc !== 'object' || !('reps' in cc)) continue; // ignore streak/daily si format ancien
       const lc = d.cards[h];
       if(!lc || (cc.reps||0) > (lc.reps||0) || ((cc.reps||0)===(lc.reps||0) && (cc.due||0) > (lc.due||0))){
+        /* les cartes cloud sont désormais ALLÉGÉES (sans énoncé) : on réinjecte q/topic
+           depuis la banque locale pour les lecteurs historiques (top des cartes ratées,
+           filtres par chapitre). Une carte orpheline (hash inconnu) sera épurée par gc(). */
+        if(!cc.q){ const qq = qByHashMap()[h]; if(qq){ cc.q = qq.q; if(!cc.topic) cc.topic = qq.topic; } }
         d.cards[h] = cc;
       }
     }
@@ -7424,7 +7462,27 @@ function makeReviewSource(){
   const due = dueScoped().slice(0, MAX_REVIEWS_PER_DAY).map(c => hMap[c.h]).filter(Boolean);
   const remaining = Math.max(0, NEW_PER_DAY - SRS.dailyNewCount());
   let fresh = QUESTIONS.filter(q => !d.cards[qHash(q.q)] && advAllowed(q) && reviewScopeOk(q));
-  shuffle(fresh); fresh = fresh.slice(0, remaining);
+  /* RÉPARTITION ÉQUITABLE DES NOUVELLES : un tirage uniforme favorise mécaniquement la
+     matière au plus gros stock de cartes jamais vues (l'élève voyait « beaucoup de
+     français »). On sert donc les matières en TOURNIQUET : une carte de chacune à tour de
+     rôle (chaque matière mélangée en interne, ordre des matières mélangé aussi), jusqu'à
+     remplir le quota du jour. Une matière épuisée laisse sa place aux autres. */
+  {
+    const parMat = {};
+    fresh.forEach(q => { const m = (TOPICS[q.topic]||{}).subject || '?'; (parMat[m]||(parMat[m]=[])).push(q); });
+    const mats = shuffle(Object.keys(parMat));
+    mats.forEach(m => shuffle(parMat[m]));
+    const tirage = [];
+    for(let i = 0; tirage.length < remaining; i++){
+      let servi = false;
+      for(const m of mats){
+        if(tirage.length >= remaining) break;
+        if(parMat[m][i]){ tirage.push(parMat[m][i]); servi = true; }
+      }
+      if(!servi) break;   // toutes les matières épuisées
+    }
+    fresh = tirage;
+  }
   const primary = shuffle([...due, ...fresh]);          // travail du jour, entrelacé
   const freeAll = QUESTIONS.filter(q => advAllowed(q) && reviewScopeOk(q));   // réservoir d'entraînement libre, même périmètre
   let freeBag = [];
@@ -7661,6 +7719,18 @@ $('#startBtn').onclick = ()=>{
   let qs = QUESTIONS.filter(poolFilter).map(q=>({...q}));
   if(qs.length===0){ updatePoolInfo(); return; }
   if($('#shuffleToggle').checked) shuffle(qs);
+  /* PRIORITÉ AUX CARTES NON SUES : tant qu'une carte n'est pas maîtrisée (jamais vue, en
+     apprentissage, ou retombée en réapprentissage après un échec), elle passe avant les
+     cartes déjà sues — quel que soit le quiz personnalisé. Partition STABLE : l'ordre
+     interne de chaque groupe (mélangé ou ordre du cours) est conservé. L'examen blanc,
+     lui, garde son tirage purement aléatoire (il doit rester représentatif). */
+  {
+    const _sc = SRS._d().cards;
+    const _sue = q => { const c = _sc[qHash(q.q)]; return !!(c && c.state === 'review' && (c.interval||0) > 0); };
+    const _av = [], _ap = [];
+    qs.forEach(q => (_sue(q) ? _ap : _av).push(q));
+    qs = _av.concat(_ap);
+  }
   if(chosenLen>0) qs = qs.slice(0, chosenLen);
   qs.forEach(q=>{ if(q.mode==='qcm') q._choices = shuffle(q.choices.map((c,i)=>({...c, orig:i}))); });
   pool = qs; idx=0; score=0; streak=0; bestStreak=0;
