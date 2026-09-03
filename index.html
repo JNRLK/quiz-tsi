@@ -6201,11 +6201,29 @@ const SRS = {
       try{
         cloudSync('↑ Synchronisation…');
         const dd = this._d();
-        await Cloud.saveSRS({ cards: dd.cards, streak: dd.streak || null, daily: dd.daily || null, reviewLog: (dd.reviewLog||[]).slice(-1000) });
+        /* Firestore REFUSE tout document de plus de 1 Mio : au-delà, chaque sauvegarde échoue et
+           l'élève voit « Sync SRS échouée » en boucle sans rien pouvoir y faire. On mesure donc le
+           paquet avant l'envoi et on rogne le JOURNAL (la donnée la moins critique : il ne sert
+           qu'aux statistiques de rétention) jusqu'à repasser sous le seuil. Les cartes, elles, ne
+           sont jamais tronquées : c'est la progression. */
+        let log = (dd.reviewLog||[]).slice(-1000);
+        const paquet = { cards: dd.cards, streak: dd.streak || null, daily: dd.daily || null, reviewLog: log };
+        const octets = o => { try{ return new Blob([JSON.stringify(o)]).size; }catch(_){ return JSON.stringify(o).length; } };
+        let rogne = 0;
+        while(log.length > 50 && octets(paquet) > 800*1024){
+          log = log.slice(Math.ceil(log.length/2));
+          paquet.reviewLog = log; rogne++;
+        }
+        if(rogne) console.warn('SRS : journal rogné à '+log.length+' entrées pour tenir sous la limite Firestore');
+        await Cloud.saveSRS(paquet);
         cloudOk('☁️ SRS sauvegardé');
       }catch(e){
         console.warn('SRS cloud sync', e);
-        cloudErr('⚠️ Sync SRS échouée');
+        /* Le code Firebase est ce qui permet de trancher : permission-denied (règles ou App Check),
+           resource-exhausted (quota), invalid-argument (document trop gros), unavailable (réseau).
+           Le masquer derrière un message générique rendait le diagnostic impossible. */
+        const code = (e && (e.code || e.name)) ? String(e.code || e.name) : '';
+        cloudErr('⚠️ Sync SRS échouée' + (code ? ' — ' + code : ''));
       }
     }, 1500);
   },
