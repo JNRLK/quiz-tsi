@@ -1259,7 +1259,7 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app-check.js";
 import { getAuth, setPersistence, browserLocalPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, sendEmailVerification } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp, runTransaction, deleteDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, updateDoc, getDoc, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp, runTransaction, deleteDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 /* Cloud Functions RETIRÉES : l'app fonctionne sur le tier GRATUIT Firebase (Spark). L'approbation de
    classe et la suppression de compte sont 100 % côté client (voir setMemberStatus / admDeleteOne).
    Seule limite du gratuit : le login Firebase d'un compte supprimé reste à retirer manuellement
@@ -1397,12 +1397,29 @@ const Cloud = {
   async allUsers(){ const qs = await getDocs(collection(db,'users')); return qs.docs.map(d=>({uid:d.id, ...d.data()})); },
   async getReports(n=500){ const qs = await getDocs(query(collection(db,'reports'), orderBy('date','desc'), limit(n))); return qs.docs.map(d=>({id:d.id, ...d.data()})); },
   async loadSRS(){ if(!currentUser) return null; const snap = await getDoc(doc(db,'users',currentUser.uid)); return snap.exists()? (snap.data().srs||null) : null; },
-  // ⚠️ Règles Firestore requises (à coller dans Firebase console) :
-  // allow create, update: if signedIn() && request.auth.uid == uid
-  //   && request.resource.data.keys().hasOnly(['email','displayName','createdAt','lastActive','agg','srs','srsUpdated','profile']);
-  //   ('profile' = {statut, lycee, filiere, annee} ; à ajouter à la liste pour activer la sync cloud du profil)
-  // `bundle` = {cards, streak, daily} (tout est imbriqué sous la clé `srs` autorisée par les règles).
-  async saveSRS(bundle){ if(!currentUser) return; await setDoc(doc(db,'users',currentUser.uid), {srs:bundle, srsUpdated:serverTimestamp()}, {merge:true}); },
+  /* `bundle` = {cards, streak, daily, reviewLog}, imbriqué sous la clé `srs`.
+
+     ⚠️ REMPLACEMENT, ET NON FUSION. `setDoc(..., {merge:true})` fusionne les maps en
+     PROFONDEUR : il écrit et met à jour des clés, mais n'en SUPPRIME jamais aucune.
+     Conséquence mesurée le 05/09/2026 sur la vraie base : l'allègement de v244 (retrait
+     de l'énoncé `q` du paquet) n'avait aucun effet — 881 énoncés sur 952 étaient encore
+     dans le cloud ; 148 cartes orphelines purgées localement par gc() y survivaient ;
+     et 170 hachages de l'ANCIEN format (cartes à la racine de `srs`) y étaient figés
+     depuis des mois. Soit 8 204 entrées d'index de poids mort qu'aucun correctif côté
+     paquet ne pouvait retirer. `updateDoc` sur le champ `srs` écrase la map entière et
+     rend la suppression enfin possible. Le repli `setDoc` sert au tout premier écrit,
+     quand le document de l'élève n'existe pas encore (updateDoc échoue en `not-found`). */
+  async saveSRS(bundle){
+    if(!currentUser) return;
+    const ref = doc(db,'users',currentUser.uid);
+    try{
+      await updateDoc(ref, {srs:bundle, srsUpdated:serverTimestamp()});
+    }catch(e){
+      if(e && (e.code === 'not-found' || /not-found/i.test(String(e.code||'')))){
+        await setDoc(ref, {srs:bundle, srsUpdated:serverTimestamp()}, {merge:true});
+      } else throw e;
+    }
+  },
   async sendReport(r){
     await addDoc(collection(db,'reports'), {
       ...r,
@@ -6163,27 +6180,34 @@ const SRS = {
     const t=this._today(); return (d.streak.lastDay===t || d.streak.lastDay===this._dayBefore(t)) ? (d.streak.count||0) : 0; },
 
   // synchro cloud (différée pour éviter les écritures multiples)
-  _cloudTimer: null,
-  _syncCloud(){
-    if(typeof currentUser==='undefined' || !currentUser) return;
-    clearTimeout(this._cloudTimer);
-    this._cloudTimer = setTimeout(async ()=>{
-      try{
-        cloudSync('↑ Synchronisation…');
+  /* CONSTRUCTION DU PAQUET CLOUD — source unique, partagée par la synchro automatique ET
+     par le bouton « Synchroniser maintenant ». Les deux avaient divergé : manualSync()
+     envoyait les cartes BRUTES, énoncés compris, et réintroduisait donc à chaque clic tout
+     le poids que la synchro automatique venait d'ôter.
+
+     CE QUI PLAFONNE N'EST PAS LE POIDS, C'EST LE NOMBRE D'ENTRÉES D'INDEX.
+           Diagnostic du 05/09/2026, mesuré sur la vraie base Firestore. Le document le plus
+           avancé ne pesait que 319 Ko — 30 % de la limite de 1 Mio, donc hors de cause — et
+           pourtant CHAQUE envoi repartait en `invalid-argument`. La limite réellement franchie
+           est l'autre : Firestore indexe par défaut chaque valeur scalaire DEUX fois
+           (croissant + décroissant), y compris à l'intérieur des maps et des tableaux, et
+           refuse tout document dépassant 40 000 entrées d'index.
+             une carte          ≈ 13 champs → 26 entrées
+             une ligne de journal =  5 champs → 10 entrées
+           Document stocké : 35 898 entrées (90 % du plafond) ; + 1 000 lignes de journal
+           = 45 898 → refus. Le repli « sans journal » repassait à 35 898 et réussissait :
+           c'est pourquoi le journal de ce compte n'arrivait JAMAIS au cloud, alors que des
+           comptes plus légers (8 278 entrées) synchronisaient le leur sans problème.
+           L'ancienne garde mesurait des OCTETS (seuil 800 Ko) sur le seul paquet : elle ne
+           pouvait pas se déclencher, et ne mesurait de toute façon pas la bonne grandeur.
+           On budgète donc désormais les entrées d'index, et on rogne le JOURNAL — la donnée
+           la moins critique, il ne sert qu'aux statistiques de rétention. Les cartes ne sont
+           JAMAIS tronquées : c'est la progression de l'élève. */
+  _paquetCloud(){
         const dd = this._d();
-        /* Firestore REFUSE tout document de plus de 1 Mio : au-delà, chaque sauvegarde échoue et
-           l'élève voit « Sync SRS échouée » en boucle sans rien pouvoir y faire. On mesure donc le
-           paquet avant l'envoi et on rogne le JOURNAL (la donnée la moins critique : il ne sert
-           qu'aux statistiques de rétention) jusqu'à repasser sous le seuil. Les cartes, elles, ne
-           sont jamais tronquées : c'est la progression. */
         let log = (dd.reviewLog||[]).slice(-1000);
-        /* CAUSE RACINE du « invalid-argument » : chaque entrée SRS locale stocke l'ÉNONCÉ
-           complet de sa carte (champ q, format historique). Envoyé au cloud, c'est du poids
-           mort — le hash est la clé, l'énoncé se retrouve localement dans QUESTIONS — et sur
-           ~1500 cartes vues ça représente des centaines de Ko : le document users/{uid}
-           (progression + statistiques + profil) crevait la limite Firestore de 1 Mio et
-           CHAQUE sauvegarde échouait. On envoie donc des cartes allégées : sans énoncé,
-           S/D arrondis à 4 décimales, sans champs nuls. Le stockage LOCAL est intouché. */
+        /* Cartes allégées : sans énoncé (le hash est la clé, l'énoncé est dans QUESTIONS),
+           S/D arrondis à 4 décimales, sans champ nul ni NaN. Le stockage LOCAL est intouché. */
         const slim = {};
         for(const h in dd.cards){
           const c = dd.cards[h]; if(!c) continue;
@@ -6199,23 +6223,54 @@ const SRS = {
           slim[h] = o;
         }
         const paquet = { cards: slim, streak: dd.streak || null, daily: dd.daily || null, reviewLog: log };
-        const octets = o => { try{ return new Blob([JSON.stringify(o)]).size; }catch(_){ return JSON.stringify(o).length; } };
+        /* Entrées d'index d'une valeur : 2 par scalaire (index croissant + décroissant) ;
+           une map ou un tableau ne coûte rien en propre, seules ses feuilles comptent. */
+        const feuilles = v => {
+          if(v === null || typeof v !== 'object') return 1;
+          let n = 0; for(const k in v) n += feuilles(v[k]);
+          return n;
+        };
+        const entrees = o => feuilles(o) * 2;
+        /* Le paquet n'est qu'une PART du document : `agg` (statistiques agrégées, ~8 600
+           entrées sur le compte le plus avancé), `profile` et les scalaires occupent le
+           reste. On garde donc une réserve pour eux et on ne s'autorise que SRS_INDEX_BUDGET
+           pour le paquet. Le journal est la seule variable d'ajustement. */
+        const SRS_INDEX_BUDGET = 24000;
+        const coutCartes = entrees(paquet.cards) + entrees(paquet.streak) + entrees(paquet.daily);
         let rogne = 0;
-        while(log.length > 50 && octets(paquet) > 800*1024){
+        while(log.length > 50 && coutCartes + entrees(log) > SRS_INDEX_BUDGET){
           log = log.slice(Math.ceil(log.length/2));
           paquet.reviewLog = log; rogne++;
         }
-        if(rogne) console.warn('SRS : journal rogné à '+log.length+' entrées pour tenir sous la limite Firestore');
+        if(rogne) console.warn('SRS : journal rogné à '+log.length+' entrées (budget d\'index Firestore ; cartes = '+coutCartes+' entrées)');
+        /* Si les CARTES seules dépassent déjà le budget, on les envoie quand même : la
+           progression prime. On le signale, car cela veut dire que le document approche
+           des 40 000 entrées et qu'il faut désindexer `srs` côté Firestore (exemption
+           d'index mono-champ) — la seule parade durable une fois le paquet complet appris. */
+        if(coutCartes > SRS_INDEX_BUDGET){
+          console.warn('SRS : les cartes seules pèsent '+coutCartes+' entrées d\'index (budget '+SRS_INDEX_BUDGET+'). '+
+                       'Désindexer le champ `srs` dans Firestore devient nécessaire.');
+        }
+        return paquet;
+  },
+
+  _cloudTimer: null,
+  _syncCloud(){
+    if(typeof currentUser==='undefined' || !currentUser) return;
+    clearTimeout(this._cloudTimer);
+    this._cloudTimer = setTimeout(async ()=>{
+      try{
+        cloudSync('↑ Synchronisation…');
+        const paquet = this._paquetCloud();
         try{
           await Cloud.saveSRS(paquet);
           cloudOk('☁️ SRS sauvegardé');
         }catch(e1){
-          /* Dernier filet : si le document déborde ENCORE (le surpoids vient alors du reste
-             du doc : statistiques agrégées, profil…), on retente sans le journal — la
-             PROGRESSION passe avant tout, le journal ne sert qu'aux stats de rétention. */
+          /* Dernier filet : si le document déborde ENCORE, on retente sans le journal —
+             la PROGRESSION passe avant tout, le journal ne sert qu'aux stats de rétention. */
           const c1 = (e1 && (e1.code || e1.name)) ? String(e1.code || e1.name) : '';
           if(/invalid-argument/i.test(c1) && paquet.reviewLog.length){
-            console.warn('SRS : document trop gros malgré l\'allègement — nouvel essai sans le journal');
+            console.warn('SRS : refus Firestore malgré le budget — nouvel essai sans le journal');
             paquet.reviewLog = [];
             await Cloud.saveSRS(paquet);
             cloudOk('☁️ SRS sauvegardé (journal reporté)');
@@ -6224,10 +6279,12 @@ const SRS = {
       }catch(e){
         console.warn('SRS cloud sync', e);
         /* Le code Firebase est ce qui permet de trancher : permission-denied (règles ou App Check),
-           resource-exhausted (quota), invalid-argument (document trop gros), unavailable (réseau).
-           Le masquer derrière un message générique rendait le diagnostic impossible. */
+           resource-exhausted (quota), invalid-argument (document refusé : trop d'entrées d'index
+           ou > 1 Mio), unavailable (réseau). Le masquer rendait le diagnostic impossible.
+           MESSAGE : la progression est intacte en local et repartira à la prochaine synchro —
+           le dire évite d'alarmer l'élève en pleine révision pour un incident rattrapable. */
         const code = (e && (e.code || e.name)) ? String(e.code || e.name) : '';
-        cloudErr('⚠️ Sync SRS échouée' + (code ? ' — ' + code : ''));
+        cloudErr('⚠️ Synchro différée' + (code ? ' — ' + code : '') + ' (progression gardée sur cet appareil)');
       }
     }, 1500);
   },
@@ -10970,8 +11027,9 @@ async function manualSync(){
   const btn = $('#syncNowBtn'); if(btn) btn.disabled = true;
   try{
     cloudSync('↑ Synchronisation…');
-    const dd = SRS._d();
-    await Cloud.saveSRS({ cards: dd.cards, streak: dd.streak || null, daily: dd.daily || null, reviewLog: (dd.reviewLog||[]).slice(-1000) });
+    // Même paquet que la synchro automatique (allégé + budgété en entrées d'index) :
+    // envoyer `dd.cards` brut réinjectait les énoncés et refaisait déborder le document.
+    await Cloud.saveSRS(SRS._paquetCloud());
     const cloud = await Cloud.loadSRS();
     if(cloud){ SRS.mergeCloud(cloud); SRS.gc(); }
     cloudOk('☁️ Synchronisé');
