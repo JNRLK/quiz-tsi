@@ -6231,25 +6231,36 @@ const SRS = {
           return n;
         };
         const entrees = o => feuilles(o) * 2;
-        /* Le paquet n'est qu'une PART du document : `agg` (statistiques agrégées, ~8 600
-           entrées sur le compte le plus avancé), `profile` et les scalaires occupent le
-           reste. On garde donc une réserve pour eux et on ne s'autorise que SRS_INDEX_BUDGET
-           pour le paquet. Le journal est la seule variable d'ajustement. */
-        const SRS_INDEX_BUDGET = 24000;
-        const coutCartes = entrees(paquet.cards) + entrees(paquet.streak) + entrees(paquet.daily);
+        /* PARADE DURABLE POSÉE LE 05/09/2026 : les champs `srs` et `agg` de la collection
+           `users` bénéficient d'une EXEMPTION D'INDEX MONO-CHAMP côté Firestore
+             gcloud firestore indexes fields update srs --collection-group=users \
+                    --database='(default)' --disable-indexes            (idem pour agg)
+           Elle se propage à toute la descendance par héritage (`srs.cards.<hash>.<champ>`
+           a pour ancêtre `srs`), ce qui ramène la contribution de la progression et des
+           statistiques aux entrées d'index de ~35 900 à ZÉRO. Vérifié : aucune requête ne
+           porte sur ces maps — les deux seules du code trient `sessions` et `reports` par
+           date — donc l'exemption n'a aucun effet de bord.
+           => Le plafond des 40 000 entrées n'est plus atteignable. La limite qui subsiste
+           est celle des 1 Mio par document : c'est donc elle que garde ce budget, en
+           OCTETS, avec une réserve pour le reste du document. Le journal reste la seule
+           variable d'ajustement ; les cartes ne sont jamais tronquées. */
+        const SRS_OCTETS_BUDGET = 700*1024;
+        const octets = o => { try{ return new Blob([JSON.stringify(o)]).size; }catch(_){ return JSON.stringify(o).length; } };
+        const coutCartes = octets({cards:paquet.cards, streak:paquet.streak, daily:paquet.daily});
         let rogne = 0;
-        while(log.length > 50 && coutCartes + entrees(log) > SRS_INDEX_BUDGET){
+        while(log.length > 50 && coutCartes + octets(log) > SRS_OCTETS_BUDGET){
           log = log.slice(Math.ceil(log.length/2));
           paquet.reviewLog = log; rogne++;
         }
-        if(rogne) console.warn('SRS : journal rogné à '+log.length+' entrées (budget d\'index Firestore ; cartes = '+coutCartes+' entrées)');
-        /* Si les CARTES seules dépassent déjà le budget, on les envoie quand même : la
-           progression prime. On le signale, car cela veut dire que le document approche
-           des 40 000 entrées et qu'il faut désindexer `srs` côté Firestore (exemption
-           d'index mono-champ) — la seule parade durable une fois le paquet complet appris. */
-        if(coutCartes > SRS_INDEX_BUDGET){
-          console.warn('SRS : les cartes seules pèsent '+coutCartes+' entrées d\'index (budget '+SRS_INDEX_BUDGET+'). '+
-                       'Désindexer le champ `srs` dans Firestore devient nécessaire.');
+        if(rogne) console.warn('SRS : journal rogné à '+log.length+' lignes pour tenir sous le Mio (cartes = '+coutCartes+' octets)');
+        /* Filet de diagnostic : si l'exemption d'index venait à sauter, ce sont les entrées
+           qui redeviendraient contraignantes. On le signale pour que la cause saute aux yeux
+           la prochaine fois ; le repli « sans journal » du catch assure la continuité. */
+        const ent = entrees(paquet);
+        if(ent > 30000){
+          console.warn('SRS : '+ent+' entrées d\'index — sans danger tant que l\'exemption sur `srs` et `agg` '+
+                       'est active. Si « invalid-argument » réapparaît, vérifier CETTE exemption en premier : '+
+                       'gcloud firestore indexes fields list --collection-group=users');
         }
         return paquet;
   },
