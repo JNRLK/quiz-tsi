@@ -11825,24 +11825,6 @@ async function renderAdmin(){
   const sb = $('#admSearch'); if(sb){ sb.oninput = ()=>{ ADM.filters.q = sb.value; paintAdmin(); }; }
   const rb = $('#admReset'); if(rb){ rb.onclick = ()=>{ ADM.filters = {statut:'',filiere:'',annee:'',classe:'',lycee:'',q:'',sort:ADM.filters.sort}; renderAdmin(); }; }
   const cb = $('#admCsv'); if(cb){ cb.onclick = ()=> admExportCSV(admFiltered()); }
-  const _rf = box.querySelector('#admRepOuverts');
-  if(_rf) _rf.onchange = ()=>{ ADM.repOuvertsSeuls = _rf.checked; renderAdmin(); };
-  const _rx = box.querySelector('#admRepExport');
-  if(_rx) _rx.onclick = ()=>{
-    const data = (ADM.reports||[]).map(r=>({ id:r.id, question:r.question, type:r.type, comment:r.comment,
-      topic:r.topic, chapitre:(TOPICS[r.topic]||{}).name||null, email:r.email,
-      date:(r.date&&r.date.toDate)?r.date.toDate().toISOString():null, traite:admEstTraite(r) }));
-    const blob = new Blob([JSON.stringify(data,null,1)], {type:'application/json'});
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = 'signalements-' + new Date().toISOString().slice(0,10) + '.json';
-    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
-  };
-  box.querySelectorAll('[data-rep]').forEach(b=>{ b.onclick = async ()=>{
-    b.disabled = true; const ouvrir = b.dataset.repEtat === '1';
-    await admTraiter(b.dataset.rep, !ouvrir);
-    const r = (ADM.reports||[]).find(x=>x.id===b.dataset.rep); if(r) r.traite = !ouvrir;
-    renderAdmin();
-  }; });
   const dd = $('#admDelDup'); if(dd){ dd.onclick = admDeleteDuplicates; }
 
   paintAdmin();
@@ -12173,6 +12155,24 @@ function paintAdmin(){
   box.querySelectorAll('[data-reject-uid]').forEach(b=>{ b.onclick=()=>_approve(b.dataset.rejectUid,'rejected',b); });
   box.querySelectorAll('[data-remove-uid]').forEach(b=>{ b.onclick=async ()=>{ const lbl=b.dataset.removeLabel||'cet élève'; if(!confirm(`Retirer « ${lbl} » de la classe ?\n\nIl perdra l'accès à la révision et au suivi (son compte et sa progression sont conservés).`)) return; b.disabled=true; b.textContent='Retrait…'; try{ await setMemberStatus(b.dataset.removeUid, 'rejected'); renderAdmin(); }catch(e){ console.warn('retrait', e); b.disabled=false; b.textContent='✗ Retirer'; alert('Retrait impossible : '+((e&&(e.message||e.code))||e)); } }; });
   box.querySelectorAll('[data-move-uid]').forEach(s=>{ s.onchange=async ()=>{ const y=s.value; if(!['0','1','2'].includes(y)) return; s.disabled=true; try{ await setMemberClass(s.dataset.moveUid, y); renderAdmin(); }catch(e){ console.warn('déplacement classe', e); s.disabled=false; alert('Déplacement impossible : '+((e&&(e.message||e.code))||e)); } }; });
+  const _rf = box.querySelector('#admRepOuverts');
+  if(_rf) _rf.onchange = ()=>{ ADM.repOuvertsSeuls = _rf.checked; renderAdmin(); };
+  const _rx = box.querySelector('#admRepExport');
+  if(_rx) _rx.onclick = ()=>{
+    const data = (ADM.reports||[]).map(r=>({ id:r.id, question:r.question, type:r.type, comment:r.comment,
+      topic:r.topic, chapitre:(TOPICS[r.topic]||{}).name||null, email:r.email,
+      date:(r.date&&r.date.toDate)?r.date.toDate().toISOString():null, traite:admEstTraite(r) }));
+    const blob = new Blob([JSON.stringify(data,null,1)], {type:'application/json'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = 'signalements-' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+  };
+  box.querySelectorAll('[data-rep]').forEach(b=>{ b.onclick = async ()=>{
+    b.disabled = true; const ouvrir = b.dataset.repEtat === '1';
+    await admTraiter(b.dataset.rep, !ouvrir);
+    const r = (ADM.reports||[]).find(x=>x.id===b.dataset.rep); if(r) r.traite = !ouvrir;
+    renderAdmin();
+  }; });
   const _aa = box.querySelector('#admApproveAll');
   if(_aa) _aa.onclick = async ()=>{ _aa.disabled=true; _aa.textContent='Approbation…'; for(const u of pendingC){ try{ await setMemberStatus(u.uid, 'approved'); }catch(e){ console.warn('approve all', u.uid, e); } } renderAdmin(); };
   const _bf = box.querySelector('#admBackfill');
