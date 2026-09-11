@@ -482,6 +482,31 @@ window.MathJax = {
     padding:11px 0; font-size:18px; font-family:'JetBrains Mono',monospace; transition:.12s; line-height:1}
   .mathkb-key:hover{border-color:var(--accent); background:color-mix(in srgb,var(--accent) 14%,var(--key-bg)); transform:translateY(-1px)}
   .mathkb-key:active{transform:translateY(0)}
+  /* ---------- mode « code » : éditeur Python et résultats des tests ---------- */
+  .code-ctx{margin:0 0 10px; border:1px solid var(--line); border-radius:12px; background:var(--bg-deep); padding:10px 12px}
+  .code-ctx .cc-t{font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:6px}
+  .code-ctx pre, .code-out pre, .pycode{margin:0; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.5; white-space:pre; color:var(--ink)}
+  .code-ed{width:100%; background:var(--bg-deep); border:1.5px solid var(--line); border-radius:14px; color:var(--ink);
+    font-family:'JetBrains Mono',monospace; font-size:14px; line-height:1.55; padding:12px 14px; resize:vertical;
+    tab-size:4; white-space:pre; overflow-wrap:normal; overflow-x:auto}
+  .code-ed:focus{outline:none; border-color:var(--accent); box-shadow:0 0 18px -8px var(--accent)}
+  .code-keys{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
+  .code-key{cursor:pointer; border:1px solid var(--line); background:var(--key-bg); color:var(--ink); border-radius:9px;
+    min-width:36px; padding:8px 9px; font-size:15px; font-family:'JetBrains Mono',monospace; line-height:1; transition:.12s}
+  .code-key:hover{border-color:var(--accent); background:color-mix(in srgb,var(--accent) 14%,var(--key-bg))}
+  .code-out{margin-top:12px; border:1px solid var(--line); border-radius:14px; padding:12px 14px; background:var(--panel-2); animation:rise .25s both}
+  .code-out .co-head{font-weight:700; font-size:14.5px; margin-bottom:8px}
+  .code-out .co-head.ok{color:var(--ok-text)}
+  .code-out .co-head.bad{color:var(--no-text)}
+  .code-out .co-line{display:flex; gap:9px; align-items:flex-start; font-size:13.5px; padding:6px 0; border-top:1px solid var(--line)}
+  .code-out .co-line:first-of-type{border-top:none}
+  .code-out .co-line .ci{font-weight:700; flex:none; width:14px}
+  .code-out .co-line.ok .ci{color:var(--ok-text)}
+  .code-out .co-line.bad .ci{color:var(--no-text)}
+  .code-out .co-err{color:var(--no-text)}
+  .code-out .co-print{margin-bottom:9px; border-left:2px solid var(--line); padding-left:10px; color:var(--muted); font-size:12.5px}
+  .code-out code, .reveal-ans code, .exp code{font-family:'JetBrains Mono',monospace; font-size:12.5px; background:var(--bg-deep); border-radius:5px; padding:1px 5px; word-break:break-word}
+  .pycode{background:var(--bg-deep); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-top:8px}
   /* ---------- Indicateur cloud ---------- */
   .cloud-status{
     position:fixed; bottom:calc(env(safe-area-inset-bottom, 0px) + 84px); right:14px; z-index:100;
@@ -1566,6 +1591,10 @@ const FAMILIES = {
   "ph_ondulatoire": { "name": "Optique ondulatoire", "raw": "#38bdf8", "subject": "physique" },
   "ph_emag": { "name": "Électromagnétisme", "raw": "#a78bfa", "subject": "physique" },
   "si_energie2": { "name": "Énergie & puissance", "raw": "#f59e0b", "subject": "si" },
+  /* ===== Informatique (« Informatique pour tous ») — familles. subject:'info' OBLIGATOIRE. ===== */
+  "info_algo":    { "name": "Programmation & algorithmique", "raw": "#10b981", "subject": "info" },
+  "info_donnees": { "name": "Données & représentation",      "raw": "#34d399", "subject": "info" },
+  "info_graphes": { "name": "Graphes",                        "raw": "#059669", "subject": "info" },
   /* ===== familles des matières transversales (mêmes contenus en TSI1 et TSI2) ===== */
   "fr_oeuvres": { "name": "Thème & œuvres", "raw": "#f43f5e", "subject": "francais" },
   "fr_methode": { "name": "Méthodes de l'écrit", "raw": "#fb7185", "subject": "francais" },
@@ -1697,6 +1726,14 @@ const TOPICS = {
   "s2_ia_systemes": { "name": "8. Intelligence artificielle appliquée aux systèmes", "family": "si_systemes", "raw": "#2dd4bf", "subject": "si", "level": "tsi2" },
   "s2_numerique": { "name": "9. Résolution numérique et simulation", "family": "si_systemes", "raw": "#5eead4", "subject": "si", "level": "tsi2" },
   "s2_theorie_mecanismes": { "name": "9. Théorie des mécanismes : mobilité et hyperstatisme", "family": "si_meca", "raw": "#ea580c", "subject": "si", "level": "tsi1" },
+  /* ===== INFORMATIQUE TSI1 — chapitres ouverts par le DM « prérequis de SUP » (T. Galopin) :
+     vocabulaire de la programmation, structures de données, terminaison/correction/complexité,
+     représentation des nombres, bases des graphes. ===== */
+  "i1_vocabulaire": { "name": "1. Spécifier, tester, documenter", "family": "info_algo", "raw": "#10b981", "subject": "info", "level": "tsi1" },
+  "i1_structures": { "name": "2. Listes et dictionnaires", "family": "info_donnees", "raw": "#34d399", "subject": "info", "level": "tsi1" },
+  "i1_correction": { "name": "3. Terminaison, correction et complexité", "family": "info_algo", "raw": "#6ee7b7", "subject": "info", "level": "tsi1" },
+  "i1_nombres": { "name": "4. Représentation des nombres", "family": "info_donnees", "raw": "#2dd4bf", "subject": "info", "level": "tsi1" },
+  "i1_graphes": { "name": "5. Graphes : vocabulaire et représentations", "family": "info_graphes", "raw": "#059669", "subject": "info", "level": "tsi1" },
   /* ===== FRANÇAIS-PHILOSOPHIE — thème 2026-2027 « Les arcanes de la création » :
      Platon (Ion ; La République, livre X), Zola (L'Œuvre), Woolf (Un lieu à soi).
      Le thème est le MÊME en première et en seconde année, d'où level:'tr'.
@@ -1739,6 +1776,7 @@ const SUBJECTS = {
   maths:    { name:"Mathématiques",           order:1 },
   physique: { name:"Physique-Chimie",         order:2 },
   si:       { name:"Sciences de l'Ingénieur", order:3 },
+  info:     { name:"Informatique",            order:4 },
   anglais:  { name:"Anglais",                 order:5, transversal:true },
   francais: { name:"Français-Philosophie",    order:6, transversal:true }
 };
@@ -1995,7 +2033,1352 @@ window.openCourse=openCourse; window.closeCourse=closeCourse;
   document.addEventListener('keydown',e=>{ const m=document.getElementById('courseModal'); if(e.key==='Escape' && m && !m.classList.contains('hidden')) backFromCourse(); });
 })();
 
-// mode: 'qcm' (choices), 'trou'/'saisie' (answer + accept[]), 'flash' (answer)
+/* ============================================================================
+   PYMINI — micro-interpréteur Python écrit en JavaScript pur, sans dépendance
+   ni appel réseau (l'application doit rester utilisable hors ligne).
+   Il sert au mode de carte « code » : l'élève tape une fonction, on l'EXÉCUTE
+   réellement sur un jeu de tests et on lui dit ce qui passe et ce qui casse.
+
+   Sous-ensemble couvert : def / return / if-elif-else / for / while / assert /
+   pass / break / continue / lambda, affectations (simples, multiples, par
+   décomposition, augmentées), indexation et tranches, comparaisons chaînées,
+   and-or-not, in / not in, is, listes, tuples, dictionnaires, ensembles,
+   compréhensions de listes / dictionnaires / ensembles, f-strings, et les
+   fonctions usuelles (len, range, sum, min, max, sorted, enumerate, zip, abs,
+   int, float, str, list, dict, set, tuple, round, any, all, print) + module math.
+
+   NON couvert (message d'erreur explicite, jamais un plantage muet) : classes,
+   try/except, générateurs, imports autres que math, décorateurs, *args/**kwargs.
+
+   Les entiers sont des flottants 64 bits JavaScript : au-delà de 2^53 la
+   précision n'est plus celle de Python (multi-précision). Sans importance pour
+   les exercices visés, mais à garder en tête si un jour on teste de très grands
+   entiers.
+============================================================================ */
+var PYMINI = (function(){
+'use strict';
+
+/* ------------------------------ valeurs ---------------------------------- */
+function PyErr(type, msg){ this.type=type; this.msg=msg||''; }
+PyErr.prototype.toString = function(){ return this.msg ? this.type+': '+this.msg : this.type; };
+function err(t,m){ throw new PyErr(t,m); }
+
+function Tuple(items){ this.items = items; }
+function Dict(){ this.m = new Map(); }      /* clé normalisée -> [clé d'origine, valeur] */
+function PySet(){ this.m = new Map(); }     /* clé normalisée -> valeur */
+function Fn(name, params, body, env){ this.name=name; this.params=params; this.body=body; this.env=env; }
+function Builtin(name, fn){ this.name=name; this.fn=fn; }
+function Bound(name, self, fn){ this.name=name; this.self=self; this.fn=fn; }
+function Module(name, members){ this.name=name; this.members=members; }
+
+function isNum(v){ return typeof v==='number' || typeof v==='boolean'; }
+function num(v){ return typeof v==='boolean' ? (v?1:0) : v; }
+function isStr(v){ return typeof v==='string'; }
+
+function typeName(v){
+  if(v===null) return 'NoneType';
+  if(typeof v==='boolean') return 'bool';
+  if(typeof v==='number') return Number.isInteger(v) ? 'int' : 'float';
+  if(typeof v==='string') return 'str';
+  if(Array.isArray(v)) return 'list';
+  if(v instanceof Tuple) return 'tuple';
+  if(v instanceof Dict) return 'dict';
+  if(v instanceof PySet) return 'set';
+  if(v instanceof Fn || v instanceof Builtin || v instanceof Bound) return 'function';
+  if(v instanceof Module) return 'module';
+  return 'object';
+}
+
+function keyOf(v){
+  if(v===null) return 'N';
+  var t = typeof v;
+  if(t==='string')  return 's'+v;
+  if(t==='number')  return 'n'+v;
+  if(t==='boolean') return 'n'+(v?1:0);          /* True == 1, comme en Python */
+  if(v instanceof Tuple) return 't('+v.items.map(keyOf).join('\u0001')+')';
+  err('TypeError', 'ce type ('+typeName(v)+') ne peut pas servir de clé de dictionnaire');
+}
+function dset(d,k,v){ d.m.set(keyOf(k), [k,v]); }
+function dget(d,k){ var p = d.m.get(keyOf(k)); return p ? p[1] : undefined; }
+function dhas(d,k){ return d.m.has(keyOf(k)); }
+function dkeys(d){ var a=[]; d.m.forEach(function(p){ a.push(p[0]); }); return a; }
+function dvals(d){ var a=[]; d.m.forEach(function(p){ a.push(p[1]); }); return a; }
+function ditems(d){ var a=[]; d.m.forEach(function(p){ a.push(new Tuple([p[0],p[1]])); }); return a; }
+function sadd(s,v){ s.m.set(keyOf(v), v); }
+
+function truth(v){
+  if(v===null || v===false) return false;
+  if(v===true) return true;
+  if(typeof v==='number') return v!==0;
+  if(typeof v==='string') return v.length>0;
+  if(Array.isArray(v)) return v.length>0;
+  if(v instanceof Tuple) return v.items.length>0;
+  if(v instanceof Dict || v instanceof PySet) return v.m.size>0;
+  return true;
+}
+
+function pyEq(a,b){
+  if(a===null || b===null) return a===b;
+  if(isNum(a) && isNum(b)) return num(a)===num(b);
+  if(isStr(a) || isStr(b)) return a===b;
+  if(Array.isArray(a) && Array.isArray(b))
+    return a.length===b.length && a.every(function(x,i){ return pyEq(x,b[i]); });
+  if(a instanceof Tuple && b instanceof Tuple) return pyEq(a.items, b.items);
+  if(a instanceof Dict && b instanceof Dict){
+    if(a.m.size!==b.m.size) return false;
+    var ok = true;
+    a.m.forEach(function(p,k){ if(!ok) return; if(!b.m.has(k) || !pyEq(p[1], b.m.get(k)[1])) ok=false; });
+    return ok;
+  }
+  if(a instanceof PySet && b instanceof PySet){
+    if(a.m.size!==b.m.size) return false;
+    var ok2 = true;
+    a.m.forEach(function(v,k){ if(!b.m.has(k)) ok2=false; });
+    return ok2;
+  }
+  return a===b;
+}
+
+function fmtNum(v){
+  if(Number.isInteger(v) && Math.abs(v)<1e21) return String(v);
+  if(v===Infinity) return 'inf';
+  if(v===-Infinity) return '-inf';
+  if(Number.isNaN(v)) return 'nan';
+  return String(v);
+}
+function repr(v){
+  if(v===null) return 'None';
+  if(v===true) return 'True';
+  if(v===false) return 'False';
+  if(typeof v==='number') return fmtNum(v);
+  if(typeof v==='string') return "'" + v.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n') + "'";
+  if(Array.isArray(v)) return '[' + v.map(repr).join(', ') + ']';
+  if(v instanceof Tuple) return '(' + v.items.map(repr).join(', ') + (v.items.length===1?',':'') + ')';
+  if(v instanceof Dict){
+    var parts=[]; v.m.forEach(function(p){ parts.push(repr(p[0])+': '+repr(p[1])); });
+    return '{' + parts.join(', ') + '}';
+  }
+  if(v instanceof PySet){
+    if(v.m.size===0) return 'set()';
+    var ps=[]; v.m.forEach(function(x){ ps.push(repr(x)); });
+    return '{' + ps.join(', ') + '}';
+  }
+  if(v instanceof Fn)      return '<fonction ' + v.name + '>';
+  if(v instanceof Builtin || v instanceof Bound) return '<fonction ' + v.name + '>';
+  if(v instanceof Module)  return "<module '" + v.name + "'>";
+  return String(v);
+}
+function pystr(v){ return isStr(v) ? v : repr(v); }
+
+/* ------------------------------ analyse lexicale -------------------------- */
+var OPS3 = ['**=','//='];
+var OPS2 = ['**','//','==','!=','<=','>=','+=','-=','*=','/=','%=','->'];
+var OPS1 = '+-*/%()[]{},:.=<>;';
+
+function tokenize(src){
+  src = String(src).replace(/\r\n?/g,'\n');
+  if(src.slice(-1)!=='\n') src += '\n';
+  var toks=[], i=0, n=src.length, line=1, indents=[0], depth=0, atLine=true;
+  function push(t,v){ toks.push({t:t, v:v, line:line}); }
+  function isIdStart(c){ return /[A-Za-z_\u00c0-\u024f]/.test(c); }
+  function isIdChar(c){ return /[A-Za-z0-9_\u00c0-\u024f]/.test(c); }
+
+  while(i<n){
+    if(atLine && depth===0){
+      var j=i, col=0;
+      while(j<n && (src[j]===' ' || src[j]==='\t')){ col += (src[j]==='\t') ? 4 : 1; j++; }
+      if(j>=n || src[j]==='\n' || src[j]==='#'){                    /* ligne vide ou commentaire */
+        while(j<n && src[j]!=='\n') j++;
+        i = j+1; line++; continue;
+      }
+      if(col > indents[indents.length-1]){ indents.push(col); push('INDENT'); }
+      else{
+        while(col < indents[indents.length-1]){ indents.pop(); push('DEDENT'); }
+        if(col !== indents[indents.length-1])
+          err('IndentationError', 'indentation incohérente (ligne '+line+')');
+      }
+      i = j; atLine = false; continue;
+    }
+    var c = src[i];
+    if(c===' ' || c==='\t'){ i++; continue; }
+    if(c==='#'){ while(i<n && src[i]!=='\n') i++; continue; }
+    if(c==='\\' && src[i+1]==='\n'){ i+=2; line++; continue; }
+    if(c==='\n'){ i++; if(depth===0){ push('NEWLINE'); atLine=true; } line++; continue; }
+
+    /* chaînes (et f-strings) */
+    var pref = '';
+    if(isIdStart(c) && (src[i+1]==='"' || src[i+1]==="'") && /^[fFrRbB]$/.test(c)){ pref = c.toLowerCase(); i++; c = src[i]; }
+    if(c==='"' || c==="'"){
+      var q = c, triple = (src[i+1]===q && src[i+2]===q);
+      var end = triple ? q+q+q : q;
+      i += end.length;
+      var buf = '';
+      while(true){
+        if(i>=n) err('SyntaxError', 'chaîne de caractères non fermée (ligne '+line+')');
+        if(src.substr(i, end.length)===end){ i += end.length; break; }
+        var ch = src[i];
+        if(ch==='\\' && pref!=='r'){
+          var e2 = src[i+1];
+          var map = {'n':'\n','t':'\t','r':'\r','\\':'\\',"'":"'",'"':'"','0':'\0','a':'\x07','b':'\b'};
+          if(e2==='\n'){ i+=2; line++; continue; }
+          buf += (e2 in map) ? map[e2] : ('\\'+e2);
+          i += 2; continue;
+        }
+        if(ch==='\n'){ if(!triple) err('SyntaxError','chaîne non fermée (ligne '+line+')'); line++; }
+        buf += ch; i++;
+      }
+      if(pref==='f') push('FSTR', buf); else push('STR', buf);
+      continue;
+    }
+
+    /* nombres */
+    if(/[0-9]/.test(c) || (c==='.' && /[0-9]/.test(src[i+1]||''))){
+      var s0 = i;
+      if(c==='0' && /[bBxXoO]/.test(src[i+1]||'')){
+        var base = ({'b':2,'x':16,'o':8})[src[i+1].toLowerCase()];
+        i += 2; var d0 = i;
+        while(i<n && /[0-9a-fA-F_]/.test(src[i])) i++;
+        push('NUM', parseInt(src.slice(d0,i).replace(/_/g,''), base));
+        continue;
+      }
+      while(i<n && /[0-9_]/.test(src[i])) i++;
+      if(src[i]==='.'){ i++; while(i<n && /[0-9_]/.test(src[i])) i++; }
+      if(/[eE]/.test(src[i]||'')){ i++; if(/[+-]/.test(src[i]||'')) i++; while(i<n && /[0-9]/.test(src[i])) i++; }
+      push('NUM', parseFloat(src.slice(s0,i).replace(/_/g,'')));
+      continue;
+    }
+
+    /* identifiants */
+    if(isIdStart(c)){
+      var s1 = i;
+      while(i<n && isIdChar(src[i])) i++;
+      push('NAME', src.slice(s1,i));
+      continue;
+    }
+
+    /* opérateurs */
+    var three = src.substr(i,3), two = src.substr(i,2);
+    if(OPS3.indexOf(three)>=0){ push('OP', three); i+=3; continue; }
+    if(OPS2.indexOf(two)>=0){ push('OP', two); i+=2; continue; }
+    if(OPS1.indexOf(c)>=0){
+      if(c==='(' || c==='[' || c==='{') depth++;
+      if(c===')' || c===']' || c==='}') depth = Math.max(0, depth-1);
+      push('OP', c); i++; continue;
+    }
+    err('SyntaxError', 'caractère inattendu « '+c+' » (ligne '+line+')');
+  }
+  push('NEWLINE');
+  while(indents.length>1){ indents.pop(); push('DEDENT'); }
+  push('EOF');
+  return toks;
+}
+
+/* ------------------------------ analyse syntaxique ------------------------ */
+var KW_STMT = ['def','return','if','elif','else','for','while','assert','pass','break','continue','global','nonlocal','import','from','del','class','try','except','finally','raise','with','yield','lambda'];
+
+function Parser(toks){ this.k = toks; this.i = 0; }
+Parser.prototype.tok = function(o){ return this.k[this.i + (o||0)]; };
+Parser.prototype.tt  = function(o){ return this.tok(o).t; };
+Parser.prototype.tv  = function(o){ return this.tok(o).v; };
+Parser.prototype.next= function(){ return this.k[this.i++]; };
+Parser.prototype.at  = function(v){ var t=this.tok(); return (t.t==='OP'||t.t==='NAME') && t.v===v; };
+Parser.prototype.eat = function(v){ if(this.at(v)){ this.i++; return true; } return false; };
+Parser.prototype.expect = function(v){
+  if(!this.eat(v)) err('SyntaxError', 'il manque « '+v+' » (ligne '+this.tok().line+')');
+};
+Parser.prototype.expectType = function(t){
+  if(this.tt()!==t) err('SyntaxError', 'structure inattendue ligne '+this.tok().line+' (attendu : '+t+')');
+  return this.next();
+};
+
+Parser.prototype.parseProgram = function(){
+  var body = [];
+  while(this.tt()!=='EOF'){
+    if(this.tt()==='NEWLINE' || this.tt()==='INDENT' || this.tt()==='DEDENT'){ this.i++; continue; }
+    body.push(this.parseStatement());
+  }
+  return body;
+};
+
+Parser.prototype.parseBlock = function(){
+  this.expect(':');
+  if(this.tt()==='NEWLINE'){
+    while(this.tt()==='NEWLINE') this.i++;
+    if(this.tt()!=='INDENT')
+      err('IndentationError', 'il manque l\u2019indentation du bloc (ligne '+this.tok().line+') : les lignes qui suivent « : » doivent être décalées de 4 espaces');
+    this.i++;
+    var body = [];
+    while(this.tt()!=='DEDENT' && this.tt()!=='EOF'){
+      if(this.tt()==='NEWLINE'){ this.i++; continue; }
+      body.push(this.parseStatement());
+    }
+    if(this.tt()==='DEDENT') this.i++;
+    if(!body.length) err('SyntaxError', 'bloc vide');
+    return body;
+  }
+  return this.parseSimpleLine();
+};
+
+Parser.prototype.parseSimpleLine = function(){
+  var body = [this.parseSimple()];
+  while(this.eat(';')){ if(this.tt()==='NEWLINE') break; body.push(this.parseSimple()); }
+  if(this.tt()==='NEWLINE') this.i++;
+  return body;
+};
+
+Parser.prototype.parseStatement = function(){
+  var t = this.tok();
+  if(t.t==='NAME'){
+    switch(t.v){
+      case 'def':    return this.parseDef();
+      case 'if':     return this.parseIf();
+      case 'while':  return this.parseWhile();
+      case 'for':    return this.parseFor();
+      case 'class':  err('SyntaxError', 'les classes ne sont pas gérées ici');
+      case 'try':    err('SyntaxError', 'try / except ne sont pas gérés ici');
+      case 'import': case 'from': return this.parseImport();
+    }
+  }
+  var body = this.parseSimpleLine();
+  return body.length===1 ? body[0] : {k:'block', body:body};
+};
+
+Parser.prototype.parseImport = function(){
+  var names = [];
+  while(this.tt()!=='NEWLINE' && this.tt()!=='EOF'){ if(this.tt()==='NAME') names.push(this.tv()); this.i++; }
+  if(this.tt()==='NEWLINE') this.i++;
+  return {k:'import', names:names};
+};
+
+Parser.prototype.parseSimple = function(){
+  var t = this.tok();
+  if(t.t==='NAME'){
+    if(t.v==='return'){ this.i++;
+      if(this.tt()==='NEWLINE' || this.at(';')) return {k:'return', e:null};
+      return {k:'return', e:this.parseExprOrTuple()};
+    }
+    if(t.v==='pass'){ this.i++; return {k:'pass'}; }
+    if(t.v==='break'){ this.i++; return {k:'break'}; }
+    if(t.v==='continue'){ this.i++; return {k:'continue'}; }
+    if(t.v==='assert'){ this.i++;
+      var cond = this.parseExpr(), msg = null;
+      if(this.eat(',')) msg = this.parseExpr();
+      return {k:'assert', cond:cond, msg:msg, line:t.line};
+    }
+    if(t.v==='global' || t.v==='nonlocal'){ this.i++;
+      var g=[]; do{ g.push(this.expectType('NAME').v); }while(this.eat(','));
+      return {k:'global', names:g};
+    }
+    if(t.v==='del'){ this.i++; var tgt=this.parseExpr(); return {k:'del', target:tgt}; }
+    if(t.v==='raise'){ this.i++;
+      var e2 = (this.tt()==='NEWLINE') ? null : this.parseExpr();
+      return {k:'raise', e:e2, line:t.line};
+    }
+  }
+  var e = this.parseExprOrTuple();
+  if(this.at('=')){
+    var targets = [e];
+    while(this.eat('=')) targets.push(this.parseExprOrTuple());
+    var value = targets.pop();
+    return {k:'assign', targets:targets, value:value, line:t.line};
+  }
+  var aug = ['+=','-=','*=','/=','//=','%=','**='];
+  for(var a=0;a<aug.length;a++){
+    if(this.at(aug[a])){ this.i++;
+      return {k:'augassign', target:e, op:aug[a].slice(0,-1), value:this.parseExprOrTuple(), line:t.line};
+    }
+  }
+  return {k:'expr', e:e, line:t.line};
+};
+
+Parser.prototype.parseDef = function(){
+  this.expect('def');
+  var name = this.expectType('NAME').v;
+  this.expect('(');
+  var params = [];
+  while(!this.at(')')){
+    if(this.at('*') || this.at('**')) err('SyntaxError', '*args / **kwargs ne sont pas gérés ici');
+    var pn = this.expectType('NAME').v, def = null;
+    if(this.eat(':')) this.parseExpr();                 /* annotation de type : lue puis ignorée */
+    if(this.eat('=')) def = this.parseExpr();
+    params.push({name:pn, def:def});
+    if(!this.eat(',')) break;
+  }
+  this.expect(')');
+  if(this.eat('->')) this.parseExpr();                  /* annotation de retour : ignorée */
+  var body = this.parseBlock();
+  return {k:'def', name:name, params:params, body:body};
+};
+
+Parser.prototype.parseIf = function(){
+  this.expect('if');
+  var cond = this.parseExpr(), body = this.parseBlock(), orelse = null;
+  while(this.tt()==='NEWLINE') this.i++;
+  if(this.at('elif')){ orelse = [this.parseIf2()]; }
+  else if(this.at('else')){ this.i++; orelse = this.parseBlock(); }
+  return {k:'if', cond:cond, body:body, orelse:orelse};
+};
+Parser.prototype.parseIf2 = function(){
+  this.expect('elif');
+  var cond = this.parseExpr(), body = this.parseBlock(), orelse = null;
+  while(this.tt()==='NEWLINE') this.i++;
+  if(this.at('elif')) orelse = [this.parseIf2()];
+  else if(this.at('else')){ this.i++; orelse = this.parseBlock(); }
+  return {k:'if', cond:cond, body:body, orelse:orelse};
+};
+
+Parser.prototype.parseWhile = function(){
+  this.expect('while');
+  var cond = this.parseExpr(), body = this.parseBlock();
+  return {k:'while', cond:cond, body:body};
+};
+
+Parser.prototype.parseFor = function(){
+  this.expect('for');
+  var target = this.parseTarget();
+  this.expect('in');
+  var iter = this.parseExprOrTuple();
+  var body = this.parseBlock();
+  return {k:'for', target:target, iter:iter, body:body};
+};
+
+Parser.prototype.parseTarget = function(){
+  var items = [this.parsePostfix(this.parseAtom())];
+  var many = false;
+  while(this.eat(',')){
+    many = true;
+    if(this.at('in')) break;
+    items.push(this.parsePostfix(this.parseAtom()));
+  }
+  return many ? {k:'tuple', items:items} : items[0];
+};
+
+/* --- expressions --- */
+Parser.prototype.parseExprOrTuple = function(){
+  var first = this.parseExpr();
+  if(!this.at(',')) return first;
+  var items = [first];
+  while(this.eat(',')){
+    if(this.tt()==='NEWLINE' || this.at(')') || this.at(']') || this.at('}') || this.at('=')) break;
+    items.push(this.parseExpr());
+  }
+  return {k:'tuple', items:items};
+};
+
+Parser.prototype.parseExpr = function(){ return this.parseTernary(); };
+
+Parser.prototype.parseTernary = function(){
+  var e = this.parseOr();
+  if(this.at('if') ){
+    this.i++;
+    var cond = this.parseOr();
+    this.expect('else');
+    var other = this.parseTernary();
+    return {k:'ternary', cond:cond, a:e, b:other};
+  }
+  return e;
+};
+Parser.prototype.parseOr = function(){
+  var e = this.parseAnd();
+  while(this.at('or')){ this.i++; e = {k:'bool', op:'or', a:e, b:this.parseAnd()}; }
+  return e;
+};
+Parser.prototype.parseAnd = function(){
+  var e = this.parseNot();
+  while(this.at('and')){ this.i++; e = {k:'bool', op:'and', a:e, b:this.parseNot()}; }
+  return e;
+};
+Parser.prototype.parseNot = function(){
+  if(this.at('not')){ this.i++; return {k:'not', e:this.parseNot()}; }
+  return this.parseCompare();
+};
+Parser.prototype.parseCompare = function(){
+  var left = this.parseArith(), ops = [], rights = [];
+  while(true){
+    var op = null;
+    if(this.at('<')||this.at('>')||this.at('<=')||this.at('>=')||this.at('==')||this.at('!=')){ op = this.tv(); this.i++; }
+    else if(this.at('in')){ this.i++; op = 'in'; }
+    else if(this.at('not') && this.tok(1).v==='in'){ this.i+=2; op = 'not in'; }
+    else if(this.at('is')){ this.i++; if(this.at('not')){ this.i++; op='is not'; } else op='is'; }
+    else break;
+    ops.push(op); rights.push(this.parseArith());
+  }
+  return ops.length ? {k:'cmp', left:left, ops:ops, rights:rights} : left;
+};
+Parser.prototype.parseArith = function(){
+  var e = this.parseTerm();
+  while(this.at('+') || this.at('-')){ var op=this.tv(); this.i++; e = {k:'bin', op:op, a:e, b:this.parseTerm()}; }
+  return e;
+};
+Parser.prototype.parseTerm = function(){
+  var e = this.parseUnary();
+  while(this.at('*')||this.at('/')||this.at('//')||this.at('%')){ var op=this.tv(); this.i++; e = {k:'bin', op:op, a:e, b:this.parseUnary()}; }
+  return e;
+};
+Parser.prototype.parseUnary = function(){
+  if(this.at('-')){ this.i++; return {k:'neg', e:this.parseUnary()}; }
+  if(this.at('+')){ this.i++; return this.parseUnary(); }
+  if(this.at('not')){ this.i++; return {k:'not', e:this.parseNot()}; }
+  return this.parsePower();
+};
+Parser.prototype.parsePower = function(){
+  var base = this.parsePostfix(this.parseAtom());
+  if(this.at('**')){ this.i++; return {k:'bin', op:'**', a:base, b:this.parseUnary()}; }
+  return base;
+};
+
+Parser.prototype.parsePostfix = function(e){
+  while(true){
+    if(this.at('(')){ this.i++;
+      var args=[], kwargs=[];
+      while(!this.at(')')){
+        if(this.tt()==='NAME' && this.tok(1).t==='OP' && this.tok(1).v==='=' ){
+          var kn = this.next().v; this.i++;
+          kwargs.push({name:kn, e:this.parseExpr()});
+        } else {
+          var a0 = this.parseExpr();
+          if(this.at('for')){ a0 = this.parseComprehension(a0, 'list'); }
+          args.push(a0);
+        }
+        if(!this.eat(',')) break;
+      }
+      this.expect(')');
+      e = {k:'call', fn:e, args:args, kwargs:kwargs, line:this.tok().line};
+      continue;
+    }
+    if(this.at('[')){ this.i++;
+      var lo=null, hi=null, step=null, isSlice=false;
+      if(!this.at(':')) lo = this.parseExprOrTuple();
+      if(this.eat(':')){ isSlice = true;
+        if(!this.at(']') && !this.at(':')) hi = this.parseExpr();
+        if(this.eat(':')){ if(!this.at(']')) step = this.parseExpr(); }
+      }
+      this.expect(']');
+      e = isSlice ? {k:'slice', obj:e, lo:lo, hi:hi, step:step} : {k:'sub', obj:e, index:lo};
+      continue;
+    }
+    if(this.at('.')){ this.i++;
+      var an = this.expectType('NAME').v;
+      e = {k:'attr', obj:e, name:an};
+      continue;
+    }
+    break;
+  }
+  return e;
+};
+
+Parser.prototype.parseComprehension = function(elt, kind, value){
+  /* on arrive sur « for » : for TARGET in ITER [if COND]* */
+  this.expect('for');
+  var target = this.parseTarget();
+  this.expect('in');
+  var iter = this.parseOr();
+  var conds = [];
+  while(this.at('if')){ this.i++; conds.push(this.parseOr()); }
+  if(this.at('for')) err('SyntaxError', 'compréhension à plusieurs « for » non gérée ici');
+  return {k:'comp', kind:kind, elt:elt, value:value||null, target:target, iter:iter, conds:conds};
+};
+
+Parser.prototype.parseAtom = function(){
+  var t = this.tok();
+  if(t.t==='NUM'){ this.i++; return {k:'num', v:t.v}; }
+  if(t.t==='STR'){
+    this.i++;
+    var s = t.v;
+    while(this.tt()==='STR'){ s += this.tv(); this.i++; }
+    return {k:'str', v:s};
+  }
+  if(t.t==='FSTR'){ this.i++; return {k:'fstr', parts:parseFString(t.v)}; }
+  if(t.t==='NAME'){
+    if(t.v==='True'){ this.i++; return {k:'const', v:true}; }
+    if(t.v==='False'){ this.i++; return {k:'const', v:false}; }
+    if(t.v==='None'){ this.i++; return {k:'const', v:null}; }
+    if(t.v==='lambda'){ this.i++;
+      var ps = [];
+      while(!this.at(':')){ var pn=this.expectType('NAME').v; var d=null; if(this.eat('=')) d=this.parseExpr(); ps.push({name:pn, def:d}); if(!this.eat(',')) break; }
+      this.expect(':');
+      var bexp = this.parseExpr();
+      return {k:'lambda', params:ps, body:[{k:'return', e:bexp}]};
+    }
+    if(KW_STMT.indexOf(t.v)>=0 && t.v!=='lambda')
+      err('SyntaxError', 'mot-clé « '+t.v+' » inattendu (ligne '+t.line+')');
+    this.i++; return {k:'name', v:t.v, line:t.line};
+  }
+  if(t.t==='OP'){
+    if(t.v==='('){ this.i++;
+      if(this.at(')')){ this.i++; return {k:'tuple', items:[]}; }
+      var first = this.parseExpr();
+      if(this.at('for')){ var c = this.parseComprehension(first,'list'); this.expect(')'); return c; }
+      if(this.at(',')){
+        var items=[first];
+        while(this.eat(',')){ if(this.at(')')) break; items.push(this.parseExpr()); }
+        this.expect(')');
+        return {k:'tuple', items:items};
+      }
+      this.expect(')');
+      return first;
+    }
+    if(t.v==='['){ this.i++;
+      if(this.at(']')){ this.i++; return {k:'list', items:[]}; }
+      var e0 = this.parseExpr();
+      if(this.at('for')){ var cl = this.parseComprehension(e0,'list'); this.expect(']'); return cl; }
+      var its=[e0];
+      while(this.eat(',')){ if(this.at(']')) break; its.push(this.parseExpr()); }
+      this.expect(']');
+      return {k:'list', items:its};
+    }
+    if(t.v==='{'){ this.i++;
+      if(this.at('}')){ this.i++; return {k:'dict', items:[]}; }
+      var k0 = this.parseExpr();
+      if(this.eat(':')){
+        var v0 = this.parseExpr();
+        if(this.at('for')){ var cd = this.parseComprehension(k0,'dict',v0); this.expect('}'); return cd; }
+        var pairs = [[k0,v0]];
+        while(this.eat(',')){
+          if(this.at('}')) break;
+          var kk = this.parseExpr(); this.expect(':'); pairs.push([kk, this.parseExpr()]);
+        }
+        this.expect('}');
+        return {k:'dict', items:pairs};
+      }
+      if(this.at('for')){ var cs = this.parseComprehension(k0,'set'); this.expect('}'); return cs; }
+      var sits = [k0];
+      while(this.eat(',')){ if(this.at('}')) break; sits.push(this.parseExpr()); }
+      this.expect('}');
+      return {k:'set', items:sits};
+    }
+  }
+  err('SyntaxError', 'expression inattendue ligne '+t.line+(t.v!==undefined?' près de « '+t.v+' »':''));
+};
+
+function parseFString(raw){
+  /* découpe « a{x}b » en [ {lit}, {expr}, … ] ; les {{ }} littérales sont gérées */
+  var parts=[], buf='', i=0;
+  while(i<raw.length){
+    var c = raw[i];
+    if(c==='{' && raw[i+1]==='{'){ buf+='{'; i+=2; continue; }
+    if(c==='}' && raw[i+1]==='}'){ buf+='}'; i+=2; continue; }
+    if(c==='{'){
+      if(buf){ parts.push({lit:buf}); buf=''; }
+      var d=1, j=i+1, src='';
+      while(j<raw.length && d>0){
+        if(raw[j]==='{') d++;
+        else if(raw[j]==='}'){ d--; if(!d) break; }
+        src += raw[j]; j++;
+      }
+      var spec = src.split(':')[0];               /* formats « :.2f » ignorés */
+      parts.push({expr: parseExpression(spec)});
+      i = j+1; continue;
+    }
+    buf += c; i++;
+  }
+  if(buf) parts.push({lit:buf});
+  return parts;
+}
+
+function parse(src){ return new Parser(tokenize(src)).parseProgram(); }
+function parseExpression(src){
+  var p = new Parser(tokenize(src));
+  var e = p.parseExprOrTuple();
+  return e;
+}
+
+/* ------------------------------ environnement ----------------------------- */
+function Env(parent){ this.v = Object.create(null); this.parent = parent||null; }
+Env.prototype.lookup = function(name){
+  var e = this;
+  while(e){ if(name in e.v) return e; e = e.parent; }
+  return null;
+};
+Env.prototype.get = function(name){
+  var e = this.lookup(name);
+  if(!e) err('NameError', 'le nom « '+name+' » n\u2019est pas défini');
+  return e.v[name];
+};
+Env.prototype.set = function(name, val){ this.v[name] = val; };
+
+/* ------------------------------ exécution --------------------------------- */
+var BREAK = {sig:'break'}, CONT = {sig:'continue'};
+function Ret(v){ this.sig='return'; this.v=v; }
+
+function tick(st){
+  if(++st.steps > st.maxSteps) err('TimeoutError', 'ton code fait trop d\u2019opérations (boucle infinie ?)');
+  if((st.steps & 4095)===0 && Date.now() > st.deadline)
+    err('TimeoutError', 'ton code met trop de temps (boucle infinie ?)');
+}
+
+function execBody(body, env, st){
+  for(var i=0;i<body.length;i++) execStmt(body[i], env, st);
+}
+
+function execStmt(s, env, st){
+  tick(st);
+  switch(s.k){
+    case 'expr':   evalExpr(s.e, env, st); return;
+    case 'pass': case 'global': case 'import': return;
+    case 'block':  execBody(s.body, env, st); return;
+    case 'assign': {
+      var val = evalExpr(s.value, env, st);
+      for(var i=0;i<s.targets.length;i++) assignTo(s.targets[i], val, env, st);
+      return;
+    }
+    case 'augassign': {
+      var cur = evalExpr(s.target, env, st);
+      var nv  = binop(s.op, cur, evalExpr(s.value, env, st));
+      assignTo(s.target, nv, env, st);
+      return;
+    }
+    case 'if':
+      if(truth(evalExpr(s.cond, env, st))) execBody(s.body, env, st);
+      else if(s.orelse) execBody(s.orelse, env, st);
+      return;
+    case 'while':
+      while(truth(evalExpr(s.cond, env, st))){
+        tick(st);
+        try{ execBody(s.body, env, st); }
+        catch(e){ if(e===BREAK) break; if(e===CONT) continue; throw e; }
+      }
+      return;
+    case 'for': {
+      var seq = iterate(evalExpr(s.iter, env, st));
+      for(var j=0;j<seq.length;j++){
+        tick(st);
+        assignTo(s.target, seq[j], env, st);
+        try{ execBody(s.body, env, st); }
+        catch(e2){ if(e2===BREAK) break; if(e2===CONT) continue; throw e2; }
+      }
+      return;
+    }
+    case 'def':
+      env.set(s.name, new Fn(s.name, s.params, s.body, env));
+      return;
+    case 'return': throw new Ret(s.e ? evalExpr(s.e, env, st) : null);
+    case 'break':  throw BREAK;
+    case 'continue': throw CONT;
+    case 'assert': {
+      if(!truth(evalExpr(s.cond, env, st))){
+        var m = s.msg ? pystr(evalExpr(s.msg, env, st)) : '';
+        err('AssertionError', m);
+      }
+      return;
+    }
+    case 'raise': {
+      var v = s.e ? evalExpr(s.e, env, st) : null;
+      err('Error', v===null ? 'exception levée' : pystr(v));
+      return;
+    }
+    case 'del': {
+      if(s.target.k==='sub'){
+        var o = evalExpr(s.target.obj, env, st), key = evalExpr(s.target.index, env, st);
+        if(o instanceof Dict){ if(!dhas(o,key)) err('KeyError', repr(key)); o.m.delete(keyOf(key)); return; }
+        if(Array.isArray(o)){ o.splice(normIndex(key, o.length), 1); return; }
+      }
+      err('TypeError', 'del non géré ici');
+      return;
+    }
+  }
+  err('SyntaxError', 'instruction non gérée : '+s.k);
+}
+
+function assignTo(t, val, env, st){
+  switch(t.k){
+    case 'name': env.set(t.v, val); return;
+    case 'sub': {
+      var o = evalExpr(t.obj, env, st), key = evalExpr(t.index, env, st);
+      if(o instanceof Dict){ dset(o, key, val); return; }
+      if(Array.isArray(o)){ o[normIndex(key, o.length)] = val; return; }
+      if(o instanceof Tuple) err('TypeError', 'un tuple ne se modifie pas');
+      if(isStr(o)) err('TypeError', 'une chaîne de caractères ne se modifie pas');
+      err('TypeError', 'affectation impossible sur ce type ('+typeName(o)+')');
+      return;
+    }
+    case 'tuple': case 'list': {
+      var vals = iterate(val);
+      if(vals.length !== t.items.length)
+        err('ValueError', 'décomposition impossible : '+vals.length+' valeur(s) pour '+t.items.length+' variable(s)');
+      for(var i=0;i<t.items.length;i++) assignTo(t.items[i], vals[i], env, st);
+      return;
+    }
+  }
+  err('SyntaxError', 'cible d\u2019affectation non gérée');
+}
+
+function normIndex(i, len){
+  if(!isNum(i)) err('TypeError', 'un indice doit être un entier, pas '+typeName(i));
+  var n = num(i);
+  if(!Number.isInteger(n)) err('TypeError', 'un indice doit être un entier');
+  if(n<0) n += len;
+  if(n<0 || n>=len) err('IndexError', 'indice hors des limites (longueur '+len+')');
+  return n;
+}
+
+function iterate(v){
+  if(isStr(v)) return v.split('');
+  if(Array.isArray(v)) return v.slice();
+  if(v instanceof Tuple) return v.items.slice();
+  if(v instanceof Dict) return dkeys(v);
+  if(v instanceof PySet){ var a=[]; v.m.forEach(function(x){ a.push(x); }); return a; }
+  err('TypeError', 'impossible de parcourir un objet de type '+typeName(v));
+}
+
+function binop(op, a, b){
+  switch(op){
+    case '+':
+      if(isNum(a) && isNum(b)) return num(a)+num(b);
+      if(isStr(a) && isStr(b)) return a+b;
+      if(Array.isArray(a) && Array.isArray(b)) return a.concat(b);
+      if(a instanceof Tuple && b instanceof Tuple) return new Tuple(a.items.concat(b.items));
+      if(isStr(a) !== isStr(b) && (isStr(a)||isStr(b)))
+        err('TypeError', 'on ne peut pas additionner une chaîne et un '+typeName(isStr(a)?b:a)+' (pense à str() ou à f"…")');
+      err('TypeError', 'addition impossible entre '+typeName(a)+' et '+typeName(b));
+      break;
+    case '-':
+      if(isNum(a) && isNum(b)) return num(a)-num(b);
+      if(a instanceof PySet && b instanceof PySet){
+        var d = new PySet(); a.m.forEach(function(v,k){ if(!b.m.has(k)) d.m.set(k,v); }); return d;
+      }
+      err('TypeError', 'soustraction impossible entre '+typeName(a)+' et '+typeName(b));
+      break;
+    case '*':
+      if(isNum(a) && isNum(b)) return num(a)*num(b);
+      if(isStr(a) && isNum(b)) return a.repeat(Math.max(0, Math.floor(num(b))));
+      if(isNum(a) && isStr(b)) return b.repeat(Math.max(0, Math.floor(num(a))));
+      if(Array.isArray(a) && isNum(b)){ var r=[]; for(var i=0;i<Math.floor(num(b));i++) r=r.concat(a); return r; }
+      err('TypeError', 'multiplication impossible entre '+typeName(a)+' et '+typeName(b));
+      break;
+    case '/':
+      if(!isNum(a) || !isNum(b)) err('TypeError', 'division impossible entre '+typeName(a)+' et '+typeName(b));
+      if(num(b)===0) err('ZeroDivisionError', 'division par zéro');
+      return num(a)/num(b);
+    case '//':
+      if(!isNum(a) || !isNum(b)) err('TypeError', 'division entière impossible entre '+typeName(a)+' et '+typeName(b));
+      if(num(b)===0) err('ZeroDivisionError', 'division par zéro');
+      return Math.floor(num(a)/num(b));
+    case '%':
+      if(isStr(a)) err('TypeError', 'le formatage « % » n\u2019est pas géré ici (utilise une f-string)');
+      if(!isNum(a) || !isNum(b)) err('TypeError', 'modulo impossible entre '+typeName(a)+' et '+typeName(b));
+      if(num(b)===0) err('ZeroDivisionError', 'modulo par zéro');
+      return ((num(a) % num(b)) + num(b)) % num(b);
+    case '**':
+      if(!isNum(a) || !isNum(b)) err('TypeError', 'puissance impossible entre '+typeName(a)+' et '+typeName(b));
+      return Math.pow(num(a), num(b));
+  }
+  err('SyntaxError', 'opérateur non géré : '+op);
+}
+
+function compareOp(op, a, b){
+  switch(op){
+    case '==': return pyEq(a,b);
+    case '!=': return !pyEq(a,b);
+    case 'is': return (a===b) || (a===null&&b===null);
+    case 'is not': return !((a===b) || (a===null&&b===null));
+    case 'in': return contains(b,a);
+    case 'not in': return !contains(b,a);
+  }
+  if(isNum(a) && isNum(b)){
+    var x = num(a), y = num(b);
+    return op==='<' ? x<y : op==='>' ? x>y : op==='<=' ? x<=y : x>=y;
+  }
+  if(isStr(a) && isStr(b)){
+    var c = a<b ? -1 : a>b ? 1 : 0;
+    return op==='<' ? c<0 : op==='>' ? c>0 : op==='<=' ? c<=0 : c>=0;
+  }
+  if((Array.isArray(a)&&Array.isArray(b)) || (a instanceof Tuple && b instanceof Tuple)){
+    var A = Array.isArray(a)?a:a.items, B = Array.isArray(b)?b:b.items;
+    for(var i=0;i<Math.min(A.length,B.length);i++){
+      if(!pyEq(A[i],B[i])) return compareOp(op, A[i], B[i]);
+    }
+    return compareOp(op, A.length, B.length);
+  }
+  err('TypeError', 'comparaison impossible entre '+typeName(a)+' et '+typeName(b));
+}
+
+function contains(container, item){
+  if(isStr(container)){
+    if(!isStr(item)) err('TypeError', '« in » sur une chaîne attend une chaîne');
+    return container.indexOf(item) >= 0;
+  }
+  if(Array.isArray(container)) return container.some(function(x){ return pyEq(x,item); });
+  if(container instanceof Tuple) return container.items.some(function(x){ return pyEq(x,item); });
+  if(container instanceof Dict) return dhas(container, item);
+  if(container instanceof PySet) return container.m.has(keyOf(item));
+  err('TypeError', '« in » impossible sur un objet de type '+typeName(container));
+}
+
+function evalExpr(e, env, st){
+  tick(st);
+  switch(e.k){
+    case 'num': case 'str': return e.v;
+    case 'const': return e.v;
+    case 'name': return env.get(e.v);
+    case 'list': return e.items.map(function(x){ return evalExpr(x, env, st); });
+    case 'tuple': return new Tuple(e.items.map(function(x){ return evalExpr(x, env, st); }));
+    case 'set': { var s0 = new PySet(); e.items.forEach(function(x){ sadd(s0, evalExpr(x, env, st)); }); return s0; }
+    case 'dict': {
+      var d0 = new Dict();
+      e.items.forEach(function(p){ dset(d0, evalExpr(p[0], env, st), evalExpr(p[1], env, st)); });
+      return d0;
+    }
+    case 'fstr': {
+      var out = '';
+      e.parts.forEach(function(p){ out += (p.lit !== undefined) ? p.lit : pystr(evalExpr(p.expr, env, st)); });
+      return out;
+    }
+    case 'neg': { var v0 = evalExpr(e.e, env, st); if(!isNum(v0)) err('TypeError','le signe « - » attend un nombre'); return -num(v0); }
+    case 'not': return !truth(evalExpr(e.e, env, st));
+    case 'bool': {
+      var a0 = evalExpr(e.a, env, st);
+      if(e.op==='and') return truth(a0) ? evalExpr(e.b, env, st) : a0;
+      return truth(a0) ? a0 : evalExpr(e.b, env, st);
+    }
+    case 'ternary': return truth(evalExpr(e.cond, env, st)) ? evalExpr(e.a, env, st) : evalExpr(e.b, env, st);
+    case 'bin': return binop(e.op, evalExpr(e.a, env, st), evalExpr(e.b, env, st));
+    case 'cmp': {
+      var left = evalExpr(e.left, env, st);
+      for(var i=0;i<e.ops.length;i++){
+        var right = evalExpr(e.rights[i], env, st);
+        if(!compareOp(e.ops[i], left, right)) return false;
+        left = right;
+      }
+      return true;
+    }
+    case 'sub': {
+      var o = evalExpr(e.obj, env, st), key = evalExpr(e.index, env, st);
+      return getitem(o, key);
+    }
+    case 'slice': {
+      var o2 = evalExpr(e.obj, env, st);
+      var lo = e.lo ? num(evalExpr(e.lo, env, st)) : null;
+      var hi = e.hi ? num(evalExpr(e.hi, env, st)) : null;
+      var stp = e.step ? num(evalExpr(e.step, env, st)) : 1;
+      return doSlice(o2, lo, hi, stp);
+    }
+    case 'attr': return getattr(evalExpr(e.obj, env, st), e.name);
+    case 'call': {
+      var fn = evalExpr(e.fn, env, st);
+      var args = e.args.map(function(a){ return evalExpr(a, env, st); });
+      var kw = {};
+      (e.kwargs||[]).forEach(function(p){ kw[p.name] = evalExpr(p.e, env, st); });
+      return callValue(fn, args, kw, st);
+    }
+    case 'lambda': return new Fn('<lambda>', e.params, e.body, env);
+    case 'comp': {
+      var seq = iterate(evalExpr(e.iter, env, st));
+      var res = e.kind==='list' ? [] : e.kind==='set' ? new PySet() : new Dict();
+      var inner = new Env(env);
+      for(var j=0;j<seq.length;j++){
+        tick(st);
+        assignTo(e.target, seq[j], inner, st);
+        var keep = true;
+        for(var c=0;c<e.conds.length;c++){ if(!truth(evalExpr(e.conds[c], inner, st))){ keep=false; break; } }
+        if(!keep) continue;
+        if(e.kind==='list') res.push(evalExpr(e.elt, inner, st));
+        else if(e.kind==='set') sadd(res, evalExpr(e.elt, inner, st));
+        else dset(res, evalExpr(e.elt, inner, st), evalExpr(e.value, inner, st));
+      }
+      return res;
+    }
+  }
+  err('SyntaxError', 'expression non gérée : '+e.k);
+}
+
+function getitem(o, key){
+  if(o instanceof Dict){
+    if(!dhas(o, key)) err('KeyError', repr(key)+' \u2014 cette clé n\u2019existe pas dans le dictionnaire');
+    return dget(o, key);
+  }
+  if(Array.isArray(o)) return o[normIndex(key, o.length)];
+  if(o instanceof Tuple) return o.items[normIndex(key, o.items.length)];
+  if(isStr(o)) return o[normIndex(key, o.length)];
+  err('TypeError', 'on ne peut pas indexer un objet de type '+typeName(o));
+}
+function doSlice(o, lo, hi, stp){
+  var arr = Array.isArray(o) ? o : (o instanceof Tuple ? o.items : (isStr(o) ? o.split('') : null));
+  if(arr===null) err('TypeError', 'tranche impossible sur un objet de type '+typeName(o));
+  var n = arr.length;
+  if(stp===0) err('ValueError', 'le pas d\u2019une tranche ne peut pas être nul');
+  var out = [];
+  if(stp>0){
+    var a = (lo===null) ? 0 : (lo<0 ? Math.max(0,n+lo) : Math.min(lo,n));
+    var b = (hi===null) ? n : (hi<0 ? Math.max(0,n+hi) : Math.min(hi,n));
+    for(var i=a;i<b;i+=stp) out.push(arr[i]);
+  } else {
+    var a2 = (lo===null) ? n-1 : (lo<0 ? n+lo : Math.min(lo,n-1));
+    var b2 = (hi===null) ? -1 : (hi<0 ? n+hi : hi);
+    for(var j=a2;j>b2;j+=stp) if(j>=0 && j<n) out.push(arr[j]);
+  }
+  if(isStr(o)) return out.join('');
+  if(o instanceof Tuple) return new Tuple(out);
+  return out;
+}
+
+function callValue(fn, args, kw, st){
+  tick(st);
+  if(fn instanceof Builtin) return fn.fn(args, kw, st);
+  if(fn instanceof Bound)   return fn.fn(fn.self, args, kw, st);
+  if(fn instanceof Fn){
+    var env = new Env(fn.env);
+    var ps = fn.params;
+    if(args.length > ps.length)
+      err('TypeError', fn.name+'() reçoit '+args.length+' argument(s) mais en attend '+ps.length);
+    for(var i=0;i<ps.length;i++){
+      var name = ps[i].name, val;
+      if(i < args.length) val = args[i];
+      else if(kw && (name in kw)) val = kw[name];
+      else if(ps[i].def) val = evalExpr(ps[i].def, fn.env, st);
+      else err('TypeError', fn.name+'() : il manque l\u2019argument « '+name+' »');
+      env.set(name, val);
+    }
+    if(++st.depth > 200){ st.depth--; err('RecursionError', 'trop d\u2019appels imbriqués (récursion infinie ?)'); }
+    try{ execBody(fn.body, env, st); }
+    catch(e){ if(e instanceof Ret){ st.depth--; return e.v; } st.depth--; throw e; }
+    st.depth--;
+    return null;
+  }
+  err('TypeError', 'cet objet ('+typeName(fn)+') n\u2019est pas une fonction : on ne peut pas l\u2019appeler');
+}
+
+/* ------------------------------ méthodes ---------------------------------- */
+function mkBound(name, self, fn){ return new Bound(name, self, fn); }
+
+var STR_METHODS = {
+  upper:      function(s){ return s.toUpperCase(); },
+  lower:      function(s){ return s.toLowerCase(); },
+  strip:      function(s,a){ return a&&a.length ? s.replace(new RegExp('^['+a[0]+']+|['+a[0]+']+$','g'),'') : s.trim(); },
+  split:      function(s,a){ return (a&&a.length) ? s.split(a[0]) : s.split(/\s+/).filter(function(x){ return x.length; }); },
+  join:       function(s,a){ return iterate(a[0]).map(function(x){ if(!isStr(x)) err('TypeError','join() attend des chaînes'); return x; }).join(s); },
+  replace:    function(s,a){ return s.split(a[0]).join(a[1]); },
+  startswith: function(s,a){ return s.indexOf(a[0])===0; },
+  endswith:   function(s,a){ return s.length>=a[0].length && s.slice(s.length-a[0].length)===a[0]; },
+  find:       function(s,a){ return s.indexOf(a[0]); },
+  count:      function(s,a){ return a[0].length ? s.split(a[0]).length-1 : 0; },
+  isdigit:    function(s){ return s.length>0 && /^[0-9]+$/.test(s); },
+  isalpha:    function(s){ return s.length>0 && /^[A-Za-z\u00c0-\u024f]+$/.test(s); },
+  format:     function(s,a){ var i=0; return s.replace(/\{[^{}]*\}/g, function(){ return pystr(a[i++]); }); }
+};
+var LIST_METHODS = {
+  append:  function(l,a){ l.push(a[0]); return null; },
+  extend:  function(l,a){ iterate(a[0]).forEach(function(x){ l.push(x); }); return null; },
+  pop:     function(l,a){
+    if(!l.length) err('IndexError','pop() sur une liste vide');
+    return a.length ? l.splice(normIndex(a[0], l.length),1)[0] : l.pop();
+  },
+  insert:  function(l,a){ l.splice(Math.max(0, Math.min(num(a[0]), l.length)), 0, a[1]); return null; },
+  remove:  function(l,a){
+    for(var i=0;i<l.length;i++) if(pyEq(l[i],a[0])){ l.splice(i,1); return null; }
+    err('ValueError', repr(a[0])+' absent de la liste');
+  },
+  index:   function(l,a){
+    for(var i=0;i<l.length;i++) if(pyEq(l[i],a[0])) return i;
+    err('ValueError', repr(a[0])+' absent de la liste');
+  },
+  count:   function(l,a){ return l.filter(function(x){ return pyEq(x,a[0]); }).length; },
+  reverse: function(l){ l.reverse(); return null; },
+  copy:    function(l){ return l.slice(); },
+  clear:   function(l){ l.length = 0; return null; },
+  sort:    function(l,a,kw,st){ sortInPlace(l, kw||{}, st); return null; }
+};
+var DICT_METHODS = {
+  get:        function(d,a){ return dhas(d,a[0]) ? dget(d,a[0]) : (a.length>1 ? a[1] : null); },
+  keys:       function(d){ return dkeys(d); },
+  values:     function(d){ return dvals(d); },
+  items:      function(d){ return ditems(d); },
+  pop:        function(d,a){
+    if(dhas(d,a[0])){ var v=dget(d,a[0]); d.m.delete(keyOf(a[0])); return v; }
+    if(a.length>1) return a[1];
+    err('KeyError', repr(a[0]));
+  },
+  copy:       function(d){ var c=new Dict(); d.m.forEach(function(p,k){ c.m.set(k,[p[0],p[1]]); }); return c; },
+  update:     function(d,a){ var o=a[0]; if(o instanceof Dict) o.m.forEach(function(p){ dset(d,p[0],p[1]); }); return null; },
+  setdefault: function(d,a){ if(!dhas(d,a[0])) dset(d,a[0], a.length>1?a[1]:null); return dget(d,a[0]); },
+  clear:      function(d){ d.m.clear(); return null; }
+};
+var SET_METHODS = {
+  add:          function(s,a){ sadd(s,a[0]); return null; },
+  discard:      function(s,a){ s.m.delete(keyOf(a[0])); return null; },
+  remove:       function(s,a){ if(!s.m.has(keyOf(a[0]))) err('KeyError', repr(a[0])); s.m.delete(keyOf(a[0])); return null; },
+  union:        function(s,a){ var r=new PySet(); s.m.forEach(function(v,k){ r.m.set(k,v); }); iterate(a[0]).forEach(function(x){ sadd(r,x); }); return r; },
+  intersection: function(s,a){ var r=new PySet(), o=a[0]; iterate(o).forEach(function(x){ if(s.m.has(keyOf(x))) sadd(r,x); }); return r; },
+  difference:   function(s,a){ var r=new PySet(), o=a[0]; s.m.forEach(function(v,k){ if(!contains(o,v)) r.m.set(k,v); }); return r; },
+  copy:         function(s){ var r=new PySet(); s.m.forEach(function(v,k){ r.m.set(k,v); }); return r; }
+};
+
+function getattr(o, name){
+  var table = isStr(o) ? STR_METHODS
+            : Array.isArray(o) ? LIST_METHODS
+            : (o instanceof Dict) ? DICT_METHODS
+            : (o instanceof PySet) ? SET_METHODS
+            : null;
+  if(o instanceof Module){
+    if(name in o.members) return o.members[name];
+    err('AttributeError', 'le module '+o.name+' n\u2019a pas d\u2019attribut « '+name+' »');
+  }
+  if(table && (name in table)){
+    var f = table[name];
+    return mkBound(name, o, function(self, args, kw, st){ return f(self, args, kw, st); });
+  }
+  err('AttributeError', 'un objet de type '+typeName(o)+' n\u2019a pas de méthode « '+name+' »');
+}
+
+function sortInPlace(l, kw, st){
+  var keyf = kw && kw.key ? kw.key : null;
+  var rev  = kw && kw.reverse ? truth(kw.reverse) : false;
+  var deco = l.map(function(x){ return [keyf ? callValue(keyf, [x], {}, st) : x, x]; });
+  deco.sort(function(p,q){
+    var a = p[0], b = q[0];
+    if(compareOp('<', a, b)) return -1;
+    if(compareOp('<', b, a)) return 1;
+    return 0;
+  });
+  if(rev) deco.reverse();
+  for(var i=0;i<l.length;i++) l[i] = deco[i][1];
+}
+
+/* ------------------------------ fonctions natives ------------------------- */
+function bi(name, fn){ return new Builtin(name, fn); }
+function need(args, n, name){ if(args.length < n) err('TypeError', name+'() attend '+n+' argument(s)'); }
+
+function pyLen(v){
+  if(isStr(v)) return v.length;
+  if(Array.isArray(v)) return v.length;
+  if(v instanceof Tuple) return v.items.length;
+  if(v instanceof Dict || v instanceof PySet) return v.m.size;
+  err('TypeError', 'len() ne s\u2019applique pas à un objet de type '+typeName(v));
+}
+
+function makeBuiltins(){
+  var B = Object.create(null);
+  B.len   = bi('len', function(a){ need(a,1,'len'); return pyLen(a[0]); });
+  B.print = bi('print', function(a, kw, st){ st.out.push(a.map(pystr).join(' ')); return null; });
+  B.range = bi('range', function(a){
+    need(a,1,'range');
+    var start = a.length>1 ? num(a[0]) : 0;
+    var stop  = a.length>1 ? num(a[1]) : num(a[0]);
+    var step  = a.length>2 ? num(a[2]) : 1;
+    if(step===0) err('ValueError', 'range() : le pas ne peut pas être nul');
+    var out = [], guard = 0;
+    for(var i=start; step>0 ? i<stop : i>stop; i+=step){
+      out.push(i);
+      if(++guard > 2000000) err('TimeoutError', 'range() trop grand');
+    }
+    return out;
+  });
+  B.list  = bi('list',  function(a){ return a.length ? iterate(a[0]) : []; });
+  B.tuple = bi('tuple', function(a){ return new Tuple(a.length ? iterate(a[0]) : []); });
+  B.set   = bi('set',   function(a){ var s=new PySet(); if(a.length) iterate(a[0]).forEach(function(x){ sadd(s,x); }); return s; });
+  B.dict  = bi('dict',  function(a){
+    var d = new Dict();
+    if(a.length){
+      if(a[0] instanceof Dict){ a[0].m.forEach(function(p){ dset(d,p[0],p[1]); }); }
+      else iterate(a[0]).forEach(function(p){ var it=iterate(p); dset(d, it[0], it[1]); });
+    }
+    return d;
+  });
+  B.str   = bi('str',   function(a){ return a.length ? pystr(a[0]) : ''; });
+  B.repr  = bi('repr',  function(a){ return repr(a[0]); });
+  B.int   = bi('int',   function(a){
+    if(!a.length) return 0;
+    var v = a[0];
+    if(isStr(v)){ var p = parseInt(v.trim(), a.length>1?num(a[1]):10); if(Number.isNaN(p)) err('ValueError', 'int() : « '+v+' » n\u2019est pas un entier'); return p; }
+    if(isNum(v)) return Math.trunc(num(v));
+    err('TypeError', 'int() ne s\u2019applique pas à '+typeName(v));
+  });
+  B.float = bi('float', function(a){
+    if(!a.length) return 0.0;
+    var v = a[0];
+    if(isStr(v)){
+      var t = v.trim().toLowerCase();
+      if(t==='inf' || t==='+inf' || t==='infinity') return Infinity;
+      if(t==='-inf' || t==='-infinity') return -Infinity;
+      if(t==='nan') return NaN;
+      var p = parseFloat(t); if(Number.isNaN(p)) err('ValueError', 'float() : « '+v+' » n\u2019est pas un nombre'); return p;
+    }
+    if(isNum(v)) return num(v);
+    err('TypeError', 'float() ne s\u2019applique pas à '+typeName(v));
+  });
+  B.bool  = bi('bool',  function(a){ return a.length ? truth(a[0]) : false; });
+  B.abs   = bi('abs',   function(a){ need(a,1,'abs'); if(!isNum(a[0])) err('TypeError','abs() attend un nombre'); return Math.abs(num(a[0])); });
+  B.round = bi('round', function(a){
+    need(a,1,'round');
+    var x = num(a[0]), n = a.length>1 ? num(a[1]) : 0, p = Math.pow(10,n);
+    var r = Math.round(Math.abs(x)*p)/p;                      /* arrondi « à la banque » approché */
+    var half = Math.abs(x)*p - Math.floor(Math.abs(x)*p);
+    if(Math.abs(half-0.5) < 1e-9){ var fl = Math.floor(Math.abs(x)*p); r = ((fl%2===0)?fl:fl+1)/p; }
+    return (x<0?-1:1)*r;
+  });
+  B.sum   = bi('sum',   function(a){
+    need(a,1,'sum');
+    var acc = a.length>1 ? num(a[1]) : 0;
+    iterate(a[0]).forEach(function(x){ if(!isNum(x)) err('TypeError','sum() attend des nombres'); acc += num(x); });
+    return acc;
+  });
+  B.min   = bi('min',   function(a, kw, st){ return minmax(a, kw, st, '<'); });
+  B.max   = bi('max',   function(a, kw, st){ return minmax(a, kw, st, '>'); });
+  B.sorted= bi('sorted',function(a, kw, st){ var l = iterate(a[0]); sortInPlace(l, kw||{}, st); return l; });
+  B.reversed = bi('reversed', function(a){ return iterate(a[0]).reverse(); });
+  B.enumerate = bi('enumerate', function(a){
+    var st0 = a.length>1 ? num(a[1]) : 0;
+    return iterate(a[0]).map(function(x,i){ return new Tuple([i+st0, x]); });
+  });
+  B.zip = bi('zip', function(a){
+    var ls = a.map(iterate), n = Math.min.apply(null, ls.map(function(l){ return l.length; }));
+    var out = [];
+    for(var i=0;i<n;i++) out.push(new Tuple(ls.map(function(l){ return l[i]; })));
+    return out;
+  });
+  B.any = bi('any', function(a){ return iterate(a[0]).some(truth); });
+  B.all = bi('all', function(a){ return iterate(a[0]).every(truth); });
+  B.type = bi('type', function(a){ return typeName(a[0]); });
+  B.isinstance = bi('isinstance', function(a){
+    var want = isStr(a[1]) ? a[1] : typeName(a[1]);
+    return typeName(a[0]) === want;
+  });
+  B.input = bi('input', function(){ err('RuntimeError', 'input() est indisponible ici : les valeurs sont fournies par les tests'); });
+  B.math = new Module('math', {
+    pi: Math.PI, e: Math.E, inf: Infinity, nan: NaN, tau: Math.PI*2,
+    sqrt: bi('sqrt', function(a){ if(num(a[0])<0) err('ValueError','sqrt() d\u2019un nombre négatif'); return Math.sqrt(num(a[0])); }),
+    floor: bi('floor', function(a){ return Math.floor(num(a[0])); }),
+    ceil:  bi('ceil',  function(a){ return Math.ceil(num(a[0])); }),
+    fabs:  bi('fabs',  function(a){ return Math.abs(num(a[0])); }),
+    exp:   bi('exp',   function(a){ return Math.exp(num(a[0])); }),
+    log:   bi('log',   function(a){ return a.length>1 ? Math.log(num(a[0]))/Math.log(num(a[1])) : Math.log(num(a[0])); }),
+    cos:   bi('cos',   function(a){ return Math.cos(num(a[0])); }),
+    sin:   bi('sin',   function(a){ return Math.sin(num(a[0])); }),
+    tan:   bi('tan',   function(a){ return Math.tan(num(a[0])); }),
+    pow:   bi('pow',   function(a){ return Math.pow(num(a[0]), num(a[1])); })
+  });
+  return B;
+}
+function minmax(a, kw, st, op){
+  var items = (a.length===1) ? iterate(a[0]) : a;
+  if(!items.length) err('ValueError', 'min()/max() sur une suite vide');
+  var keyf = kw && kw.key ? kw.key : null;
+  var best = items[0], bestk = keyf ? callValue(keyf,[best],{},st) : best;
+  for(var i=1;i<items.length;i++){
+    var k = keyf ? callValue(keyf,[items[i]],{},st) : items[i];
+    if(compareOp(op, k, bestk)){ best = items[i]; bestk = k; }
+  }
+  return best;
+}
+
+/* ------------------------------ API publique ------------------------------ */
+function newState(opts){
+  opts = opts || {};
+  return {
+    steps: 0, depth: 0, out: [],
+    maxSteps: opts.maxSteps || 3000000,
+    deadline: Date.now() + (opts.timeout || 3000)
+  };
+}
+function newEnv(st){
+  var base = new Env(null);
+  var B = makeBuiltins();
+  for(var k in B) base.v[k] = B[k];
+  base.v.__builtins__ = true;
+  return new Env(base);
+}
+
+function fmtError(e){
+  if(e instanceof PyErr) return e.toString();
+  if(e instanceof Ret)   return 'SyntaxError: « return » en dehors d\u2019une fonction';
+  if(e===BREAK || e===CONT) return 'SyntaxError: « break »/« continue » en dehors d\u2019une boucle';
+  if(e && e.message && /call stack/i.test(e.message)) return 'RecursionError: récursion trop profonde';
+  return 'Erreur interne: ' + (e && e.message ? e.message : String(e));
+}
+
+/* Exécute du code source ; renvoie {ok, env, st, out, error}. */
+function run(src, opts){
+  var st = newState(opts), env = newEnv(st);
+  try{
+    execBody(parse(src), env, st);
+    return {ok:true, env:env, st:st, out:st.out};
+  }catch(e){
+    return {ok:false, env:env, st:st, out:st.out, error:fmtError(e)};
+  }
+}
+
+/* Évalue une expression dans un environnement déjà construit. */
+function evalIn(src, env, st){ return evalExpr(parseExpression(src), env, st); }
+
+/* Vérifie le code de l'élève sur un jeu de tests.
+   spec = { setup:"…", tests:[{call:"f(…)", eq:"…", tol:1e-9, label:"…"}], requires:["f"] }
+   Chaque test repart d'un environnement NEUF (setup + code élève) : un test qui
+   modifie une structure globale ne pollue pas les suivants. */
+function check(spec, userSrc, opts){
+  spec = spec || {};
+  var tests = spec.tests || [];
+  var report = {ok:false, fatal:null, results:[], out:[]};
+
+  if(!String(userSrc||'').replace(/#.*$/gm,'').trim()){
+    report.fatal = 'Il n\u2019y a rien à exécuter : écris ton code dans l\u2019éditeur.';
+    return report;
+  }
+  /* Le contexte de l'énoncé est exécuté À PART, avant le code de l'élève : sans quoi les
+     numéros de ligne des erreurs de syntaxe seraient décalés du nombre de lignes du contexte
+     et ne désigneraient plus rien de lisible dans l'éditeur. */
+  function prepare(st){
+    var env = newEnv(st);
+    if(spec.setup) execBody(parse(spec.setup), env, st);
+    execBody(parse(userSrc), env, st);
+    return env;
+  }
+  /* 1er passage : le code compile-t-il et s'exécute-t-il ? */
+  var st0 = newState(opts), env0 = null;
+  try{ env0 = prepare(st0); }
+  catch(e0){ report.out = st0.out.slice(0,20); report.fatal = fmtError(e0); return report; }
+  report.out = st0.out.slice(0, 20);
+  var missing = (spec.requires||[]).filter(function(n){ return !env0.lookup(n); });
+  if(missing.length){
+    report.fatal = 'Il manque la définition de : ' + missing.join(', ') + '.';
+    return report;
+  }
+
+  var allOk = tests.length > 0, stopped = false;
+  for(var i=0;i<tests.length;i++){
+    var t = tests[i], line = {label: t.label || t.call, call: t.call, pass:false, got:null, want:null, error:null};
+    if(stopped){                                  /* après une boucle infinie, on n'enchaîne pas 3 s de gel par test */
+      line.error = 'non exécuté (un test précédent a été interrompu)';
+      report.results.push(line); allOk = false; continue;
+    }
+    var st = newState(opts), env = newEnv(st);
+    try{
+      env = prepare(st);
+      var got  = evalIn(t.call, env, st);
+      var want = (t.eq !== undefined && t.eq !== null) ? evalIn(t.eq, env, st) : null;
+      line.got  = repr(got);
+      line.want = (t.eq !== undefined && t.eq !== null) ? repr(want) : null;
+      if(t.tol !== undefined && t.tol !== null){
+        if(!isNum(got)) { line.pass = false; }
+        else line.pass = Math.abs(num(got) - num(want)) <= t.tol;
+      } else {
+        line.pass = pyEq(got, want);
+      }
+      if(t.out !== undefined){                     /* test sur ce qui est affiché */
+        line.got = JSON.stringify(st.out.join('\n'));
+        line.want = JSON.stringify(t.out);
+        line.pass = st.out.join('\n').trim() === String(t.out).trim();
+      }
+    }catch(e){
+      line.error = fmtError(e);
+      line.pass = false;
+      if(/^(TimeoutError|RecursionError)/.test(line.error)) stopped = true;
+    }
+    if(i===0) report.out = report.out.concat(st.out).slice(0, 20);   /* ce qu'affiche le code pendant le 1er test */
+    if(!line.pass) allOk = false;
+    report.results.push(line);
+  }
+  report.ok = allOk;
+  return report;
+}
+
+return {
+  run: run, check: check, parse: parse, evalIn: evalIn, repr: repr, str: pystr,
+  eq: pyEq, tokenize: tokenize, fmtError: fmtError, newState: newState, newEnv: newEnv,
+  types: {Tuple:Tuple, Dict:Dict, PySet:PySet}
+};
+})();
+
+// mode: 'qcm' (choices), 'trou'/'saisie' (answer + accept[]), 'flash' (answer), 'code' (code Python exécuté)
 const QUESTIONS = [
   /* ==================== ANALYSE ==================== */
 
@@ -6095,7 +7478,397 @@ const QUESTIONS = [
       {topic:"fr_theme",mode:"flash",q:"Que signifie la lyre sans cordes d'Apollon dans <i>L'Inspiration du poète</i> de Poussin ?",answer:"L'origine de l'art reste <b>mystérieuse</b> : la musique qui inspire le poète ne peut pas être jouée, elle ne s'entend pas.",exp:"Icono 5 ; détail relevé en cours. Le poète, plume en main, regarde le ciel alors qu'Apollon lui fait face : il ne voit pas la source qui le dicte.",icono:"poussin"},
       {topic:"fr_theme",mode:"flash",q:"Quel écart de statut social le cours relève-t-il entre l'artiste des mythes et Claude Lantier ?",answer:"La mythologie place l'artiste <b>au sommet</b>, couronné de laurier ; Zola le place <b>en bas</b>, contraint de séduire le Salon.",exp:"Cours, I.b ; icono 4, 5 et 11. L'arcane est aussi une position sociale : c'est le Salon, non l'artiste, qui décide qu'il y a œuvre.",icono:"parnasse"},
       {topic:"fr_notions",mode:"flash",q:"Qu'est-ce que l'artiste démiurge, et quelle œuvre du programme le met à l'épreuve ?",answer:"Celui qui <b>donne vie à la matière</b> : Pygmalion, et Victor Frankenstein, « le Prométhée moderne ».",exp:"Cours, I.c ; icono 10, Gérôme, Pygmalion et Galatée (1890). Chez Zola le démiurge échoue : la Baigneuse de Mahoudeau s'anime en s'écroulant."},
-      {topic:"fr_theme",mode:"flash",q:"Pourquoi le mythe de Prométhée figure-t-il la condition même de l'artiste ?",answer:"Il est <b>puni pour avoir créé</b> : donner le feu, donc la culture, est un acte d'<b>hybris</b> que les dieux châtient.",exp:"Cours, I.c. Prométhée façonne aussi les hommes : créateur et modeleur. Écho : Victor maudit sa découverte, Claude se pend devant sa toile."}
+      {topic:"fr_theme",mode:"flash",q:"Pourquoi le mythe de Prométhée figure-t-il la condition même de l'artiste ?",answer:"Il est <b>puni pour avoir créé</b> : donner le feu, donc la culture, est un acte d'<b>hybris</b> que les dieux châtient.",exp:"Cours, I.c. Prométhée façonne aussi les hommes : créateur et modeleur. Écho : Victor maudit sa découverte, Claude se pend devant sa toile."},
+
+  /* ===== INFORMATIQUE TSI1 — DM « prérequis de SUP » (T. Galopin) : vocabulaire de la
+     programmation, représentation des nombres, bases des graphes. Cartes rédigées à partir
+     du corrigé ; les cartes `mode:'code'` sont exécutées pour de vrai par PYMINI. ===== */
+
+  /* ---- 1. Vocabulaire : spécifier, tester, documenter ---- */
+  {topic:'i1_vocabulaire', mode:'flash', q:"Qu'appelle-t-on la signature d'une fonction Python ?",
+   answer:"La <b>ligne du <code>def</code></b> : nom de la fonction, paramètres avec leurs types, et type de la valeur renvoyée.",
+   exp:"Exemple du DM : <code>def mot_le_plus_frequent(texte: list[str]) -&gt; str:</code>. C'est le contrat minimal : ce qu'on donne, ce qu'on reçoit."},
+
+  {topic:'i1_vocabulaire', mode:'flash', q:"Que contient la spécification d'une fonction, et où l'écrit-on ?",
+   answer:"Ce que fait la fonction, ses <b>entrées</b> et ses <b>sorties</b> — écrite dans la <b>docstring</b>, entre triples guillemets sous le <code>def</code>.",
+   exp:"Dans le DM, ce sont les lignes 4 à 12 : rôle, entrée (liste de mots NON VIDE), sortie (le mot le plus fréquent, le premier en cas d'égalité)."},
+
+  {topic:'i1_vocabulaire', mode:'flash', q:"Qu'est-ce qu'une pré-condition ?",
+   answer:"Une <b>hypothèse sur les données d'entrée</b> que l'appelant doit garantir : hors de ces conditions, la fonction ne promet plus rien.",
+   exp:"Ici : « texte est une liste de chaînes » et « texte est non vide ». La pré-condition fait partie du contrat, au même titre que le résultat."},
+
+  {topic:'i1_vocabulaire', mode:'flash', q:"Qu'est-ce qu'une post-condition ?",
+   answer:"Une <b>propriété garantie en sortie</b> par la fonction, dès lors que les pré-conditions sont respectées.",
+   exp:"Ici : le mot renvoyé est bien le plus fréquent, et c'est le <b>premier rencontré</b> lorsque plusieurs mots ont l'effectif maximal."},
+
+  {topic:'i1_vocabulaire', mode:'flash', q:"Qu'est-ce qu'une assertion en Python ?",
+   answer:"Une <b>vérification exécutable</b> : <code>assert condition, \"message\"</code> arrête aussitôt le programme avec ce message si la condition est fausse.",
+   exp:"C'est la traduction en code d'une pré-condition (ou d'un test) : l'erreur apparaît tôt et clairement, au lieu de surgir plus loin sous une forme obscure."},
+
+  {topic:'i1_vocabulaire', mode:'flash', q:"À quoi sert l'instruction <b>assert len(texte) &gt; 0</b> placée en tête de la fonction ?",
+   answer:"À vérifier la pré-condition « texte non vide » : sans elle, <code>texte[0]</code> lèverait une <b>IndexError</b> et la question n'aurait aucun sens.",
+   exp:"L'assertion interrompt le programme avec un message explicite dès que l'appelant sort du contrat, au lieu de laisser une erreur incompréhensible plus loin."},
+
+  {topic:'i1_vocabulaire', mode:'flash', q:"Qu'appelle-t-on le jeu de tests d'une fonction ?",
+   answer:"L'ensemble des <b>appels de vérification</b> (le plus souvent des <code>assert</code>) sur des valeurs choisies, <b>cas limites compris</b>.",
+   exp:"Dans le DM : un seul mot, une égalité d'effectifs, des mots tous différents. Un test qui passe ne prouve rien en général ; un test qui échoue prouve un bug."},
+
+  {topic:'i1_vocabulaire', mode:'flash', q:"Quelle différence y a-t-il entre une expression et une instruction ?",
+   answer:"Une <b>expression</b> est évaluée et produit une valeur ; une <b>instruction</b> (une affectation, par exemple) modifie l'état du programme.",
+   exp:"<code>occurrences.get(mot, 0)</code> produit une valeur sans rien changer ; <code>occurrences[mot] = …</code> modifie le dictionnaire."},
+
+  {topic:'i1_vocabulaire', mode:'flash', q:"Qu'est-ce qu'un effet de bord ?",
+   answer:"Une <b>modification d'un état extérieur</b> à la valeur renvoyée : une structure de données, un fichier, l'affichage.",
+   exp:"Remplir <code>occurrences</code> est l'effet de bord de la première boucle : la fonction ne se contente pas de calculer, elle modifie une structure de données."},
+
+  {topic:'i1_vocabulaire', mode:'flash', q:"Qu'appelle-t-on une comparaison dans un code Python ?",
+   answer:"Une <b>expression booléenne</b> qui confronte deux valeurs et vaut <code>True</code> ou <code>False</code>.",
+   exp:"<code>occurrences[mot] &gt; meilleur_effectif</code> et <code>occurrences[mot] == meilleur_effectif</code> en sont : à ne pas confondre avec l'affectation <code>=</code>."},
+
+  {topic:'i1_vocabulaire', mode:'qcm', q:"Dans le code du DM, comment qualifie-t-on <b>occurrences.get(mot, 0)</b> ?",
+   choices:[{t:"Une expression : elle produit une valeur sans modifier <code>occurrences</code>", c:true},
+            {t:"Une instruction : elle ajoute la clé <code>mot</code> au dictionnaire", c:false},
+            {t:"Une assertion : elle vérifie que <code>mot</code> est bien une clé", c:false},
+            {t:"Une comparaison : elle teste si <code>mot</code> vaut 0", c:false}],
+   exp:"<code>.get</code> lit sans écrire : si la clé est absente elle renvoie la valeur par défaut 0, mais ne crée rien. L'affectation qui l'entoure, elle, est une instruction."},
+
+  {topic:'i1_vocabulaire', mode:'qcm', q:"Que se passe-t-il lorsque la condition d'un <b>assert</b> est fausse à l'exécution ?",
+   choices:[{t:"Le programme s'arrête en levant une <code>AssertionError</code>, avec le message fourni", c:true},
+            {t:"La fonction renvoie <code>None</code> et l'exécution continue", c:false},
+            {t:"Le message s'affiche, puis la fonction poursuit son travail", c:false},
+            {t:"Rien : <code>assert</code> n'est qu'un commentaire à destination du lecteur", c:false}],
+   exp:"C'est tout l'intérêt : l'exécution s'interrompt au plus près de la faute, avec un message que le programmeur a lui-même rédigé."},
+
+  /* ---- 2. Listes et dictionnaires ---- */
+  {topic:'i1_structures', mode:'flash', q:"Qu'est-ce qu'un dictionnaire Python ?",
+   answer:"Une structure qui associe à chaque <b>clé</b> unique une <b>valeur</b> : l'accès se fait par la clé, jamais par un rang.",
+   exp:"<code>occurrences = {}</code> crée un dictionnaire vide ; <code>occurrences[\"papa\"] = 3</code> associe l'effectif 3 au mot « papa »."},
+
+  {topic:'i1_structures', mode:'flash', q:"Que renvoie <b>d[cle]</b> lorsque la clé n'existe pas dans le dictionnaire d ?",
+   answer:"Rien : Python lève une <b>KeyError</b>. En lecture, la clé doit déjà exister.",
+   exp:"C'est la raison d'être de <code>d.get(cle, 0)</code> pour un compteur : on veut une valeur par défaut, pas une erreur, la première fois qu'on rencontre un mot."},
+
+  {topic:'i1_structures', mode:'flash', q:"Que fait <b>d.get(cle, defaut)</b> ?",
+   answer:"Elle renvoie la valeur associée à la clé si elle existe, sinon <b>defaut</b> — et surtout <b>sans modifier</b> le dictionnaire.",
+   exp:"<code>occurrences[mot] = occurrences.get(mot, 0) + 1</code> vaut donc 1 à la première rencontre du mot, puis 2, 3… sans jamais lever de KeyError."},
+
+  {topic:'i1_structures', mode:'flash', q:"Que fait <b>d[cle] = valeur</b> lorsque la clé n'existe pas encore ?",
+   answer:"Elle la <b>crée</b> : en affectation, l'indexation d'un dictionnaire ajoute la paire, alors qu'en lecture elle lèverait une KeyError.",
+   exp:"Même dissymétrie sur une liste : <code>L[2]</code> lit la case, <code>L[2] = 8</code> l'écrit — mais pour une liste l'indice doit déjà exister."},
+
+  {topic:'i1_structures', mode:'flash', q:"Que parcourt <b>for x in d</b> quand d est un dictionnaire ?",
+   answer:"Ses <b>clés</b>. Pour les valeurs : <code>d.values()</code> ; pour les couples clé-valeur : <code>d.items()</code>.",
+   exp:"D'où <code>for sommet in graphe:</code> qui parcourt les noms d'aéroports, puis <code>graphe[sommet]</code> pour atteindre leurs voisins."},
+
+  {topic:'i1_structures', mode:'flash', q:"Pourquoi compter des occurrences avec un dictionnaire plutôt qu'avec une liste de couples (mot, effectif) ?",
+   answer:"Pour le coût d'accès : <b>$O(1)$ en moyenne</b> dans un dictionnaire (hachage), contre <b>$O(k)$</b> dans une liste qu'il faut parcourir.",
+   exp:"Sur n mots dont k distincts : $O(n)$ avec un dictionnaire, $O(n\\times k)$ au pire avec une liste. L'espace occupé, lui, reste $O(k)$ dans les deux cas."},
+
+  {topic:'i1_structures', mode:'qcm', q:"Après <b>occurrences = {}</b> puis la boucle de comptage sur <b>['je', 'suis', 'je']</b>, que vaut le dictionnaire ?",
+   choices:[{t:"{'je': 2, 'suis': 1}", c:true},
+            {t:"{'je': 1, 'suis': 1, 'je': 1}", c:false},
+            {t:"{'je': 1, 'suis': 2}", c:false},
+            {t:"['je', 'suis', 'je']", c:false}],
+   exp:"Une clé est unique : la deuxième rencontre de « je » n'ajoute pas d'entrée, elle met à jour la valeur. D'où 2 pour « je », 1 pour « suis »."},
+  {topic:'i1_structures', mode:'code', q:"Écris la fonction <b>occurrences(texte)</b> qui renvoie le dictionnaire associant à chaque mot de la liste texte son nombre d'apparitions.",
+   code:{
+     start:"def occurrences(texte):\n    compteur = {}\n    for mot in texte:\n        pass   # à remplacer : incrémenter le compteur de mot\n    return compteur\n",
+     requires:['occurrences'],
+     tests:[{call:'occurrences(["papa", "papa", "quand"])', eq:'{"papa": 2, "quand": 1}'},
+            {call:'occurrences(["seul"])', eq:'{"seul": 1}'},
+            {call:'occurrences(["a", "b", "a", "b"])', eq:'{"a": 2, "b": 2}'},
+            {call:'occurrences([])', eq:'{}', label:'occurrences([])  # cas limite : texte vide'}],
+     sol:"def occurrences(texte):\n    compteur = {}\n    for mot in texte:\n        compteur[mot] = compteur.get(mot, 0) + 1\n    return compteur\n"},
+   answer:"Un compteur par clé, initialisé à 0 par <code>.get</code> :",
+   exp:"Sans <code>.get(mot, 0)</code>, la première rencontre d'un mot lèverait une KeyError : la clé n'existe pas encore. Coût total : $O(n)$."},
+
+  {topic:'i1_structures', mode:'code', q:"Écris la fonction <b>mot_le_plus_frequent(texte)</b> qui renvoie le mot le plus fréquent de la liste texte — et, en cas d'égalité, le premier rencontré.",
+   code:{
+     start:"def mot_le_plus_frequent(texte):\n    assert len(texte) > 0, \"le texte ne doit pas être vide\"\n    occurrences = {}\n    # 1) compter les mots\n    # 2) retenir le mot d'effectif maximal (le PREMIER en cas d'égalité)\n    return texte[0]\n",
+     requires:['mot_le_plus_frequent'],
+     tests:[{call:'mot_le_plus_frequent(["papa", "papa", "papa", "quand", "mange"])', eq:'"papa"'},
+            {call:'mot_le_plus_frequent(["chat"])', eq:'"chat"', label:'cas limite : un seul mot'},
+            {call:'mot_le_plus_frequent(["a", "b", "a", "b"])', eq:'"a"', label:'cas limite : égalité → le 1er rencontré'},
+            {call:'mot_le_plus_frequent(["x", "y", "z"])', eq:'"x"', label:'cas limite : tous différents'},
+            {call:'mot_le_plus_frequent(["le", "chat", "le", "chien", "chat", "chat"])', eq:'"chat"', label:'test ajouté : la réponse n\'est PAS le premier mot du texte'}],
+     sol:"def mot_le_plus_frequent(texte):\n    assert len(texte) > 0, \"le texte ne doit pas être vide\"\n    occurrences = {}\n    for mot in texte:\n        occurrences[mot] = occurrences.get(mot, 0) + 1\n    meilleur_mot = texte[0]\n    meilleur_effectif = 0\n    for mot in texte:\n        if occurrences[mot] > meilleur_effectif:\n            meilleur_effectif = occurrences[mot]\n            meilleur_mot = mot\n    return meilleur_mot\n"},
+   answer:"Un comptage, puis un parcours qui ne remplace le champion qu'en cas d'effectif <b>strictement</b> supérieur :",
+   exp:"L'inégalité stricte suffit à garantir la post-condition « le premier rencontré » : à égalité, on ne remplace pas. Complexité $O(n)$ en temps, $O(k)$ en espace.",
+   vig:"Le jeu de tests du DM est passé par un simple <code>return texte[0]</code> : ses quatre cas commencent tous par la réponse attendue. Un test qui passe ne prouve rien — d'où le cinquième, ajouté ici."},
+
+  /* ---- 3. Terminaison, correction, complexité ---- */
+  {topic:'i1_correction', mode:'flash', q:"Qu'est-ce que le variant d'une boucle ?",
+   answer:"Une quantité <b>entière, positive ou nulle, qui décroît strictement</b> à chaque tour : son existence prouve que la boucle s'arrête.",
+   exp:"Pour <code>for mot in texte</code> : le nombre de mots restant à traiter. Il vaut len(texte) au départ et perd 1 par tour, d'où au plus len(texte) tours."},
+
+  {topic:'i1_correction', mode:'flash', q:"Qu'est-ce que l'invariant d'une boucle ?",
+   answer:"Une propriété <b>vraie avant la boucle et préservée par chaque tour</b> : elle permet de prouver que le résultat obtenu en sortie est le bon.",
+   exp:"On la démontre en trois temps : <b>initialisation</b>, <b>conservation</b> (un tour la maintient), <b>terminaison</b> (ce qu'elle donne quand la boucle s'arrête)."},
+
+  {topic:'i1_correction', mode:'flash', q:"Que prouve-t-on avec un variant, et que prouve-t-on avec un invariant ?",
+   answer:"Le variant prouve la <b>terminaison</b> (la boucle s'arrête) ; l'invariant prouve la <b>correction</b> (elle calcule bien ce qu'on attend).",
+   exp:"Les deux sont nécessaires : un algorithme peut s'arrêter sur un résultat faux, ou calculer juste sans jamais s'arrêter."},
+
+  {topic:'i1_correction', mode:'flash', q:"Quel invariant porte la boucle qui remplit le dictionnaire <b>occurrences</b> ?",
+   answer:"Après le traitement des k premiers mots, <b>occurrences associe à chaque mot rencontré son nombre exact d'apparitions parmi ces k mots</b>.",
+   exp:"Initialisation : k = 0, dictionnaire vide. Conservation : le compteur du mot courant augmente de 1. Terminaison : k = len(texte), le comptage est complet."},
+
+  {topic:'i1_correction', mode:'flash', q:"Quelle est la complexité temporelle du comptage des mots d'un texte de n mots ?",
+   answer:"<b>$O(n)$</b> : deux boucles de n tours, chaque lecture ou écriture dans le dictionnaire coûtant $O(1)$ en moyenne.",
+   exp:"$O(n)+O(n)=O(n)$ : on additionne les coûts, puis on ne garde que le terme dominant en négligeant les constantes."},
+
+  {topic:'i1_correction', mode:'flash', q:"Quelle est la complexité spatiale de ce comptage, et pourquoi ?",
+   answer:"<b>$O(k)$</b>, où k est le nombre de mots <b>distincts</b> : la seule structure créée est le dictionnaire, à une entrée par mot distinct ($k \\le n$).",
+   exp:"La complexité spatiale mesure la mémoire <b>ajoutée</b> par l'algorithme, pas la taille de la donnée d'entrée déjà présente."},
+
+  {topic:'i1_correction', mode:'flash', q:"Pourquoi dit-on que l'accès à un dictionnaire coûte $O(1)$ « en moyenne » ?",
+   answer:"Parce qu'il repose sur le <b>hachage</b> : la clé est transformée en position, donc atteinte directement — sauf collisions, qui dégradent le cas le pire.",
+   exp:"À retenir en TSI : $O(1)$ en moyenne pour un dictionnaire, contre $O(k)$ pour retrouver une information dans une liste non triée de k éléments."},
+
+  {topic:'i1_correction', mode:'flash', q:"Que signifie « complexité dans le pire cas » ?",
+   answer:"Le coût <b>maximal</b> sur toutes les entrées d'une même taille n : c'est une garantie, contrairement au coût moyen.",
+   exp:"Pour le comptage, le pire cas est atteint quand tous les mots sont distincts : le dictionnaire atteint alors n entrées."},
+
+  {topic:'i1_correction', mode:'qcm', q:"Pour de très grands entiers, une addition n'est plus en $O(1)$. Que peut-on alors dire du coût de <b>sum()</b> ?",
+   choices:[{t:"Il dépend à la fois du nombre de termes <b>et</b> de la taille (en bits) des entiers manipulés", c:true},
+            {t:"Il reste en $O(n)$ quel que soit n, sans nuance à apporter", c:false},
+            {t:"Python limite la taille des entiers, donc le problème ne se pose jamais", c:false},
+            {t:"Il ne dépend que de la taille en bits, pas du nombre de termes", c:false}],
+   exp:"Additionner deux entiers de b bits coûte $O(b)$. Le total croît donc avec le nombre d'additions <b>et</b> avec la longueur des nombres additionnés."},
+
+  {topic:'i1_correction', mode:'qcm', q:"Pourquoi la boucle <b>for mot in texte</b> se termine-t-elle toujours ?",
+   choices:[{t:"Elle parcourt une liste de longueur finie : le nombre de mots restants décroît de 1 à chaque tour", c:true},
+            {t:"Parce qu'un <code>return</code> finit toujours par être atteint", c:false},
+            {t:"Parce que Python limite le nombre d'itérations d'une boucle for", c:false},
+            {t:"Parce que le dictionnaire <code>occurrences</code> finit par être plein", c:false}],
+   exp:"C'est l'argument du variant : entier, minoré par 0, strictement décroissant, donc au plus len(texte) tours. Une boucle <code>while</code>, elle, exige de l'exhiber."},
+  /* ---- 4. Représentation des nombres ---- */
+  {topic:'i1_nombres', mode:'flash', q:"En quoi consiste le codage différentiel (compression delta) d'un flux de mesures ?",
+   answer:"À ne transmettre que la <b>première mesure brute complète</b> (8 bits ici), puis, pour chaque mesure suivante, <b>l'écart avec la précédente</b> (4 bits).",
+   exp:"Les écarts sont petits, donc codables sur peu de bits : le volume transmis et stocké est divisé par deux — décisif pour un capteur qui émet en continu."},
+
+  {topic:'i1_nombres', mode:'flash', q:"Quelles valeurs un entier non signé de 8 bits peut-il prendre ?",
+   answer:"De <b>0 à 255</b>, soit $2^8 = 256$ valeurs : tous les bits codent la valeur, aucun ne code le signe.",
+   exp:"C'est le format de la première mesure du capteur, mise à l'échelle sur l'intervalle de température $[-25\\,;60]$ °C."},
+
+  {topic:'i1_nombres', mode:'flash', q:"Comment obtient-on la résolution de $1/3$ °C du capteur de température ?",
+   answer:"En divisant l'<b>amplitude par le nombre de pas</b> : $\\dfrac{60-(-25)}{255-0}=\\dfrac{85}{255}=\\dfrac13$ °C par pas.",
+   exp:"Une mesure brute de 8 bits parcourt 255 pas de 0 à 255 ; la résolution est la variation de température correspondant à un pas."},
+
+  {topic:'i1_nombres', mode:'flash', q:"Quels entiers code-t-on sur 4 bits en complément à deux, et où lit-on le signe ?",
+   answer:"De <b>$-8$ à $7$</b> : le <b>bit de poids fort</b> donne le signe (0 pour positif, 1 pour négatif).",
+   exp:"Les valeurs brutes 0 à 7 (0000 à 0111) valent elles-mêmes ; les valeurs 8 à 15 (1000 à 1111) codent $-8$ à $-1$.",
+   fig:{window:[-1.2,16.2,-2.3,2.5], size:300, items:[
+     {segment:[[0,0],[15,0]]},
+     {point:[0,0], label:"0", at:'above'},
+     {point:[7,0], label:"7", at:'above'},
+     {point:[8,0], label:"8", at:'above'},
+     {point:[15,0], label:"15", at:'above'},
+     {segment:[[0,-0.75],[7,-0.75]], label:"\\text{valeurs } 0 \\text{ à } 7", at:'below'},
+     {segment:[[8,-0.75],[15,-0.75]], label:"\\text{valeurs } -8 \\text{ à } -1\\ (v-16)", at:'below'},
+     {label:"\\text{valeur brute } v \\text{ lue sur 4 bits}", at:[7.5,2.0], place:'center'}]}},
+
+  {topic:'i1_nombres', mode:'flash', q:"Comment décoder une valeur brute v de 4 bits lue en complément à deux ?",
+   answer:"Si $v \\gt 7$, l'entier vaut <b>$v-16$</b> ; sinon il vaut $v$ lui-même.",
+   exp:"Exemple : 1110 vaut 14 en brut, donc $14-16=-2$. C'est exactement la condition à compléter ligne 23 du DM (équivalente à $v \\ge 8$)."},
+
+  {topic:'i1_nombres', mode:'qcm', q:"En complément à deux sur 4 bits, quel entier la valeur brute <b>1010</b> représente-t-elle ?",
+   choices:[{t:"$-6$", c:true},{t:"$10$", c:false},{t:"$-10$", c:false},{t:"$-5$", c:false}],
+   exp:"$1010_2 = 10$ en brut ; comme $10 \\gt 7$, l'entier vaut $10-16=-6$. À l'échelle du capteur : $-6\\times\\frac13 = -2{,}00$ °C."},
+
+  {topic:'i1_nombres', mode:'flash', q:"Pourquoi une somme de 50 millions de mesures ne provoque-t-elle aucun dépassement de capacité en Python ?",
+   answer:"Parce que le type <code>int</code> est en <b>précision arbitraire</b> : sa représentation en mémoire s'étend automatiquement, dans la limite de la mémoire disponible.",
+   exp:"Contrairement au capteur (8 bits figés) ou à un langage à entiers 64 bits, Python ne connaît pas d'<i>overflow</i> sur les entiers."},
+
+  {topic:'i1_nombres', mode:'flash', q:"$1/3$ est-il un nombre décimal, et un flottant peut-il le représenter exactement ?",
+   answer:"Non dans les deux cas : $0{,}333\\ldots$ a une infinité de chiffres, et la <b>mantisse finie</b> d'un flottant n'en stocke qu'une valeur approchée.",
+   exp:"Un décimal possède un nombre <b>fini</b> de chiffres après la virgule. $1/3$ n'est décimal ni en base 10, ni en base 2 : l'approximation est inévitable."},
+
+  {topic:'i1_nombres', mode:'flash', q:"Sous quelle forme un flottant est-il stocké en mémoire par Python ?",
+   answer:"En <b>norme IEEE 754 double précision</b> : $(-1)^s\\times m\\times 2^e$ — un bit de signe s, une mantisse m (53 bits utiles) et un exposant e.",
+   exp:"Seule la valeur binaire représentable la <b>plus proche</b> est conservée : c'est de là que vient l'écart avec la valeur mathématique."},
+
+  {topic:'i1_nombres', mode:'flash', q:"Pourquoi « disposer de plus de mémoire » ne rendrait-il pas un flottant plus précis ?",
+   answer:"Parce que la <b>taille de la mantisse est fixe</b> (53 bits) : c'est le format, et non la mémoire disponible, qui plafonne le nombre de chiffres significatifs.",
+   exp:"C'est l'inverse des entiers, en précision arbitraire : eux s'étendent tant qu'il reste de la mémoire. Deux types, deux comportements."},
+
+  {topic:'i1_nombres', mode:'flash', q:"D'où vient l'affichage <b>58.49999999999999</b> là où le calcul exact donne 58,5 ?",
+   answer:"De l'<b>approximation de $1/3$</b> : l'erreur minime de représentation se propage et s'accumule dans les multiplications, puis dans la moyenne.",
+   exp:"Chaque opération sur des flottants peut réintroduire un arrondi ; sur une longue chaîne de calculs, ces arrondis finissent par se voir au dernier chiffre."},
+
+  {topic:'i1_nombres', mode:'flash', q:"Comment tester l'égalité de deux flottants dans un jeu de tests ?",
+   answer:"Jamais avec <code>==</code> : on compare <b>à une tolérance près</b>, par exemple <code>assert abs(a - b) &lt; 1e-9</code>.",
+   exp:"<code>assert moyenne == 58.5</code> échoue ici alors que le calcul est juste : les arrondis rendent l'égalité exacte illusoire entre flottants."},
+
+  {topic:'i1_nombres', mode:'flash', q:"Écrire <b>0.33</b> au lieu de <b>1/3</b> : est-ce la même cause que l'imprécision des flottants ?",
+   answer:"Non : c'est une <b>erreur de modélisation</b> (troncature décimale volontaire, environ 1 %), sans rapport avec l'arrondi binaire, lui de l'ordre de $10^{-16}$.",
+   exp:"Sur une mesure brute de 255, l'écart atteint $255\\times(1/3-0{,}33)\\approx 0{,}85$ °C : incomparablement plus grand que l'erreur de représentation."},
+
+  {topic:'i1_nombres', mode:'qcm', q:"Quelle affirmation décrit correctement les nombres en Python ?",
+   choices:[{t:"Les entiers sont en précision arbitraire, les flottants ont une mantisse de taille fixe", c:true},
+            {t:"Entiers et flottants sont tous deux codés sur 64 bits figés", c:false},
+            {t:"Les flottants s'étendent en mémoire autant que nécessaire, comme les entiers", c:false},
+            {t:"Un entier devenu trop grand est automatiquement converti en flottant", c:false}],
+   exp:"D'où deux comportements opposés : aucune limite de taille pour un entier, mais un nombre de chiffres significatifs plafonné pour un flottant."},
+
+  {topic:'i1_nombres', mode:'code', q:"Écris la fonction <b>decoder_ecart(brut)</b> qui décode un écart de 4 bits lu en complément à deux (entier brut entre 0 et 15).",
+   code:{
+     start:"def decoder_ecart(brut):\n    # les valeurs brutes 0 à 7 valent elles-mêmes,\n    # les valeurs 8 à 15 codent les entiers négatifs\n    return brut\n",
+     requires:['decoder_ecart'],
+     tests:[{call:'decoder_ecart(14)', eq:'-2'},
+            {call:'decoder_ecart(0)', eq:'0'},
+            {call:'decoder_ecart(6)', eq:'6'},
+            {call:'decoder_ecart(7)', eq:'7', label:'decoder_ecart(7)  # dernier positif'},
+            {call:'decoder_ecart(8)', eq:'-8', label:'decoder_ecart(8)  # premier négatif'},
+            {call:'decoder_ecart(15)', eq:'-1'}],
+     sol:"def decoder_ecart(brut):\n    if brut > 7:\n        return brut - 16\n    else:\n        return brut\n"},
+   answer:"Un seul test suffit, sur le bit de poids fort :",
+   exp:"La condition $v \\gt 7$ (équivalente à $v \\ge 8$) revient à lire le bit de poids fort : au-delà, on retranche $2^4 = 16$."},
+
+  {topic:'i1_nombres', mode:'code', q:"Écris la fonction <b>presque_egal(a, b)</b> qui compare deux flottants à $10^{-9}$ près, comme il faut le faire dans un jeu de tests.",
+   code:{
+     start:"def presque_egal(a, b):\n    # NE PAS écrire a == b : les arrondis rendent l'égalité exacte illusoire\n    return a == b\n",
+     requires:['presque_egal'],
+     tests:[{call:'presque_egal(58.49999999999999, 58.5)', eq:'True', label:'le cas du DM : la moyenne calculée vaut 58.49999999999999'},
+            {call:'presque_egal(0.1 + 0.2, 0.3)', eq:'True', label:'presque_egal(0.1 + 0.2, 0.3)  # le grand classique'},
+            {call:'presque_egal(1.0, 1.1)', eq:'False'},
+            {call:'presque_egal(58.5, 58.5000001)', eq:'False', label:'un écart de 1e-7 reste un vrai écart'}],
+     sol:"def presque_egal(a, b):\n    return abs(a - b) < 1e-9\n"},
+   answer:"On compare l'<b>écart</b> à une tolérance, jamais les valeurs elles-mêmes :",
+   exp:"C'est la correction du test raté du DM : <code>assert abs(moyenne4 - 58.5) &lt; 1e-9</code> à la place de <code>assert moyenne4 == 58.5</code>."},
+  /* ---- 5. Graphes : vocabulaire et représentations ---- */
+  {topic:'i1_graphes', mode:'flash', q:"Dans un graphe modélisant un réseau de vols, que représentent un sommet, une arête (ou un arc) et un poids ?",
+   answer:"Le <b>sommet</b> est un aéroport, l'<b>arête</b> (ou l'<b>arc</b> si le graphe est orienté) un vol direct, le <b>poids</b> sa distance ou sa durée.",
+   exp:"Un <b>arc</b> est un couple <b>ordonné</b> (origine, destination) ; une <b>arête</b> est une paire non ordonnée, sans sens de parcours."},
+
+  {topic:'i1_graphes', mode:'flash', q:"Comment note-t-on un graphe orienté et un graphe non orienté ?",
+   answer:"<b>$G=(S,A)$</b>, avec A l'ensemble des <b>arcs</b> (couples ordonnés) ; <b>$G=(S,E)$</b>, avec E l'ensemble des <b>arêtes</b> (paires non ordonnées).",
+   exp:"S est l'ensemble des sommets. Le choix dépend de la symétrie de la relation modélisée : une distance est symétrique, une durée de vol ne l'est pas.",
+   fig:{window:[-1.4,7.4,-1.8,2.6], size:290, items:[
+     {point:[0,0], label:"\\text{DEL}", at:'belowleft'},
+     {point:[3,0], label:"\\text{KTM}", at:'below'},
+     {point:[5.6,1.5], label:"\\text{LUA}", at:'right'},
+     {vector:[[0.4,0.22],[2.6,0.22]], label:"105", at:'above'},
+     {vector:[[2.6,-0.22],[0.4,-0.22]], label:"130", at:'below'},
+     {vector:[[3.3,0.25],[5.3,1.3]], label:"30", at:'aboveleft'},
+     {label:"\\text{aucun vol au départ de LUA}", at:[3.2,-1.3], place:'center'}]}},
+
+  {topic:'i1_graphes', mode:'qcm', q:"À quoi reconnaît-on, dans un dictionnaire de dictionnaires, que le graphe des durées de vol est <b>orienté</b> ?",
+   choices:[{t:"La relation n'est pas symétrique : KTM→LUA existe (30 min) alors que LUA n'a aucune destination", c:true},
+            {t:"Les poids sont des durées et non des distances", c:false},
+            {t:"Certains sommets ont plus de trois voisins", c:false},
+            {t:"Les poids sont des entiers et non des flottants", c:false}],
+   exp:"Dans le graphe des distances, CDG→ABJ et ABJ→CDG valent tous deux 4900 : la relation y est symétrique, le graphe est donc non orienté."},
+
+  {topic:'i1_graphes', mode:'flash', q:"Qu'est-ce qu'une liste d'adjacence, et comment la code-t-on en Python ?",
+   answer:"La donnée, <b>pour chaque sommet, de ses voisins</b> — codée ici par un <b>dictionnaire de dictionnaires</b> {sommet : {voisin : poids}}.",
+   exp:"<code>graphe[\"CMN\"]</code> vaut {\"CDG\": 180, \"CAI\": 290, \"ABJ\": 270} : les trois vols directs au départ de Casablanca, avec leurs durées.",
+   fig:{window:[-2.6,8.6,-2.6,4.4], size:330, items:[
+     {segment:[[0,3],[-1.6,1.6]], label:"1930", at:'left'},
+     {segment:[[0,3],[-1.0,-1.6]], label:"4900", at:'left'},
+     {segment:[[0,3],[2.2,1.2]], label:"3207", at:'below'},
+     {segment:[[0,3],[5.4,0.9]], label:"6561", at:'above'},
+     {segment:[[-1.6,1.6],[2.2,1.2]], label:"3681", at:'below'},
+     {segment:[[-1.6,1.6],[-1.0,-1.6]], label:"3146", at:'left'},
+     {segment:[[2.2,1.2],[5.4,0.9]], label:"4400", at:'below'},
+     {segment:[[5.4,0.9],[6.6,0.3]], label:"814", at:'below'},
+     {segment:[[6.6,0.3],[7.4,1.7]], label:"138", at:'right'},
+     {point:[0,3], label:"\\text{CDG}", at:'above'},
+     {point:[-1.6,1.6], label:"\\text{CMN}", at:'left'},
+     {point:[-1.0,-1.6], label:"\\text{ABJ}", at:'below'},
+     {point:[2.2,1.2], label:"\\text{CAI}", at:'below'},
+     {point:[5.4,0.9], label:"\\text{DEL}", at:'above'},
+     {point:[6.6,0.3], label:"\\text{KTM}", at:'belowright'},
+     {point:[7.4,1.7], label:"\\text{LUA}", at:'above'}]}},
+
+  {topic:'i1_graphes', mode:'flash', q:"Qu'est-ce que la matrice d'adjacence d'un graphe pondéré, et quelle place occupe-t-elle ?",
+   answer:"Un tableau dont la case $(i,j)$ porte le poids de l'arc de i vers j (INFINI s'il n'existe pas) : <b>$|S|^2$ cases</b>, toujours.",
+   exp:"Il faut fixer l'ordre des sommets : <code>sommets_liste[i]</code> désigne la ligne et la colonne i. Ici 7 aéroports, donc 49 cases, dont une majorité d'INFINI."},
+
+  {topic:'i1_graphes', mode:'flash', q:"Quelle propriété caractérise la matrice d'adjacence d'un graphe non orienté ?",
+   answer:"Elle est <b>symétrique</b> : $M[i][j]=M[j][i]$ pour tous i et j. Ce n'est en général pas vrai pour un graphe orienté.",
+   exp:"Une arête n'a pas de sens de parcours privilégié ; un arc, si — et l'arc inverse peut même ne pas exister (KTM→LUA sans LUA→KTM)."},
+
+  {topic:'i1_graphes', mode:'flash', q:"Liste d'adjacence ou matrice d'adjacence : comment choisir ?",
+   answer:"<b>Graphe creux</b> (peu d'arêtes) → liste d'adjacence, place proportionnelle à $|S|+|A|$ ; <b>graphe dense</b> → matrice, test d'existence d'un arc en $O(1)$.",
+   exp:"Ici 7 sommets et 9 vols : la matrice gaspillerait 49 cases presque toutes à INFINI, contre environ 25 « unités » de stockage pour la liste d'adjacence."},
+
+  {topic:'i1_graphes', mode:'flash', q:"Qu'est-ce qu'une boucle dans un graphe ?",
+   answer:"Un <b>arc (ou une arête) d'un sommet vers lui-même</b>. Aucun des deux graphes de vols n'en comporte.",
+   exp:"Une boucle de poids 100 sur CAI signifierait un vol Le Caire → Le Caire de 100 km ou de 100 min : dépourvu de sens pour un vol commercial."},
+
+  {topic:'i1_graphes', mode:'flash', q:"Comment définit-on les degrés entrant et sortant d'un sommet d'un graphe orienté ?",
+   answer:"$d^+$ est le nombre d'<b>arcs qui en partent</b>, $d^-$ le nombre d'<b>arcs qui y arrivent</b>.",
+   exp:"Ici $d^+(\\text{CDG})=d^-(\\text{CDG})=4$, tandis que $d^+(\\text{LUA})=0$ et $d^-(\\text{LUA})=1$ : on atterrit à Lukla, aucun vol n'en repart."},
+
+  {topic:'i1_graphes', mode:'qcm', q:"Quelle est la liste d'adjacence du sommet CMN dans le graphe des durées de vol ?",
+   choices:[{t:"{CDG : 180, CAI : 290, ABJ : 270}", c:true},
+            {t:"{CDG : 1930, CAI : 3681, ABJ : 3146}", c:false},
+            {t:"{CDG : 185, CAI : 330, ABJ : 260}", c:false},
+            {t:"{CDG : 180, CAI : 290}", c:false}],
+   exp:"On lit la ligne de CMN : trois vols sortants, en minutes. Les valeurs 1930, 3681 et 3146 sont les distances en km ; 185, 330, 260 sont les durées des vols <b>entrants</b>."},
+
+  {topic:'i1_graphes', mode:'code', q:"Écris la fonction <b>degre_graphe(graphe, aeroport)</b> qui renvoie le couple (degré sortant, degré entrant) de l'aéroport dans un graphe orienté donné en liste d'adjacence.",
+   code:{
+     setup:"graphe_vols_minutes = {\n    \"CDG\": {\"ABJ\": 400, \"CMN\": 185, \"DEL\": 500, \"CAI\": 270},\n    \"DEL\": {\"CDG\": 595, \"CAI\": 340, \"KTM\": 105},\n    \"CAI\": {\"CDG\": 280, \"CMN\": 330, \"DEL\": 395},\n    \"CMN\": {\"CDG\": 180, \"CAI\": 290, \"ABJ\": 270},\n    \"KTM\": {\"DEL\": 130, \"LUA\": 30},\n    \"LUA\": {},\n    \"ABJ\": {\"CDG\": 395, \"CMN\": 260}\n}",
+     start:"def degre_graphe(graphe, aeroport):\n    d_plus = 0\n    d_moins = 0\n    # d_plus : nombre de vols au départ de aeroport\n    # d_moins : nombre de vols à destination de aeroport\n    return (d_plus, d_moins)\n",
+     requires:['degre_graphe'],
+     tests:[{call:'degre_graphe(graphe_vols_minutes, "CDG")', eq:'(4, 4)'},
+            {call:'degre_graphe(graphe_vols_minutes, "LUA")', eq:'(0, 1)', label:'degre_graphe(graphe_vols_minutes, "LUA")  # cas limite : aucun départ'},
+            {call:'degre_graphe(graphe_vols_minutes, "KTM")', eq:'(2, 1)'},
+            {call:'degre_graphe(graphe_vols_minutes, "ABJ")', eq:'(2, 2)'}],
+     sol:"def degre_graphe(graphe, aeroport):\n    d_plus = len(graphe[aeroport])\n    d_moins = 0\n    for sommet in graphe:\n        if aeroport in graphe[sommet]:\n            d_moins += 1\n    return (d_plus, d_moins)\n"},
+   answer:"Le degré sortant se lit d'un coup avec <code>len</code> ; le degré entrant demande de parcourir tous les sommets :",
+   exp:"C'est l'asymétrie de la liste d'adjacence : les arcs sortants sont immédiats, les arcs entrants coûtent un parcours complet, en $O(|S|+|A|)$."},
+
+  {topic:'i1_graphes', mode:'code', q:"Écris la fonction <b>destinations_aeroport(graphe, aeroport)</b> qui renvoie la liste des aéroports accessibles par un vol direct au départ de l'aéroport donné.",
+   code:{
+     setup:"graphe_vols_minutes = {\n    \"CDG\": {\"ABJ\": 400, \"CMN\": 185, \"DEL\": 500, \"CAI\": 270},\n    \"DEL\": {\"CDG\": 595, \"CAI\": 340, \"KTM\": 105},\n    \"CAI\": {\"CDG\": 280, \"CMN\": 330, \"DEL\": 395},\n    \"CMN\": {\"CDG\": 180, \"CAI\": 290, \"ABJ\": 270},\n    \"KTM\": {\"DEL\": 130, \"LUA\": 30},\n    \"LUA\": {},\n    \"ABJ\": {\"CDG\": 395, \"CMN\": 260}\n}",
+     start:"def destinations_aeroport(graphe, aeroport):\n    return []\n",
+     requires:['destinations_aeroport'],
+     tests:[{call:'sorted(destinations_aeroport(graphe_vols_minutes, "CDG"))', eq:'["ABJ", "CAI", "CMN", "DEL"]'},
+            {call:'sorted(destinations_aeroport(graphe_vols_minutes, "KTM"))', eq:'["DEL", "LUA"]'},
+            {call:'destinations_aeroport(graphe_vols_minutes, "LUA")', eq:'[]', label:'destinations_aeroport(graphe_vols_minutes, "LUA")  # cas limite'}],
+     sol:"def destinations_aeroport(graphe, aeroport):\n    return list(graphe[aeroport].keys())\n"},
+   answer:"Les destinations sont exactement les <b>clés</b> du dictionnaire des voisins :",
+   exp:"<code>list(...)</code> transforme la vue des clés en une vraie liste. Coût : $O(d^+)$, le nombre de vols au départ — aucun parcours du reste du graphe."},
+
+  {topic:'i1_graphes', mode:'code', q:"Écris la fonction <b>origines_aeroport(graphe, aeroport)</b> qui renvoie la liste des aéroports ayant l'aéroport donné comme destination directe.",
+   code:{
+     setup:"graphe_vols_minutes = {\n    \"CDG\": {\"ABJ\": 400, \"CMN\": 185, \"DEL\": 500, \"CAI\": 270},\n    \"DEL\": {\"CDG\": 595, \"CAI\": 340, \"KTM\": 105},\n    \"CAI\": {\"CDG\": 280, \"CMN\": 330, \"DEL\": 395},\n    \"CMN\": {\"CDG\": 180, \"CAI\": 290, \"ABJ\": 270},\n    \"KTM\": {\"DEL\": 130, \"LUA\": 30},\n    \"LUA\": {},\n    \"ABJ\": {\"CDG\": 395, \"CMN\": 260}\n}",
+     start:"def origines_aeroport(graphe, aeroport):\n    origines = []\n    # parcourir tous les sommets et tester si aeroport est l'une de leurs destinations\n    return origines\n",
+     requires:['origines_aeroport'],
+     tests:[{call:'sorted(origines_aeroport(graphe_vols_minutes, "CDG"))', eq:'["ABJ", "CAI", "CMN", "DEL"]'},
+            {call:'origines_aeroport(graphe_vols_minutes, "LUA")', eq:'["KTM"]'},
+            {call:'sorted(origines_aeroport(graphe_vols_minutes, "ABJ"))', eq:'["CDG", "CMN"]'}],
+     sol:"def origines_aeroport(graphe, aeroport):\n    origines = []\n    for sommet in graphe:\n        if aeroport in graphe[sommet]:\n            origines.append(sommet)\n    return origines\n"},
+   answer:"Il faut interroger <b>tous</b> les sommets, car la liste d'adjacence ne mémorise que les arcs sortants :",
+   exp:"<code>aeroport in graphe[sommet]</code> teste l'appartenance aux <b>clés</b> du dictionnaire des voisins. C'est le degré entrant, mais avec les noms au lieu du compte."},
+
+  {topic:'i1_graphes', mode:'code', q:"Écris la fonction <b>aeroports_relies(graphe, aeroport)</b> qui renvoie la liste TRIÉE des aéroports reliés à l'aéroport donné par un vol direct, dans un sens ou dans l'autre.",
+   code:{
+     setup:"graphe_vols_minutes = {\n    \"CDG\": {\"ABJ\": 400, \"CMN\": 185, \"DEL\": 500, \"CAI\": 270},\n    \"DEL\": {\"CDG\": 595, \"CAI\": 340, \"KTM\": 105},\n    \"CAI\": {\"CDG\": 280, \"CMN\": 330, \"DEL\": 395},\n    \"CMN\": {\"CDG\": 180, \"CAI\": 290, \"ABJ\": 270},\n    \"KTM\": {\"DEL\": 130, \"LUA\": 30},\n    \"LUA\": {},\n    \"ABJ\": {\"CDG\": 395, \"CMN\": 260}\n}",
+     start:"def aeroports_relies(graphe, aeroport):\n    relies = set()\n    # ajouter les destinations, puis les origines\n    return sorted(relies)\n",
+     requires:['aeroports_relies'],
+     tests:[{call:'aeroports_relies(graphe_vols_minutes, "KTM")', eq:'["DEL", "LUA"]', label:'KTM : DEL est à la fois origine et destination → une seule fois'},
+            {call:'aeroports_relies(graphe_vols_minutes, "LUA")', eq:'["KTM"]'},
+            {call:'aeroports_relies(graphe_vols_minutes, "CDG")', eq:'["ABJ", "CAI", "CMN", "DEL"]'}],
+     sol:"def aeroports_relies(graphe, aeroport):\n    relies = set()\n    for voisin in graphe[aeroport]:\n        relies.add(voisin)\n    for sommet in graphe:\n        if aeroport in graphe[sommet]:\n            relies.add(sommet)\n    return sorted(relies)\n"},
+   answer:"Un <b>ensemble</b> évite les doublons quand un aéroport est à la fois origine et destination :",
+   exp:"<code>set</code> ne garde qu'un exemplaire de chaque élément et <code>sorted</code> rend le résultat déterministe — indispensable pour un jeu de tests."},
+
+  {topic:'i1_graphes', mode:'code', q:"Écris la fonction <b>est_symetrique(matrice)</b> qui teste si une matrice d'adjacence carrée est symétrique — donc si le graphe qu'elle décrit est non orienté.",
+   code:{
+     setup:"M_non_oriente = [[0, 4900, 1930],\n                 [4900, 0, 3146],\n                 [1930, 3146, 0]]\nM_oriente = [[0, 400, 185],\n             [395, 0, 260],\n             [180, 290, 0]]\nM_presque = [[0, 1, 2],\n             [1, 0, 3],\n             [2, 9, 0]]",
+     start:"def est_symetrique(matrice):\n    n = len(matrice)\n    # comparer matrice[i][j] et matrice[j][i] pour tous les couples (i, j)\n    return True\n",
+     requires:['est_symetrique'],
+     tests:[{call:'est_symetrique(M_non_oriente)', eq:'True'},
+            {call:'est_symetrique(M_oriente)', eq:'False'},
+            {call:'est_symetrique(M_presque)', eq:'False', label:'est_symetrique(M_presque)  # un seul couple en défaut suffit'},
+            {call:'est_symetrique([[0]])', eq:'True', label:'est_symetrique([[0]])  # cas limite : un seul sommet'}],
+     sol:"def est_symetrique(matrice):\n    n = len(matrice)\n    for i in range(n):\n        for j in range(n):\n            if matrice[i][j] != matrice[j][i]:\n                return False\n    return True\n"},
+   answer:"Deux boucles imbriquées, et un <code>return False</code> dès le premier couple en défaut :",
+   exp:"Complexité $O(n^2)$ au pire (on peut se limiter à $j \\gt i$ et diviser le travail par deux). Renvoyer True ne se fait qu'après avoir tout vérifié."},
 ];
 
 /* ===================== DÉMO BÉTA retirée =====================
@@ -6201,7 +7974,7 @@ setTimeout(()=>{ /* garde le poll actif au moins 15s puis allège */
   setInterval(()=>{ if(window.MathJax && window.MathJax.typesetPromise && _pendingEls.size===0){ clearInterval(_mjPoll); } }, 2000);
 }, 15000);
 
-const MODE_LABEL = {qcm:'QCM', trou:'À trou', saisie:'Réponse libre', flash:'Flashcard'};
+const MODE_LABEL = {qcm:'QCM', trou:'À trou', saisie:'Réponse libre', flash:'Flashcard', code:'Code Python'};
 
 /* ============================================================
    RÉPÉTITION ESPACÉE — FSRS-6 (algorithme MODERNE d'Anki) + paliers d'apprentissage
@@ -7182,6 +8955,12 @@ function buildLiaisonRecap(){
     if(q && q.aimg && typeof LIAISON_IMG!=='undefined' && LIAISON_IMG[q.aimg]){ q.exp=(q.exp?q.exp+'<br>':'')+'<div class="qfig"><img src="'+LIAISON_IMG[q.aimg]+'" alt="sch\u00e9ma normalis\u00e9 de la liaison" style="max-width:100%;max-height:300px;background:#fff;border-radius:8px;padding:6px;box-sizing:border-box"></div>'; }
     /* recap : construit une fiche de synthèse (tableau) dans `exp`. Additif, ne touche pas `q`. */
     if(q && q.recap==='liaisons'){ try{ q.exp=(q.exp?q.exp+'<br>':'')+buildLiaisonRecap(); }catch(e){ if(window.console&&console.error) console.error('RECAP',e); } }
+    /* mode 'code' : la solution de référence est ACCOLÉE à `answer` (échappée, donc aucun « < »
+       ne peut manger le texte). `q` reste intouché → qHash et progression FSRS intacts. */
+    if(q && q.mode==='code' && q.code && q.code.sol && !q._codeSolDone){
+      q.answer = (q.answer || '') + '<pre class="pycode">' + escCode(String(q.code.sol).replace(/\s+$/,'')) + '</pre>';
+      q._codeSolDone = true;
+    }
   }
 })();
 
@@ -7721,7 +9500,11 @@ function setReviewTarget(v){
 // « Révision du jour » : on révise TOUT en flashcard (réfléchir → révéler → s'auto-évaluer),
 // méthode la plus efficace pour la rétention. Réponse révélée = q.answer (trou/saisie/flash)
 // ou la bonne proposition (QCM). La personnalisation des modes reste dans le quiz « Commencer ».
-function toFlashCard(q){ const ans = q.answer || (q.choices ? ((q.choices.find(c=>c.c)||{}).t || '') : ''); return {...q, mode:'flash', answer: ans, _choices: undefined }; }
+function toFlashCard(q){
+  /* Les cartes « code » restent INTERACTIVES même en révision : taper la fonction EST la
+     restitution active. Le bouton « Voir la solution » permet de s'en tenir à la mémoire. */
+  if(q.mode==='code') return {...q, _choices: undefined};
+  const ans = q.answer || (q.choices ? ((q.choices.find(c=>c.c)||{}).t || '') : ''); return {...q, mode:'flash', answer: ans, _choices: undefined }; }
 
 /* Source de cartes à la demande pour une session de révision.
    Ordre : 1) cartes DUES + NOUVELLES du jour (le « travail SRS » réel, entrelacé),
@@ -8042,6 +9825,7 @@ function renderQuestion(){
   const zone = $('#answerZone'); zone.innerHTML='';
   if(q.mode==='qcm') renderQCM(zone, q);
   else if(q.mode==='flash') renderFlash(zone, q);
+  else if(q.mode==='code') renderCode(zone, q);
   else renderTyped(zone, q);
 
   const fb = $('#feedback'); fb.className='feedback hidden'; fb.innerHTML='';
@@ -8188,6 +9972,125 @@ function renderTyped(zone, q){
     revealTyped(q, input.value, auto);
   };
   wrap.querySelector('#dunnoBtn').onclick = ()=> revealUnknown(q);
+}
+
+/* ====================== MODE « CODE » : l'élève écrit du Python, on l'EXÉCUTE ======================
+   Carte `mode:'code'`, champ `code` :
+     { setup:"…"          code Python chargé AVANT celui de l'élève (données de l'énoncé), affiché,
+       start:"…"          amorce déposée dans l'éditeur,
+       requires:["f"]     noms qui doivent exister après exécution,
+       tests:[{call:"f(…)", eq:"…", tol:1e-9, label:"…"}],
+       sol:"…"            solution de référence (ajoutée à `answer` au chargement) }
+   L'exécution passe par PYMINI (interpréteur maison, aucun appel réseau : l'app reste hors ligne).
+   Le PREMIER lancement est la tentative NOTÉE ; ensuite l'éditeur reste ouvert pour expérimenter
+   sans changer la note (l'auto-évaluation, elle, reste modifiable). */
+function escCode(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+const CODE_KEYS = ['⇥','(',')','[',']','{','}',':',',','"','=','==','!=','<','>','_','#'];
+
+function codeReport(rep){
+  let h = '<div class="code-out">';
+  if(rep.out && rep.out.length)
+    h += '<div class="co-print"><b>Affiché par ton code</b><pre>'+escCode(rep.out.join('\n'))+'</pre></div>';
+  if(rep.fatal){
+    h += '<div class="co-head bad">❌ Le code ne s’exécute pas</div>'
+      +  '<div class="co-line bad"><span class="ci">✗</span><div>'+escCode(rep.fatal)+'</div></div>';
+  } else {
+    const n = rep.results.length, k = rep.results.filter(r=>r.pass).length;
+    h += '<div class="co-head '+(rep.ok?'ok':'bad')+'">'+(rep.ok?'✅':'❌')+' '+k+' test'+(k>1?'s':'')+' sur '+n+' réussi'+(k>1?'s':'')+'</div>';
+    rep.results.forEach(r=>{
+      h += '<div class="co-line '+(r.pass?'ok':'bad')+'"><span class="ci">'+(r.pass?'✓':'✗')+'</span><div><code>'+escCode(r.label)+'</code>';
+      if(r.error) h += '<br><span class="co-err">'+escCode(r.error)+'</span>';
+      else if(!r.pass) h += '<br>obtenu <code>'+escCode(r.got)+'</code> · attendu <code>'+escCode(r.want)+'</code>';
+      h += '</div></div>';
+    });
+  }
+  return h + '</div>';
+}
+
+function renderCode(zone, q){
+  const spec = q.code || {};
+  const wrap = document.createElement('div');
+  wrap.className = 'code-zone';
+  const rows = Math.max(7, Math.min(20, String(spec.start||'').split('\n').length + 5));
+  wrap.innerHTML =
+      (spec.setup ? '<div class="code-ctx"><div class="cc-t">Déjà chargé en mémoire</div><pre>'+escCode(spec.setup)+'</pre></div>' : '')
+    + '<textarea class="code-ed" id="codeEd" rows="'+rows+'" spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off"></textarea>'
+    + '<div class="code-keys" id="codeKeys"></div>'
+    + '<div class="input-row" style="margin-top:10px">'
+    +   '<button class="btn" id="runBtn" type="button">▶ Exécuter les tests</button>'
+    +   '<button class="btn ghost" id="dunnoBtn" type="button" style="font-size:13px; padding:9px 14px">🤷 Voir la solution</button>'
+    + '</div>'
+    + '<div id="codeOut"></div>';
+  zone.appendChild(wrap);
+
+  const ed = wrap.querySelector('#codeEd');
+  ed.value = spec.start || '';
+  /* On ne donne le focus que sur grand écran : sur téléphone, ouvrir le clavier d'office
+     recouvrirait l'énoncé et le contexte que l'élève doit justement lire avant d'écrire. */
+  if(window.matchMedia && window.matchMedia('(min-width: 760px)').matches)
+    setTimeout(()=>{ try{ ed.focus(); ed.setSelectionRange(ed.value.length, ed.value.length); }catch(e){} }, 30);
+
+  /* Tabulation = 4 espaces, retour à la ligne = indentation conservée (et +4 après « : ») */
+  ed.addEventListener('keydown', e=>{
+    if(e.key==='Tab'){ e.preventDefault(); insertAtCursor(ed, '    ', false); return; }
+    if((e.metaKey||e.ctrlKey) && e.key==='Enter'){ e.preventDefault(); wrap.querySelector('#runBtn').click(); return; }
+    if(e.key==='Enter'){
+      const before = ed.value.slice(0, ed.selectionStart);
+      const line = before.slice(before.lastIndexOf('\n')+1);
+      const ind = (line.match(/^[ \t]*/)||[''])[0] + (/:\s*$/.test(line) ? '    ' : '');
+      e.preventDefault(); insertAtCursor(ed, '\n'+ind, false);
+    }
+  });
+
+  /* rangée de touches (clavier mobile : « : », guillemets et crochets y sont pénibles) */
+  const keys = wrap.querySelector('#codeKeys');
+  CODE_KEYS.forEach(k=>{
+    const b = document.createElement('button');
+    b.type='button'; b.className='code-key'; b.textContent = k;
+    if(k==='⇥') b.title = 'Indenter de 4 espaces';
+    b.addEventListener('mousedown', ev=>{ ev.preventDefault(); insertAtCursor(ed, k==='⇥' ? '    ' : k, false); });
+    keys.appendChild(b);
+  });
+
+  let graded = false;
+  wrap.querySelector('#runBtn').onclick = ()=>{
+    const out = wrap.querySelector('#codeOut');
+    let rep;
+    try{
+      rep = PYMINI.check({setup:spec.setup, tests:spec.tests||[], requires:spec.requires||[]}, ed.value, {timeout:2500});
+    }catch(e){
+      rep = {ok:false, fatal:'Erreur interne de l’exécuteur : '+((e&&e.message)||e), results:[], out:[]};
+    }
+    out.innerHTML = codeReport(rep);
+    if(!graded){
+      graded = true;
+      wrap.querySelector('#runBtn').textContent = '▶ Ré-exécuter (hors notation)';
+      wrap.querySelector('#dunnoBtn').disabled = true;
+      revealCode(q, !!rep.ok);
+    }
+  };
+  wrap.querySelector('#dunnoBtn').onclick = ()=>{
+    if(answeredFlag) return;
+    graded = true;
+    wrap.querySelector('#runBtn').textContent = '▶ Essayer quand même';
+    revealUnknown(q);
+  };
+}
+
+function revealCode(q, ok){
+  answeredFlag = true;
+  const fb = $('#feedback');
+  let html = ok ? '<div class="verdict ok">✓ Tous les tests passent</div>'
+                : '<div class="verdict no">✗ Les tests ne passent pas tous — compare avec la solution</div>';
+  html += '<div class="reveal-ans"><span class="rl">Solution de référence</span>'+(q.answer||'')+'</div>';
+  html += expHTML(q);
+  if(q.vig) html += '<div class="vig"><span class="ic">⚠️</span><span><b>Vigilance.</b> '+q.vig+'</span></div>';
+  html += courseLink(q) + annalesLine(q);
+  fb.innerHTML = html; fb.className='feedback';
+  finalizeSelf(q, ok);
+  typeset(fb);
 }
 
 /* ---- Clavier mathématique ---- */
@@ -8551,7 +10454,7 @@ document.addEventListener('keydown', (e)=>{
   // Entrée → avancer une fois répondu : bouton « Suivant » s'il est présent (QCM faux / saisie),
   // sinon on valide la note par défaut « Correct » (g2) pour passer à la carte suivante (flash,
   // confiance QCM…). Ainsi « Entrée = suivant » fonctionne dans TOUS les modes.
-  if(e.key==='Enter' && answeredFlag){
+  if(e.key==='Enter' && answeredFlag && !(q.mode==='code' && typing)){
     const nb=$('#nextBtn');
     if(nb && !nb.classList.contains('hidden')){ e.preventDefault(); nb.click(); return; }
     const g2=document.querySelector('#feedback .srs-grade .sg2.g2');
