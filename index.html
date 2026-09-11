@@ -8185,20 +8185,28 @@ const SRS = {
     ks.sort();
     ks.slice(0, ks.length - this._JOURS_GARDES).forEach(k=>{ delete d.days[k]; });
   },
-  /* Reconstitution du passé antérieur à l'introduction de `days` (v264), depuis les deux sources
-     historiques : le journal (une ligne par révision, découvertes exclues) et les sessions (total
-     répondu, découvertes comprises). Elles SE RECOUVRENT — additionner compterait deux fois la
-     même réponse — donc on retient le MAXIMUM par jour, comme le fait déjà la heatmap.
-     Idempotent (n'écrit que vers le haut) : rejouer l'ensemencement ne fausse rien. */
+  /* Reconstitution du passé depuis les deux sources historiques. Elles ne mesurent PAS la même
+     chose, et c'est tout l'enjeu :
+       • une session enregistre `total` = answered.length, soit les cartes DISTINCTES répondues ;
+       • reviewLog enregistre une ligne par NOTATION — une carte en apprentissage en produit
+         plusieurs le même jour.
+     La v266 retenait le maximum des deux : elle importait donc les notations et affichait des
+     semaines à quatre chiffres. On préfère désormais les sessions, et on ne retombe sur le journal
+     que les jours sans session enregistrée. `_SEED_VER` force la REFONTE des séries déjà écrites
+     en v266 (on écrase, on ne prend plus le max — sinon les comptes gonflés survivraient). */
+  _SEED_VER: 2,
   _ensemenceJours(d){
-    if(d.daysSeed) return false;
-    const jours = d.days || (d.days = {});
-    const rl = {}, sl = {};
+    if(d.daysSeed === this._SEED_VER) return false;
+    const rl = {}, sl = {}, jours = {};
     (d.reviewLog||[]).forEach(r=>{ if(r && typeof r.t==='number'){ const k=this._dayKey(r.t); rl[k]=(rl[k]||0)+1; } });
     (d.sessions||[]).forEach(s=>{ if(s && typeof s.date==='number'){ const k=this._dayKey(s.date); sl[k]=(sl[k]||0)+(s.total||0); } });
-    const clefs = new Set(Object.keys(rl).concat(Object.keys(sl)));
-    clefs.forEach(k=>{ const n = Math.max(rl[k]||0, sl[k]||0); if(n > (jours[k]||0)) jours[k] = n; });
-    d.daysSeed = 1;
+    new Set(Object.keys(rl).concat(Object.keys(sl))).forEach(k=>{ jours[k] = (sl[k]!=null) ? sl[k] : rl[k]; });
+    // La session EN COURS n'est pas encore journalisée : on garde le compteur vif du jour si
+    // aucune session d'aujourd'hui n'a encore été enregistrée, sinon le travail en cours s'efface.
+    const t = this._today();
+    if(jours[t] == null && d.days && d.days[t]) jours[t] = d.days[t];
+    d.days = jours;
+    d.daysSeed = this._SEED_VER;
     this._elagueJours(d);
     return true;
   },
@@ -8261,7 +8269,7 @@ const SRS = {
           slim[h] = o;
         }
         const paquet = { cards: slim, streak: dd.streak || null, daily: dd.daily || null,
-                         days: dd.days || null, reviewLog: log };
+                         days: dd.days || null, daysSeed: dd.daysSeed || 0, reviewLog: log };
         /* Entrées d'index d'une valeur : 2 par scalaire (index croissant + décroissant) ;
            une map ou un tableau ne coûte rien en propre, seules ses feuilles comptent. */
         const feuilles = v => {
@@ -8387,7 +8395,10 @@ const SRS = {
        reviendrait sinon s'ajouter à lui-même à chaque aller-retour, et le compteur enflerait
        sans fin. Le prix est une sous-estimation quand un même jour a été travaillé sur deux
        appareils ; c'est le compromis que retient déjà la heatmap. */
-    if(cloud.days && typeof cloud.days === 'object'){
+    /* On n'accepte que les séries produites par la MÊME version de comptage : une v266 (qui
+       comptait les notations) réinjecterait sinon ses totaux gonflés par le maximum, et la
+       refonte locale serait annulée à la première synchro. */
+    if(cloud.days && typeof cloud.days === 'object' && (cloud.daysSeed||0) >= this._SEED_VER){
       const dj = d.days || (d.days = {});
       for(const k in cloud.days){ const n = +cloud.days[k]||0; if(n > (dj[k]||0)) dj[k] = n; }
       this._elagueJours(d);
@@ -8467,6 +8478,7 @@ const SRS = {
     const now = Date.now();
     const ivlAvant = c.interval || 0;   // intervalle (jours) AVANT cette révision (rétention vraie)
     const dejaVue = (c.reps||0) > 0;
+    const lastAvant = c.last;           // dernière notation AVANT celle-ci (volume quotidien en cartes)
     // migration douce des cartes de l'ancien format (sans state / step / last)
     if(c.ef == null) c.ef = SRS_START_EASE;
     if(!c.state) c.state = (dejaVue && (c.interval||0) > 0) ? 'review' : 'new';
@@ -8496,10 +8508,15 @@ const SRS = {
     if(dn.day !== today){ dn.day = today; dn.newSeen = 0; dn.total = 0; }
     if(!dejaVue) dn.newSeen++;                          // une nouvelle carte introduite aujourd'hui
     dn.total = (dn.total||0) + 1;                       // toute carte corrigée aujourd'hui (objectif quotidien)
-    // Volume du jour, TOUTES cartes confondues (découvertes comprises) : c'est cette série
-    // quotidienne — et non reviewLog — qui alimente le « cartes de la semaine » du classement.
+    /* Volume du jour, découvertes comprises — la série qui alimente « cartes de la semaine ».
+       On compte des CARTES, pas des notations : une carte en apprentissage est re-présentée deux
+       ou trois fois dans la même journée (étapes de quelques minutes), et la compter à chaque
+       note gonflait le total d'un facteur 2 à 3 — d'où des scores hebdomadaires à quatre chiffres.
+       Une carte n'est donc comptée qu'à sa PREMIÈRE note du jour ; une découverte compte toujours
+       (sa date `last` est initialisée à la création, elle ne prouve aucune révision antérieure). */
     const dj = d.days || (d.days = {});
-    dj[today] = (dj[today]||0) + 1;
+    const premiereDuJour = !dejaVue || !lastAvant || this._dayKey(lastAvant) !== today;
+    if(premiereDuJour) dj[today] = (dj[today]||0) + 1;
     this._elagueJours(d);
     const st = d.streak || (d.streak = {count: 0, lastDay: null});
     if(st.lastDay !== today){
@@ -11834,11 +11851,14 @@ function _lbPseudo(){
    centaines de cartes. On lit désormais le volume quotidien `SRS.days` (cf. SRS._ensemenceJours,
    qui reconstitue le passé depuis le journal et les sessions). */
 function _lbWeekCards(){ try{ return SRS.cardsLastDays(7); }catch(e){ return 0; } }
+/* Dernier jour d'activité, publié avec la série : sans lui, impossible de savoir à la lecture si
+   la série d'un camarade est encore vivante ou figée depuis des semaines. */
+function _lbLastDay(){ try{ const s=SRS._d().streak; return (s && s.lastDay) ? String(s.lastDay) : null; }catch(e){ return null; } }
 const Leaderboard = {
   async publish(name){
     if(typeof currentUser==='undefined' || !currentUser) return;
     const entry={ name:String(name||_lbPseudo()).replace(/[<>]/g,'').slice(0,24), annee:_lbClassYear(),
-      streak:(SRS&&SRS.streakCount?SRS.streakCount():0), week:_lbWeekCards(), optIn:true, updatedAt:serverTimestamp() };
+      streak:(SRS&&SRS.streakCount?SRS.streakCount():0), lastDay:_lbLastDay(), week:_lbWeekCards(), optIn:true, updatedAt:serverTimestamp() };
     await setDoc(doc(db,'leaderboard',currentUser.uid), entry, {merge:true});
   },
   async unpublish(){ if(typeof currentUser==='undefined'||!currentUser) return; try{ await setDoc(doc(db,'leaderboard',currentUser.uid),{optIn:false},{merge:true}); }catch(e){} },
@@ -11861,12 +11881,25 @@ function renderLeaderboard(){
   _lbFooter();
   Leaderboard.fetch().then(all=>{
     const myYear=_lbClassYear();
-    /* FRAÎCHEUR : « cartes de la semaine » est figé à la dernière publication de chaque élève ; un camarade
-       qui ne révise plus garderait un score de semaine périmé. Au-delà de 7 jours sans publication, sa
-       semaine est comptée à 0 (sa série reste affichée telle que publiée). */
+    /* FRAÎCHEUR — une entrée est FIGÉE à la dernière publication de l'élève. La semaine périmée
+       était déjà ramenée à 0 au-delà de 7 jours, mais la SÉRIE, elle, restait affichée telle que
+       publiée : on lisait « 🔥 1 · 0 cette sem. », ce qui ne peut pas exister — une série vivante
+       suppose au moins une carte aujourd'hui ou hier. On recalcule donc la série à l'affichage,
+       selon la règle exacte de SRS.streakCount() : elle ne vaut que si le dernier jour actif publié
+       est aujourd'hui ou hier. Les entrées antérieures à cette version n'ont pas de `lastDay` : on
+       se rabat alors sur la date de publication (2 jours de tolérance, même raisonnement). */
     const nowT=Date.now();
-    const frais=e=>{ try{ const t=(e.updatedAt&&e.updatedAt.toDate)?e.updatedAt.toDate().getTime():0; return t ? (nowT-t)<=7*86400000 : true; }catch(_){ return true; } };
-    const tous=all.filter(e=>e && e.optIn).map(e=>frais(e)?e:{...e, week:0});
+    const jourDe = ms => { const x=new Date(ms); return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0'); };
+    const auj = jourDe(nowT), hier = jourDe(nowT-86400000);
+    const publieLe = e => { try{ return (e.updatedAt&&e.updatedAt.toDate)?e.updatedAt.toDate().getTime():0; }catch(_){ return 0; } };
+    const semaineFraiche = e => { const t=publieLe(e); return t ? (nowT-t)<=7*86400000 : true; };
+    const serieVivante  = e => { if(e.lastDay) return e.lastDay===auj || e.lastDay===hier;
+                                 const t=publieLe(e); return t ? (nowT-t)<=2*86400000 : true; };
+    const tous=all.filter(e=>e && e.optIn).map(e=>{
+      const week   = semaineFraiche(e) ? (e.week||0)   : 0;
+      const streak = serieVivante(e)   ? (e.streak||0) : 0;
+      return {...e, week, streak, inactif: (streak===0 && week===0)};
+    });
     const classe=tous.filter(e=>e.annee===myYear);
     const vue=(!_lbUserChoice && _lbView==='classe' && classe.length<2) ? 'tous' : _lbView;
     let list=(vue==='classe'?classe:tous).slice();
@@ -11883,7 +11916,9 @@ function renderLeaderboard(){
       html+='<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;margin-bottom:6px;background:'+(me?'color-mix(in srgb,var(--accent) 14%,var(--panel-2))':'var(--panel-2)')+';border:1px solid '+(me?'var(--accent)':'var(--line)')+'">'
         +'<div style="width:28px;text-align:center;font-size:16px;font-weight:700">'+rank+'</div>'
         +'<div style="flex:1;font-weight:'+(me?'700':'600')+';font-size:14px">'+String(e.name||'Élève').replace(/[<>]/g,'')+(vue==='tous'?' <span style="font-size:10.5px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:0 5px">'+({tsi1:'TSI1',tsi2:'TSI2'}[e.annee]||e.annee||'?')+'</span>':'')+(me?' <span style="font-size:11px;color:var(--accent)">(toi)</span>':'')+'</div>'
-        +'<div style="font-size:13px;color:#fb923c;font-weight:700;white-space:nowrap">🔥 '+(e.streak||0)+'</div>'
+        +(e.inactif
+            ? '<div style="font-size:12px;color:var(--muted);white-space:nowrap">inactif</div>'
+            : '<div style="font-size:13px;color:#fb923c;font-weight:700;white-space:nowrap">🔥 '+(e.streak||0)+'</div>')
         +'<div style="font-size:12.5px;color:var(--muted);white-space:nowrap">'+(e.week||0)+' cette sem.</div></div>';
     });
     body.innerHTML=html; _lbWireTabs(body); _lbFooter();
