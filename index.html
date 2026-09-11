@@ -507,6 +507,9 @@ window.MathJax = {
   .code-out .co-print{margin-bottom:9px; border-left:2px solid var(--line); padding-left:10px; color:var(--muted); font-size:12.5px}
   .code-out code, .reveal-ans code, .exp code{font-family:'JetBrains Mono',monospace; font-size:12.5px; background:var(--bg-deep); border-radius:5px; padding:1px 5px; word-break:break-word}
   .pycode{background:var(--bg-deep); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-top:8px}
+  .qcode{margin:14px 0 4px; border:1px solid var(--line); border-radius:12px; background:var(--bg-deep); padding:10px 12px}
+  .qcode .qc-t{font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:6px}
+  .qcode pre{margin:0; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.5; white-space:pre; color:var(--ink)}
   /* ---------- Indicateur cloud ---------- */
   .cloud-status{
     position:fixed; bottom:calc(env(safe-area-inset-bottom, 0px) + 84px); right:14px; z-index:100;
@@ -3378,6 +3381,19 @@ return {
 };
 })();
 
+/* ===== Contextes d'énoncé affichés AU RECTO des cartes d'informatique (champ `qcode`) =====
+   Une carte doit se suffire à elle-même : impossible de demander la liste d'adjacence de CMN
+   sans montrer le graphe, ni de commenter un invariant sans montrer la boucle. Ces blocs sont
+   rendus en <pre> échappé APRÈS l'énoncé, via `q._qfigHtml` — donc HORS de `q` : les hash et
+   la progression FSRS ne bougent pas. ===== */
+const IPT_CTX = {
+  compte:  "occurrences = {}\nfor mot in texte:\n    occurrences[mot] = occurrences.get(mot, 0) + 1",
+  entete:  "def mot_le_plus_frequent(texte: list[str]) -> str:\n    assert len(texte) > 0, \"le texte ne doit pas \u00eatre vide\"\n    occurrences = {}\n    ...\n    meilleur_mot = texte[0]\n    ...\n    return meilleur_mot",
+  complet: "occurrences = {}\nfor mot in texte:                      # n tours\n    occurrences[mot] = occurrences.get(mot, 0) + 1\n\nmeilleur_mot = texte[0]\nmeilleur_effectif = 0\nfor mot in texte:                      # n tours\n    if occurrences[mot] > meilleur_effectif:\n        meilleur_effectif = occurrences[mot]\n        meilleur_mot = mot",
+  capteur: "Capteur de temp\u00e9rature (flux cod\u00e9 en diff\u00e9rentiel)\n  premi\u00e8re mesure  : 8 bits non sign\u00e9s, de 0 \u00e0 255\n  mise \u00e0 l'\u00e9chelle : 0 \u2192 -25 \u00b0C   et   255 \u2192 +60 \u00b0C\n  \u00e9carts suivants : 4 bits sign\u00e9s (compl\u00e9ment \u00e0 deux)",
+  moyenne: "temperatures_brutes = [251, 250, 251, 250, 251, 250, 251, 250]\nresolution_capteur = 1/3\ntemperatures = [v * resolution_capteur - 25 for v in temperatures_brutes]\nmoyenne = sum(temperatures) / len(temperatures)\nprint(moyenne)      # 58.49999999999999   au lieu de 58.5",
+  graphe:  "graphe_vols_minutes = {           # poids = dur\u00e9e du vol, en minutes\n    \"CDG\": {\"ABJ\": 400, \"CMN\": 185, \"DEL\": 500, \"CAI\": 270},\n    \"DEL\": {\"CDG\": 595, \"CAI\": 340, \"KTM\": 105},\n    \"CAI\": {\"CDG\": 280, \"CMN\": 330, \"DEL\": 395},\n    \"CMN\": {\"CDG\": 180, \"CAI\": 290, \"ABJ\": 270},\n    \"KTM\": {\"DEL\": 130, \"LUA\": 30},\n    \"LUA\": {},\n    \"ABJ\": {\"CDG\": 395, \"CMN\": 260}\n}"
+};
 // mode: 'qcm' (choices), 'trou'/'saisie' (answer + accept[]), 'flash' (answer), 'code' (code Python exécuté)
 const QUESTIONS = [
   /* ==================== ANALYSE ==================== */
@@ -7506,6 +7522,7 @@ const QUESTIONS = [
    exp:"C'est la traduction en code d'une pré-condition (ou d'un test) : l'erreur apparaît tôt et clairement, au lieu de surgir plus loin sous une forme obscure."},
 
   {topic:'i1_vocabulaire', mode:'flash', q:"À quoi sert l'instruction <b>assert len(texte) &gt; 0</b> placée en tête de la fonction ?",
+   qcode:IPT_CTX.entete,
    answer:"À vérifier la pré-condition « texte non vide » : sans elle, <code>texte[0]</code> lèverait une <b>IndexError</b> et la question n'aurait aucun sens.",
    exp:"L'assertion interrompt le programme avec un message explicite dès que l'appelant sort du contrat, au lieu de laisser une erreur incompréhensible plus loin."},
 
@@ -7526,6 +7543,7 @@ const QUESTIONS = [
    exp:"<code>occurrences[mot] &gt; meilleur_effectif</code> et <code>occurrences[mot] == meilleur_effectif</code> en sont : à ne pas confondre avec l'affectation <code>=</code>."},
 
   {topic:'i1_vocabulaire', mode:'qcm', q:"Dans le code du DM, comment qualifie-t-on <b>occurrences.get(mot, 0)</b> ?",
+   qcode:IPT_CTX.compte,
    choices:[{t:"Une expression : elle produit une valeur sans modifier <code>occurrences</code>", c:true},
             {t:"Une instruction : elle ajoute la clé <code>mot</code> au dictionnaire", c:false},
             {t:"Une assertion : elle vérifie que <code>mot</code> est bien une clé", c:false},
@@ -7565,6 +7583,7 @@ const QUESTIONS = [
    exp:"Sur n mots dont k distincts : $O(n)$ avec un dictionnaire, $O(n\\times k)$ au pire avec une liste. L'espace occupé, lui, reste $O(k)$ dans les deux cas."},
 
   {topic:'i1_structures', mode:'qcm', q:"Après <b>occurrences = {}</b> puis la boucle de comptage sur <b>['je', 'suis', 'je']</b>, que vaut le dictionnaire ?",
+   qcode:IPT_CTX.compte, qctxTitle:"La boucle de comptage, avec texte = ['je', 'suis', 'je']",
    choices:[{t:"{'je': 2, 'suis': 1}", c:true},
             {t:"{'je': 1, 'suis': 1, 'je': 1}", c:false},
             {t:"{'je': 1, 'suis': 2}", c:false},
@@ -7610,14 +7629,17 @@ const QUESTIONS = [
    exp:"Les deux sont nécessaires : un algorithme peut s'arrêter sur un résultat faux, ou calculer juste sans jamais s'arrêter."},
 
   {topic:'i1_correction', mode:'flash', q:"Quel invariant porte la boucle qui remplit le dictionnaire <b>occurrences</b> ?",
+   qcode:IPT_CTX.compte,
    answer:"Après le traitement des k premiers mots, <b>occurrences associe à chaque mot rencontré son nombre exact d'apparitions parmi ces k mots</b>.",
    exp:"Initialisation : k = 0, dictionnaire vide. Conservation : le compteur du mot courant augmente de 1. Terminaison : k = len(texte), le comptage est complet."},
 
   {topic:'i1_correction', mode:'flash', q:"Quelle est la complexité temporelle du comptage des mots d'un texte de n mots ?",
+   qcode:IPT_CTX.complet, qctxTitle:"L'algorithme : compter, puis chercher le maximum",
    answer:"<b>$O(n)$</b> : deux boucles de n tours, chaque lecture ou écriture dans le dictionnaire coûtant $O(1)$ en moyenne.",
    exp:"$O(n)+O(n)=O(n)$ : on additionne les coûts, puis on ne garde que le terme dominant en négligeant les constantes."},
 
   {topic:'i1_correction', mode:'flash', q:"Quelle est la complexité spatiale de ce comptage, et pourquoi ?",
+   qcode:IPT_CTX.complet, qctxTitle:"L'algorithme : compter, puis chercher le maximum",
    answer:"<b>$O(k)$</b>, où k est le nombre de mots <b>distincts</b> : la seule structure créée est le dictionnaire, à une entrée par mot distinct ($k \\le n$).",
    exp:"La complexité spatiale mesure la mémoire <b>ajoutée</b> par l'algorithme, pas la taille de la donnée d'entrée déjà présente."},
 
@@ -7637,6 +7659,7 @@ const QUESTIONS = [
    exp:"Additionner deux entiers de b bits coûte $O(b)$. Le total croît donc avec le nombre d'additions <b>et</b> avec la longueur des nombres additionnés."},
 
   {topic:'i1_correction', mode:'qcm', q:"Pourquoi la boucle <b>for mot in texte</b> se termine-t-elle toujours ?",
+   qcode:IPT_CTX.compte,
    choices:[{t:"Elle parcourt une liste de longueur finie : le nombre de mots restants décroît de 1 à chaque tour", c:true},
             {t:"Parce qu'un <code>return</code> finit toujours par être atteint", c:false},
             {t:"Parce que Python limite le nombre d'itérations d'une boucle for", c:false},
@@ -7644,7 +7667,7 @@ const QUESTIONS = [
    exp:"C'est l'argument du variant : entier, minoré par 0, strictement décroissant, donc au plus len(texte) tours. Une boucle <code>while</code>, elle, exige de l'exhiber."},
   /* ---- 4. Représentation des nombres ---- */
   {topic:'i1_nombres', mode:'flash', q:"En quoi consiste le codage différentiel (compression delta) d'un flux de mesures ?",
-   answer:"À ne transmettre que la <b>première mesure brute complète</b> (8 bits ici), puis, pour chaque mesure suivante, <b>l'écart avec la précédente</b> (4 bits).",
+   answer:"À ne transmettre que la <b>première mesure brute complète</b> (sur 8 bits, par exemple), puis, pour chaque mesure suivante, <b>l'écart avec la précédente</b> (sur 4 bits).",
    exp:"Les écarts sont petits, donc codables sur peu de bits : le volume transmis et stocké est divisé par deux — décisif pour un capteur qui émet en continu."},
 
   {topic:'i1_nombres', mode:'flash', q:"Quelles valeurs un entier non signé de 8 bits peut-il prendre ?",
@@ -7652,6 +7675,7 @@ const QUESTIONS = [
    exp:"C'est le format de la première mesure du capteur, mise à l'échelle sur l'intervalle de température $[-25\\,;60]$ °C."},
 
   {topic:'i1_nombres', mode:'flash', q:"Comment obtient-on la résolution de $1/3$ °C du capteur de température ?",
+   qcode:IPT_CTX.capteur,
    answer:"En divisant l'<b>amplitude par le nombre de pas</b> : $\\dfrac{60-(-25)}{255-0}=\\dfrac{85}{255}=\\dfrac13$ °C par pas.",
    exp:"Une mesure brute de 8 bits parcourt 255 pas de 0 à 255 ; la résolution est la variation de température correspondant à un pas."},
 
@@ -7670,15 +7694,15 @@ const QUESTIONS = [
 
   {topic:'i1_nombres', mode:'flash', q:"Comment décoder une valeur brute v de 4 bits lue en complément à deux ?",
    answer:"Si $v \\gt 7$, l'entier vaut <b>$v-16$</b> ; sinon il vaut $v$ lui-même.",
-   exp:"Exemple : 1110 vaut 14 en brut, donc $14-16=-2$. C'est exactement la condition à compléter ligne 23 du DM (équivalente à $v \\ge 8$)."},
+   exp:"Exemple : 1110 vaut 14 en brut, donc $14-16=-2$. La condition $v \\gt 7$ équivaut à $v \\ge 8$, c'est-à-dire au bit de poids fort à 1."},
 
   {topic:'i1_nombres', mode:'qcm', q:"En complément à deux sur 4 bits, quel entier la valeur brute <b>1010</b> représente-t-elle ?",
    choices:[{t:"$-6$", c:true},{t:"$10$", c:false},{t:"$-10$", c:false},{t:"$-5$", c:false}],
-   exp:"$1010_2 = 10$ en brut ; comme $10 \\gt 7$, l'entier vaut $10-16=-6$. À l'échelle du capteur : $-6\\times\\frac13 = -2{,}00$ °C."},
+   exp:"$1010_2 = 10$ en brut ; comme $10 \\gt 7$, l'entier vaut $10-16=-6$. Avec une résolution de $1/3$ °C par pas, cela fait $-6\\times\\frac13 = -2{,}00$ °C."},
 
   {topic:'i1_nombres', mode:'flash', q:"Pourquoi une somme de 50 millions de mesures ne provoque-t-elle aucun dépassement de capacité en Python ?",
    answer:"Parce que le type <code>int</code> est en <b>précision arbitraire</b> : sa représentation en mémoire s'étend automatiquement, dans la limite de la mémoire disponible.",
-   exp:"Contrairement au capteur (8 bits figés) ou à un langage à entiers 64 bits, Python ne connaît pas d'<i>overflow</i> sur les entiers."},
+   exp:"50 millions de mesures valant au plus 255 donnent 12,75 milliards : bien au-delà de 8 bits. Un langage à entiers 64 bits finit par déborder ; Python, jamais."},
 
   {topic:'i1_nombres', mode:'flash', q:"$1/3$ est-il un nombre décimal, et un flottant peut-il le représenter exactement ?",
    answer:"Non dans les deux cas : $0{,}333\\ldots$ a une infinité de chiffres, et la <b>mantisse finie</b> d'un flottant n'en stocke qu'une valeur approchée.",
@@ -7693,14 +7717,16 @@ const QUESTIONS = [
    exp:"C'est l'inverse des entiers, en précision arbitraire : eux s'étendent tant qu'il reste de la mémoire. Deux types, deux comportements."},
 
   {topic:'i1_nombres', mode:'flash', q:"D'où vient l'affichage <b>58.49999999999999</b> là où le calcul exact donne 58,5 ?",
+   qcode:IPT_CTX.moyenne, qctxTitle:"Le calcul qui produit cet affichage",
    answer:"De l'<b>approximation de $1/3$</b> : l'erreur minime de représentation se propage et s'accumule dans les multiplications, puis dans la moyenne.",
    exp:"Chaque opération sur des flottants peut réintroduire un arrondi ; sur une longue chaîne de calculs, ces arrondis finissent par se voir au dernier chiffre."},
 
   {topic:'i1_nombres', mode:'flash', q:"Comment tester l'égalité de deux flottants dans un jeu de tests ?",
    answer:"Jamais avec <code>==</code> : on compare <b>à une tolérance près</b>, par exemple <code>assert abs(a - b) &lt; 1e-9</code>.",
-   exp:"<code>assert moyenne == 58.5</code> échoue ici alors que le calcul est juste : les arrondis rendent l'égalité exacte illusoire entre flottants."},
+   exp:"Une moyenne qui vaut mathématiquement 58,5 peut être stockée 58.49999999999999 : <code>assert moyenne == 58.5</code> échoue alors que le calcul est juste."},
 
   {topic:'i1_nombres', mode:'flash', q:"Écrire <b>0.33</b> au lieu de <b>1/3</b> : est-ce la même cause que l'imprécision des flottants ?",
+   qcode:IPT_CTX.capteur,
    answer:"Non : c'est une <b>erreur de modélisation</b> (troncature décimale volontaire, environ 1 %), sans rapport avec l'arrondi binaire, lui de l'ordre de $10^{-16}$.",
    exp:"Sur une mesure brute de 255, l'écart atteint $255\\times(1/3-0{,}33)\\approx 0{,}85$ °C : incomparablement plus grand que l'erreur de représentation."},
 
@@ -7754,14 +7780,15 @@ const QUESTIONS = [
      {label:"\\text{aucun vol au départ de LUA}", at:[3.2,-1.3], place:'center'}]}},
 
   {topic:'i1_graphes', mode:'qcm', q:"À quoi reconnaît-on, dans un dictionnaire de dictionnaires, que le graphe des durées de vol est <b>orienté</b> ?",
+   qcode:IPT_CTX.graphe,
    choices:[{t:"La relation n'est pas symétrique : KTM→LUA existe (30 min) alors que LUA n'a aucune destination", c:true},
             {t:"Les poids sont des durées et non des distances", c:false},
             {t:"Certains sommets ont plus de trois voisins", c:false},
             {t:"Les poids sont des entiers et non des flottants", c:false}],
-   exp:"Dans le graphe des distances, CDG→ABJ et ABJ→CDG valent tous deux 4900 : la relation y est symétrique, le graphe est donc non orienté."},
+   exp:"Si tous les poids étaient symétriques — comme dans le graphe des distances, où CDG→ABJ et ABJ→CDG valent 4900 — le graphe serait non orienté."},
 
   {topic:'i1_graphes', mode:'flash', q:"Qu'est-ce qu'une liste d'adjacence, et comment la code-t-on en Python ?",
-   answer:"La donnée, <b>pour chaque sommet, de ses voisins</b> — codée ici par un <b>dictionnaire de dictionnaires</b> {sommet : {voisin : poids}}.",
+   answer:"La donnée, <b>pour chaque sommet, de ses voisins</b> — codée en Python par un <b>dictionnaire de dictionnaires</b> {sommet : {voisin : poids}}.",
    exp:"<code>graphe[\"CMN\"]</code> vaut {\"CDG\": 180, \"CAI\": 290, \"ABJ\": 270} : les trois vols directs au départ de Casablanca, avec leurs durées.",
    fig:{window:[-2.6,8.6,-2.6,4.4], size:330, items:[
      {segment:[[0,3],[-1.6,1.6]], label:"1930", at:'left'},
@@ -7783,7 +7810,7 @@ const QUESTIONS = [
 
   {topic:'i1_graphes', mode:'flash', q:"Qu'est-ce que la matrice d'adjacence d'un graphe pondéré, et quelle place occupe-t-elle ?",
    answer:"Un tableau dont la case $(i,j)$ porte le poids de l'arc de i vers j (INFINI s'il n'existe pas) : <b>$|S|^2$ cases</b>, toujours.",
-   exp:"Il faut fixer l'ordre des sommets : <code>sommets_liste[i]</code> désigne la ligne et la colonne i. Ici 7 aéroports, donc 49 cases, dont une majorité d'INFINI."},
+   exp:"Il faut fixer l'ordre des sommets : <code>sommets_liste[i]</code> désigne la ligne et la colonne i. Pour 7 aéroports : 49 cases, dont une majorité d'INFINI."},
 
   {topic:'i1_graphes', mode:'flash', q:"Quelle propriété caractérise la matrice d'adjacence d'un graphe non orienté ?",
    answer:"Elle est <b>symétrique</b> : $M[i][j]=M[j][i]$ pour tous i et j. Ce n'est en général pas vrai pour un graphe orienté.",
@@ -7791,17 +7818,18 @@ const QUESTIONS = [
 
   {topic:'i1_graphes', mode:'flash', q:"Liste d'adjacence ou matrice d'adjacence : comment choisir ?",
    answer:"<b>Graphe creux</b> (peu d'arêtes) → liste d'adjacence, place proportionnelle à $|S|+|A|$ ; <b>graphe dense</b> → matrice, test d'existence d'un arc en $O(1)$.",
-   exp:"Ici 7 sommets et 9 vols : la matrice gaspillerait 49 cases presque toutes à INFINI, contre environ 25 « unités » de stockage pour la liste d'adjacence."},
+   exp:"Avec 7 sommets et 9 vols directs, la matrice gaspille 49 cases presque toutes à INFINI, contre environ 25 « unités » de stockage pour la liste d'adjacence."},
 
   {topic:'i1_graphes', mode:'flash', q:"Qu'est-ce qu'une boucle dans un graphe ?",
-   answer:"Un <b>arc (ou une arête) d'un sommet vers lui-même</b>. Aucun des deux graphes de vols n'en comporte.",
+   answer:"Un <b>arc (ou une arête) d'un sommet vers lui-même</b>. Un réseau de vols n'en comporte pas.",
    exp:"Une boucle de poids 100 sur CAI signifierait un vol Le Caire → Le Caire de 100 km ou de 100 min : dépourvu de sens pour un vol commercial."},
 
   {topic:'i1_graphes', mode:'flash', q:"Comment définit-on les degrés entrant et sortant d'un sommet d'un graphe orienté ?",
    answer:"$d^+$ est le nombre d'<b>arcs qui en partent</b>, $d^-$ le nombre d'<b>arcs qui y arrivent</b>.",
-   exp:"Ici $d^+(\\text{CDG})=d^-(\\text{CDG})=4$, tandis que $d^+(\\text{LUA})=0$ et $d^-(\\text{LUA})=1$ : on atterrit à Lukla, aucun vol n'en repart."},
+   exp:"Exemple : un aéroport d'où partent 4 vols et où 4 vols arrivent a $d^+=d^-=4$ ; un aéroport où l'on ne fait qu'atterrir a $d^+=0$ et $d^-\\ge 1$."},
 
   {topic:'i1_graphes', mode:'qcm', q:"Quelle est la liste d'adjacence du sommet CMN dans le graphe des durées de vol ?",
+   qcode:IPT_CTX.graphe,
    choices:[{t:"{CDG : 180, CAI : 290, ABJ : 270}", c:true},
             {t:"{CDG : 1930, CAI : 3681, ABJ : 3146}", c:false},
             {t:"{CDG : 185, CAI : 330, ABJ : 260}", c:false},
@@ -9034,6 +9062,12 @@ function buildLiaisonRecap(){
     if(q && q.aimg && typeof LIAISON_IMG!=='undefined' && LIAISON_IMG[q.aimg]){ q.exp=(q.exp?q.exp+'<br>':'')+'<div class="qfig"><img src="'+LIAISON_IMG[q.aimg]+'" alt="sch\u00e9ma normalis\u00e9 de la liaison" style="max-width:100%;max-height:300px;background:#fff;border-radius:8px;padding:6px;box-sizing:border-box"></div>'; }
     /* recap : construit une fiche de synthèse (tableau) dans `exp`. Additif, ne touche pas `q`. */
     if(q && q.recap==='liaisons'){ try{ q.exp=(q.exp?q.exp+'<br>':'')+buildLiaisonRecap(); }catch(e){ if(window.console&&console.error) console.error('RECAP',e); } }
+    /* qcode : contexte de l'énoncé (code, données, caractéristiques d'un capteur) affiché AU RECTO.
+       Échappé, donc aucun « < » ne peut manger le texte ; vit hors de `q` → qHash/SRS intacts. */
+    if(q && q.qcode){
+      q._qfigHtml = (q._qfigHtml||'') + '<div class="qcode"><div class="qc-t">' + (q.qctxTitle || 'Contexte de l\u2019énoncé')
+                  + '</div><pre>' + escCode(q.qcode) + '</pre></div>';
+    }
     /* mode 'code' : la solution de référence est ACCOLÉE à `answer` (échappée, donc aucun « < »
        ne peut manger le texte). `q` reste intouché → qHash et progression FSRS intacts. */
     if(q && q.mode==='code' && q.code && q.code.sol && !q._codeSolDone){
