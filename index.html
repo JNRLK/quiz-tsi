@@ -972,6 +972,7 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
           <button class="btn ghost mini icon-only" id="juryBtn" aria-label="Mot du jury" title="Mot du jury"><span class="bi" aria-hidden="true">📋</span><span class="bl">Mot du jury</span></button>
           <button class="btn ghost mini icon-only" id="coursIconBtn" aria-label="Cours" title="Lire le cours chapitre par chapitre"><span class="bi" aria-hidden="true">📚</span><span class="bl">Cours</span></button>
           <button class="btn ghost mini icon-only" id="dsIconBtn" aria-label="Révision de DS" title="DS blancs : cours à maîtriser et exercices corrigés"><span class="bi" aria-hidden="true">📝</span><span class="bl">DS blancs</span></button>
+          <button class="btn ghost mini icon-only" id="edtIconBtn" aria-label="Emploi du temps" title="Emploi du temps : colles, TP, DS de la semaine"><span class="bi" aria-hidden="true">📅</span><span class="bl">Emploi du temps</span></button>
           <button class="btn ghost mini icon-only" id="lbIconBtn" aria-label="Classement" title="Classement de ma classe"><span class="bi" aria-hidden="true">🏅</span><span class="bl">Classement</span></button>
           <button class="btn ghost mini icon-only" id="histoIconBtn" aria-label="Mes oraux" title="Mes oraux : notes, temps et sujets traités"><span class="bi" aria-hidden="true">📋</span><span class="bl">Mes oraux</span></button>
           <button class="btn ghost mini icon-only" id="advBtn" aria-pressed="false" aria-label="Inclure l'approfondissement" title="Cartes théoriques avancées (approfondissement) — s'applique à tous les modes"><span class="bi" aria-hidden="true">➕</span><span class="bl">Approfondissement</span></button>
@@ -7968,7 +7969,7 @@ const QUESTIONS = [
 /* Bascule d'écran : une seule liste, pour qu'un écran ajouté plus tard ne soit pas oublié
    dans l'une des vues (c'était le cas de coursScreen, absent de toutes les listes). */
 const ALL_SCREENS = ['startScreen','quizScreen','resultScreen','statsScreen','adminScreen','juryScreen',
-                     'examScreen','leaderboardScreen','coursScreen','colleScreen','colleHistoScreen','oralScreen','dsScreen'];
+                     'examScreen','leaderboardScreen','coursScreen','colleScreen','colleHistoScreen','oralScreen','dsScreen','edtScreen'];
 function hideScreens(){ ALL_SCREENS.forEach(id=>{ const e=$('#'+id); if(e) e.classList.add('hidden'); }); }
 let selected = new Set(); // P1 : opt-in — aucun chapitre coché par défaut
 let selectedMode = 'all';
@@ -12397,6 +12398,354 @@ function dsUpdateScore(){
     document.getElementById('dsHome').onclick=()=>{ scr.classList.add('hidden'); const st=$('#startScreen'); if(st){ st.classList.remove('hidden'); st.scrollIntoView({behavior:'smooth',block:'start'}); } };
   }
   const b=$('#dsIconBtn'); if(b) b.onclick=()=>showDS();
+})();
+
+/* ═══════════════════ EMPLOI DU TEMPS — TSI 2 Chaptal 2026-2027 ═══════════════════
+   Sources : EDT_TSI2_26-27.pdf · Colloscope_TSI2_26-27.pdf · Calendrier DS_TSI2_26-27.pdf
+   Un seul choix est demandé à l'élève — son numéro de trinôme, ex. « 3.1 ». On en déduit
+   le groupe de colle (3), la rotation TP (groupes 1-4 → TP1, 5-7 → TP2) et le créneau de français.
+   Lecture du colloscope : un numéro dans une case = ce groupe fait TOUTES les colles du bloc
+   cette semaine-là (3 pour un bloc du haut, 2 pour un bloc du bas), d'où 2 à 4 colles par semaine
+   une fois le français ajouté. Les couleurs rouge/vert du PDF ne marquent que l'alternance
+   des quinzaines : elles ne portent aucune information de matière. */
+const EDT = (function(){
+  /* Les 44 semaines se suivent sans trou depuis le lundi 31 août 2026 (semaine 36). */
+  const LUNDI0 = Date.UTC(2026, 7, 31);
+  const NUM = []; for(let n=36;n<=53;n++) NUM.push(n); for(let n=1;n<=26;n++) NUM.push(n);
+  const COLLO0 = 2;   // la 1re colonne du colloscope (semaine 38) est la 3e semaine de l'année
+
+  /* Grille hebdomadaire fixe. j : 0=lundi … 5=samedi */
+  const GRILLE = [
+    {j:0, h:'8h00 – 11h55',  t:'Maths',            s:'L74'},
+    {j:0, h:'13h00 – 14h50', t:'Physique-Chimie',  s:'L74'},
+    {j:0, h:'15h05 – 19h00', t:'Colles',           s:'', colle:true},
+    {j:1, h:'8h00 – 9h50',   t:'Physique-Chimie',  s:'L74'},
+    {j:1, h:'10h05 – 11h55', t:'SI',               s:'L74'},
+    {j:1, h:'13h00 – 14h50', t:'Maths',            s:'L74'},
+    {j:1, h:'15h05 – 16h55', t:'Français',         s:'Bernouilli 1'},
+    {j:1, h:'17h00 – 19h00', t:'Colles',           s:'', colle:true},
+    {j:2, h:'8h00 – 9h50',   t:'SI',               s:'L74'},
+    {j:2, h:'10h05 – 11h55', t:'Maths',            s:'L74'},
+    {j:2, h:'13h00 – 13h55', t:'Anglais',          s:'Bernouilli 1'},
+    {j:2, h:'14h00 – 14h55', t:'Français',         s:'Bernouilli 1'},
+    {j:2, h:'15h05 – 19h00', t:'Colles',           s:'', colle:true},
+    {j:3, h:'8h00 – 9h50',   t:'Anglais',          s:'Bernouilli 1'},
+    {j:3, h:'10h05 – 11h55', t:'Maths',            s:'L74'},
+    {j:3, h:'13h00 – 14h50', t:'Physique-Chimie',  s:'L74'},
+    {j:3, h:'15h05 – 17h55', t:'TP SI',            s:'Labo L52', tp:'A'},
+    {j:3, h:'15h05 – 19h00', t:'Colles',           s:'', colle:true},
+    {j:4, h:'8h00 – 9h50',   t:'TIPE',             s:'L74',            tp:'A'},
+    {j:4, h:'8h00 – 9h50',   t:'TP PC',            s:'Labo Phys. Spé', tp:'B'},
+    {j:4, h:'10h05 – 11h55', t:'TP PC',            s:'Labo Phys. Spé', tp:'A'},
+    {j:4, h:'10h05 – 12h55', t:'TP SI',            s:'Labo L52',       tp:'B'},
+    {j:4, h:'14h00 – 15h30', t:'Informatique',     s:'Salle Info'},
+    {j:5, h:'8h00 – 12h00',  t:'DS',               s:'', ds:true}
+  ];
+
+  /* Les 8 blocs de colles. Un bloc « haut » porte 3 matières, un bloc « bas » 2. */
+  const BLOCS = [
+    {id:'H1', c:[['Maths',2,'16h','Mme CREUSE'],  ['Anglais',2,'18h','Mme YOUSFI'],   ['SI',1,'17h','M. DIDIER']]},
+    {id:'H2', c:[['Maths',0,'15h','Mme RASKINE'], ['Anglais',3,'17h','Mme WHITELEY'], ['SI',2,'17h','M. GERGADIER']]},
+    {id:'H3', c:[['Maths',2,'15h','M. KARAGOZ'],  ['Anglais',2,'17h','Mme YOUSFI'],   ['SI',3,'18h','M. DIJON']]},
+    {id:'H4', c:[['Maths',0,'16h','Mme RASKINE'], ['Anglais',3,'17h','M. LAURENT'],   ['SI',2,'16h','M. GALOPIN']]},
+    {id:'B1', c:[['Maths',2,'15h','M. SABATINI'], ['Physique',4,'12h','M. DUPEYRAT']]},
+    {id:'B2', c:[['Maths',2,'15h','Mme MARCUS'],  ['Physique',0,'16h','Mme DEVAILLY']]},
+    {id:'B3', c:[['Maths',0,'16h','M. HERVE'],    ['Physique',4,'12h','M. DUMONT']]},
+    {id:'B4', c:[['Maths',2,'15h','M. BUSSON'],   ['Physique',0,'15h','Mme DEVAILLY']]}
+  ];
+
+  /* Colloscope : pour chaque bloc, le groupe qui passe, semaine 38 → semaine 13. 0 = pas de colle. */
+  const COLLO = {
+    H1:[1,5,2,6,3,0,0,7,4,0,1,5,2,6,0,0,0,3,7,4,0,0,0,1,5,2,6,3,7],
+    H2:[2,6,3,7,4,0,0,0,1,5,2,6,3,7,0,0,0,4,0,1,5,0,0,2,6,3,7,4,0],
+    H3:[3,7,4,0,1,0,0,5,2,6,3,7,4,0,0,0,0,1,5,2,6,0,0,3,7,4,0,1,5],
+    H4:[4,0,1,5,2,0,0,6,3,7,4,0,1,5,0,0,0,2,6,3,7,0,0,4,0,1,5,2,6],
+    B1:[5,1,6,2,7,0,0,3,0,4,5,1,6,2,0,0,0,7,3,0,4,0,0,5,1,6,2,7,3],
+    B2:[6,2,7,3,0,0,0,4,5,1,6,2,7,3,0,0,0,0,4,5,1,0,0,6,2,7,3,0,4],
+    B3:[7,3,0,4,5,0,0,1,6,2,7,3,0,4,0,0,0,5,1,6,2,0,0,7,3,0,4,5,1],
+    B4:[0,4,5,1,6,0,0,2,7,3,0,4,5,1,0,0,0,6,2,7,3,0,0,0,4,5,1,6,2]
+  };
+
+  /* Colles de français (M. GODET), le jeudi. Le colloscope ne les renseigne que jusqu'à la semaine 50 :
+     au-delà les cases sont vides dans le PDF — c'est « non communiqué », pas « aucune colle ». */
+  const FR_H = ['16h','16h30','17h','17h30'];
+  const FR = [
+    ['5.1','1.1','6.2','2.2','', '','', '4.2','7.3','1.3','6.1','4.2','7.2','', '','','', '','','','', '','','', '','','','',''],
+    ['5.2','1.2','6.3','3.1','', '','', '4.3','5.1','2.1','6.2','4.3','7.3','', '','','', '','','','', '','','', '','','','',''],
+    ['5.3','1.3','7.1','3.2','', '','', '1.1','5.2','2.2','6.3','3.1','',   '', '','','', '','','','', '','','', '','','','',''],
+    ['6.1','2.1','7.2','4.1','', '','', '1.2','5.3','4.1','7.1','3.2','',   '', '','','', '','','','', '','','', '','','','','']
+  ];
+  const FR_DERNIERE = 50;   // dernière semaine réellement renseignée dans le PDF
+
+  /* Rotation des TP. Pour chaque semaine de cours, le groupe qui suit la rotation A
+     (jeudi 15h TP SI + vendredi 8h TIPE + vendredi 10h TP PC) ; l'autre suit la rotation B
+     (vendredi 8h TP PC + vendredi 10h TP SI). */
+  const TP_A = {38:2,39:1,40:2,41:1,42:2, 45:1,46:2,47:1,48:2,49:1,50:2,51:1,
+                2:2,3:1,4:2,5:1, 8:2,9:1,10:2,11:1,12:2,13:1};
+
+  /* Calendrier des DM et DS, par numéro de semaine. */
+  const CAL = {
+    36:{dm:'PC',                  ds:'SI — Révisions'},
+    37:{dm:'Anglais · Info',      ds:'Maths'},
+    38:{dm:'SI',                  ds:'PC'},
+    39:{dm:'Maths',               ds:'Anglais (2h) · Info (2h)'},
+    40:{dm:'PC',                  ds:'SI'},
+    41:{dm:'Français',            ds:'Maths'},
+    42:{dm:'SI',                  ds:'PC'},
+    43:{dm:'1 par matière',       conge:'Congés de la Toussaint'},
+    44:{dm:'1 par matière',       conge:'Congés de la Toussaint'},
+    45:{dm:'Maths',               ds:'Français'},
+    46:{dm:'PC',                  ds:'SI',            ferie:'Armistice — mercredi 11/11'},
+    47:{dm:'Anglais',             ds:'Maths'},
+    48:{dm:'Modélisation · Info', ds:'PC'},
+    49:{dm:'SI',                  ds:'Anglais (3h) · Info (1h)'},
+    50:{dm:'Info',                ds:'Modélisation (3h) · Info (1h)'},
+    51:{dm:'Français',            ds:'SI (6h)'},
+    52:{dm:'1 par matière',       conge:'Congés de Noël'},
+    53:{dm:'1 par matière',       conge:'Congés de Noël'},
+     1:{special:'Concours blanc'},
+     2:{dm:'Maths',               ds:'Info'},
+     3:{dm:'PC',                  ds:'Français'},
+     4:{dm:'SI',                  ds:'Maths'},
+     5:{dm:'Anglais',             ds:'PC'},
+     6:{dm:'1 par matière',       conge:'Congés de février'},
+     7:{dm:'1 par matière',       conge:'Congés de février'},
+     8:{dm:'Maths',               ds:'SI (6h)'},
+     9:{dm:'PC',                  ds:'Anglais'},
+    10:{dm:'Français · Info',     ds:'Maths'},
+    11:{dm:'SI',                  ds:'PC'},
+    12:{dm:'Maths ?',             ds:'Français (semaine) · Info (samedi)'},
+    13:{special:'Révision aux écrits', ferie:'Pâques — lundi 29/03'},
+    14:{special:'Révision autonome aux écrits', conge:'Congés de Pâques'},
+    15:{special:'Révision autonome aux écrits', conge:'Congés de Pâques'},
+    16:{special:'Concours écrits CCINP', aconfirmer:true},
+    17:{ferie:'Fête du travail — samedi 01/05'},
+    18:{special:'Concours écrits Centrale-Supélec', aconfirmer:true},
+    19:{special:'Préparation aux oraux'},
+    20:{special:'Préparation aux oraux', ferie:'Pentecôte — lundi 17/05'},
+    21:{special:'Préparation aux oraux'},
+    22:{special:'Préparation aux oraux'},
+    23:{special:'Préparation aux oraux'},
+    24:{special:'Préparation aux oraux'},
+    25:{special:'Oraux de concours', aconfirmer:true},
+    26:{special:'Oraux de concours', aconfirmer:true}
+  };
+
+  /* Les trinômes, sans les noms : chacun connaît le sien, et l'annuaire de la classe
+     n'a pas à être publié sur un site ouvert. */
+  const TRINOMES = ['1.1','1.2','1.3','2.1','2.2','2.3','3.1','3.2','3.3',
+                    '4.1','4.2','4.3','5.1','5.2','5.3','6.1','6.2','6.3','7.1','7.2','7.3'];
+
+  const lundiDe = i => new Date(LUNDI0 + i*7*86400000);
+  const groupeDe = t => parseInt(String(t||'').split('.')[0], 10) || 0;
+  const tpDe = t => { const g = groupeDe(t); return g ? (g<=4 ? 1 : 2) : 0; };
+
+  return {NUM, COLLO0, GRILLE, BLOCS, COLLO, FR, FR_H, FR_DERNIERE, TP_A, CAL, TRINOMES,
+          lundiDe, groupeDe, tpDe, J:['lundi','mardi','mercredi','jeudi','vendredi','samedi']};
+})();
+
+/* ── Emploi du temps : état, résolution du trinôme, rendu ─────────────────────── */
+let _edtTab = 'semaine';
+let _edtIdx = null;
+
+function edtProfil(){ try{ return JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); }catch(e){ return {}; } }
+function edtTrinome(){ return edtProfil().trinome || ''; }
+async function edtSetTrinome(v){
+  const p = edtProfil(); p.trinome = v || null;
+  try{ localStorage.setItem('quiztsi_profile', JSON.stringify(p)); }catch(e){}
+  try{ if(typeof Cloud!=='undefined' && Cloud.saveProfile) await Cloud.saveProfile({trinome: v||null}); }catch(e){}
+  renderEDT();
+}
+
+const _edtMin = h => { const m=/^(\d+)h(\d*)$/.exec(h||''); return m ? (+m[1])*60 + (+m[2]||0) : 0; };
+const _edtMois = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+function _edtDate(d){ return d.getUTCDate()+' '+_edtMois[d.getUTCMonth()]; }
+
+/* Index de la semaine contenant une date donnée, borné aux 44 semaines de l'année scolaire. */
+function edtIdxDe(date){
+  const t = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  const i = Math.floor((t - EDT.lundiDe(0).getTime()) / (7*86400000));
+  return Math.max(0, Math.min(EDT.NUM.length-1, i));
+}
+
+/* Les colles d'un trinôme pour une semaine donnée, triées par jour puis par heure. */
+function edtColles(tri, i){
+  const c = i - EDT.COLLO0, g = EDT.groupeDe(tri);
+  if(c<0 || c>28 || !g) return [];
+  const out = [];
+  const bloc = EDT.BLOCS.find(b => EDT.COLLO[b.id][c] === g);
+  if(bloc) for(const [m,j,h,k] of bloc.c) out.push({m,j,h,k});
+  for(let r=0;r<4;r++) if(EDT.FR[r][c] === tri) out.push({m:'Français', j:3, h:EDT.FR_H[r], k:'M. GODET'});
+  out.sort((a,b) => a.j - b.j || _edtMin(a.h) - _edtMin(b.h));
+  return out;
+}
+
+/* Les TP d'un trinôme pour une semaine donnée. Les groupes 1-4 sont TP1, les 5-7 TP2 ;
+   le colloscope dit lequel des deux suit la rotation A cette semaine-là. */
+function edtTP(tri, i){
+  const a = EDT.TP_A[EDT.NUM[i]], tp = EDT.tpDe(tri);
+  if(!a || !tp) return [];
+  const rot = (tp === a) ? 'A' : 'B';
+  return EDT.GRILLE.filter(x => x.tp === rot).sort((x,y)=> x.j-y.j || _edtMin(x.h) - _edtMin(y.h));
+}
+
+/* Jours restants avant le premier écrit (semaine 16, sous réserve de confirmation SCEI). */
+function edtJoursEcrits(){
+  const cible = EDT.lundiDe(EDT.NUM.indexOf(16));
+  const now = new Date();
+  const t = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((cible.getTime() - t) / 86400000);
+}
+
+const _edtBadge = 'display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.02em';
+const _edtLigne = 'display:flex;gap:10px;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--line)';
+
+function _edtOngletsHTML(){
+  const t = [['semaine','Ma semaine'],['grille','La grille'],['annee',"L'année"]];
+  return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">'
+    + t.map(([k,l])=>'<button class="btn '+(k===_edtTab?'':'ghost')+'" data-edttab="'+k+'" style="padding:6px 14px;font-size:13px">'+l+'</button>').join('')
+    + '</div>';
+}
+
+function _edtSemaineHTML(){
+  const tri = edtTrinome();
+  const i = (_edtIdx === null) ? edtIdxDe(new Date()) : _edtIdx;
+  const sem = EDT.NUM[i], lundi = EDT.lundiDe(i), samedi = new Date(lundi.getTime() + 5*86400000);
+  const cal = EDT.CAL[sem] || {};
+  let h = '';
+
+  /* Sélecteur de trinôme — numéros seuls, jamais les noms. */
+  if(!tri){
+    h += '<div style="background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px">'
+      + '<p class="section-label" style="margin:0 0 4px">Quel est ton numéro de groupe ?</p>'
+      + '<p style="color:var(--muted);font-size:12.5px;margin:0 0 12px;line-height:1.45">Il est écrit dans le colloscope, à côté de ton nom (par exemple <b>3.1</b>). Tout le reste — ton groupe de colle, ta rotation de TP, ton créneau de français — en découle.</p>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:6px">'
+      + EDT.TRINOMES.map(t=>'<button class="btn ghost" data-edttri="'+t+'" style="padding:6px 12px;font-size:13px;font-variant-numeric:tabular-nums">'+t+'</button>').join('')
+      + '</div></div>';
+  }
+
+  h += '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">'
+    + '<button class="btn ghost" data-edtnav="-1" style="padding:4px 11px;font-size:13px"'+(i<=0?' disabled':'')+'>←</button>'
+    + '<div style="flex:1;min-width:160px"><b style="font-size:16px">Semaine '+sem+'</b>'
+    + '<span style="color:var(--muted);font-size:13px"> · '+_edtDate(lundi)+' → '+_edtDate(samedi)+'</span></div>'
+    + '<button class="btn ghost" data-edtnav="1" style="padding:4px 11px;font-size:13px"'+(i>=EDT.NUM.length-1?' disabled':'')+'>→</button>'
+    + '</div>';
+
+  if(cal.conge)  h += '<p style="'+_edtBadge+';background:var(--info-text);color:var(--on-ink)">'+cal.conge+'</p>';
+  if(cal.special) h += '<p style="'+_edtBadge+';background:var(--accent);color:var(--on-accent)">'+cal.special
+      + (cal.aconfirmer ? ' — date à confirmer' : '') + '</p>';
+  if(cal.ferie)  h += '<p style="color:var(--warn-text);font-size:12.5px;margin:6px 0">Férié : '+cal.ferie+'</p>';
+
+  const colles = tri ? edtColles(tri, i) : [];
+  const tps = tri ? edtTP(tri, i) : [];
+
+  if(tri){
+    h += '<p class="section-label" style="margin:16px 0 2px">Colles — '+(colles.length||'aucune')+(colles.length>1?' cette semaine':'')+'</p>';
+    if(colles.length) h += colles.map(c =>
+        '<div style="'+_edtLigne+'"><span style="min-width:96px;color:var(--muted);font-size:13px">'+EDT.J[c.j]+' '+c.h+'</span>'
+      + '<b style="flex:1">'+c.m+'</b><span style="color:var(--muted);font-size:13px">'+c.k+'</span></div>').join('');
+    else h += '<p style="color:var(--muted);font-size:13px;margin:4px 0">Pas de colle programmée cette semaine.</p>';
+
+    if(tps.length){
+      h += '<p class="section-label" style="margin:16px 0 2px">TP — groupe TP'+EDT.tpDe(tri)+'</p>';
+      h += tps.map(x =>
+        '<div style="'+_edtLigne+'"><span style="min-width:96px;color:var(--muted);font-size:13px">'+EDT.J[x.j]+' '+x.h+'</span>'
+      + '<b style="flex:1;white-space:nowrap">'+x.t+'</b><span style="color:var(--muted);font-size:13px">'+x.s+'</span></div>').join('');
+    }
+    if(sem > EDT.FR_DERNIERE && sem < 36)
+      h += '<p style="color:var(--muted);font-size:12px;margin:10px 0 0;line-height:1.45">Les colles de français du second semestre ne sont pas encore publiées dans le colloscope — elles s’ajouteront à cette liste.</p>';
+  }
+
+  if(cal.dm || cal.ds){
+    h += '<p class="section-label" style="margin:18px 0 2px">Devoirs</p>';
+    if(cal.dm) h += '<div style="'+_edtLigne+'"><span style="min-width:96px;color:var(--muted);font-size:13px">DM (5h)</span>'
+      + '<b style="flex:1">'+cal.dm+'</b><span style="color:var(--muted);font-size:13px">à rendre semaine '+EDT.NUM[Math.min(i+1,EDT.NUM.length-1)]+'</span></div>';
+    if(cal.ds) h += '<div style="'+_edtLigne+'"><span style="min-width:96px;color:var(--muted);font-size:13px">DS (4h)</span>'
+      + '<b style="flex:1">'+cal.ds+'</b><span style="color:var(--muted);font-size:13px">samedi 8h</span></div>';
+  }
+
+  const j = edtJoursEcrits();
+  if(j > 0) h += '<p style="margin:20px 0 0;color:var(--muted);font-size:13px">⏳ <b style="color:var(--ink)">'+j+' jours</b> avant les écrits CCINP <span style="'+_edtBadge+';background:var(--panel-2);color:var(--warn-text)">date à confirmer</span></p>';
+  return h;
+}
+
+function _edtGrilleHTML(){
+  const tri = edtTrinome(), tp = EDT.tpDe(tri);
+  let h = '<p style="color:var(--muted);font-size:12.5px;margin:0 0 12px;line-height:1.45">La grille fixe de la semaine. '
+    + (tp ? 'Les TP marqués <b>rotation A</b> et <b>rotation B</b> alternent d’une semaine à l’autre — regarde « Ma semaine » pour savoir lequel s’applique.'
+          : 'Choisis ton numéro de groupe dans « Ma semaine » pour que tes TP soient résolus.') + '</p>';
+  h += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:520px">';
+  for(let j=0;j<6;j++){
+    const lignes = EDT.GRILLE.filter(x=>x.j===j).sort((a,b)=>_edtMin(a.h)-_edtMin(b.h));
+    if(!lignes.length) continue;
+    h += '<tr><td colspan="3" style="padding:12px 0 4px"><b style="text-transform:capitalize">'+EDT.J[j]+'</b></td></tr>';
+    for(const x of lignes){
+      const note = x.tp ? ' <span style="'+_edtBadge+';background:var(--panel-2);color:var(--muted)">rotation '+x.tp+'</span>' : '';
+      h += '<tr style="border-bottom:1px solid var(--line)">'
+        + '<td style="padding:6px 10px 6px 0;color:var(--muted);white-space:nowrap">'+x.h+'</td>'
+        + '<td style="padding:6px 10px 6px 0"><b>'+x.t+'</b>'+note+'</td>'
+        + '<td style="padding:6px 0;color:var(--muted);text-align:right">'+(x.s||'')+'</td></tr>';
+    }
+  }
+  return h + '</table></div>';
+}
+
+function _edtAnneeHTML(){
+  const ici = edtIdxDe(new Date());
+  let h = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:520px">'
+    + '<tr style="color:var(--muted);text-align:left"><th style="padding:4px 8px 8px 0;font-weight:600">Semaine</th>'
+    + '<th style="padding:4px 8px 8px 0;font-weight:600">DM</th><th style="padding:4px 0 8px;font-weight:600">DS du samedi</th></tr>';
+  for(let i=0;i<EDT.NUM.length;i++){
+    const sem = EDT.NUM[i], cal = EDT.CAL[sem] || {}, lundi = EDT.lundiDe(i);
+    const now = (i === ici);
+    const fond = now ? 'background:var(--panel-2);' : (cal.conge ? 'opacity:.55;' : '');
+    h += '<tr style="'+fond+'border-bottom:1px solid var(--line)">'
+      + '<td style="padding:6px 8px 6px 0;white-space:nowrap"><b>'+sem+'</b> <span style="color:var(--muted)">'+_edtDate(lundi)+'</span>'
+      + (now ? ' <span style="'+_edtBadge+';background:var(--accent);color:var(--on-accent)">cette semaine</span>' : '') + '</td>';
+    if(cal.special) h += '<td colspan="2" style="padding:6px 0;color:var(--accent-soft)"><b>'+cal.special+'</b>'
+      + (cal.aconfirmer ? ' <span style="'+_edtBadge+';background:var(--panel-2);color:var(--warn-text)">à confirmer</span>' : '')+'</td>';
+    else h += '<td style="padding:6px 8px 6px 0;color:var(--muted)">'+(cal.dm||'—')+'</td>'
+           + '<td style="padding:6px 0">'+(cal.ds||(cal.conge?'<span style="color:var(--muted)">'+cal.conge+'</span>':'—'))+'</td>';
+    h += '</tr>';
+  }
+  return h + '</table></div>';
+}
+
+function renderEDT(){
+  const host = $('#edtBody'); if(!host) return;
+  host.innerHTML = _edtOngletsHTML()
+    + (_edtTab==='grille' ? _edtGrilleHTML() : _edtTab==='annee' ? _edtAnneeHTML() : _edtSemaineHTML());
+  host.querySelectorAll('[data-edttab]').forEach(b => b.onclick = () => { _edtTab = b.dataset.edttab; renderEDT(); });
+  host.querySelectorAll('[data-edttri]').forEach(b => b.onclick = () => edtSetTrinome(b.dataset.edttri));
+  host.querySelectorAll('[data-edtnav]').forEach(b => b.onclick = () => {
+    const i = (_edtIdx === null) ? edtIdxDe(new Date()) : _edtIdx;
+    _edtIdx = Math.max(0, Math.min(EDT.NUM.length-1, i + (+b.dataset.edtnav)));
+    renderEDT();
+  });
+}
+
+function showEDT(){
+  hideScreens();
+  const s = $('#edtScreen');
+  if(s){ s.classList.remove('hidden'); renderEDT(); s.scrollIntoView({behavior:'smooth', block:'start'}); }
+}
+
+/* Écran injecté (même patron que Cours / DS blancs) + bouton d'en-tête */
+(function(){
+  const anchor = document.getElementById('juryScreen') || document.getElementById('startScreen');
+  if(anchor && !document.getElementById('edtScreen')){
+    const scr = document.createElement('div'); scr.className = 'card hidden'; scr.id = 'edtScreen';
+    scr.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">'
+      + '<p class="section-label" style="margin:0">📅 Emploi du temps</p>'
+      + '<button id="edtHome" class="btn ghost" style="margin-left:auto;padding:5px 12px;font-size:13px">🏠 Accueil</button></div>'
+      + '<div id="edtBody"></div>';
+    anchor.parentNode.appendChild(scr);
+    document.getElementById('edtHome').onclick = () => {
+      scr.classList.add('hidden');
+      const st = $('#startScreen'); if(st){ st.classList.remove('hidden'); st.scrollIntoView({behavior:'smooth', block:'start'}); }
+    };
+  }
+  const b = $('#edtIconBtn'); if(b) b.onclick = () => showEDT();
 })();
 
 /* Retour à l'accueil GLOBAL + boutons d'en-tête (🏠 Accueil, 🏅 Classement). */
