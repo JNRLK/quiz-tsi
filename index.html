@@ -13342,9 +13342,9 @@ const EDT = (function(){
     13:{special:'Révision aux écrits', ferie:'Pâques — lundi 29/03'},
     14:{special:'Révision autonome aux écrits', conge:'Congés de Pâques'},
     15:{special:'Révision autonome aux écrits', conge:'Congés de Pâques'},
-    16:{special:'Concours écrits CCINP', aconfirmer:true},
-    17:{ferie:'Fête du travail — samedi 01/05'},
-    18:{special:'Concours écrits Centrale-Supélec', aconfirmer:true},
+    16:{special:'Écrits CCINP', aconfirmer:true},
+    17:{special:'Écrits Centrale-Supélec — 26 au 29 avril', ferie:'Fête du travail — samedi 01/05'},
+    18:{note:"Le calendrier du lycée plaçait ici les écrits Centrale-Supélec. Le concours a publié le 26 au 29 avril, soit la semaine 17."},
     19:{special:'Préparation aux oraux'},
     20:{special:'Préparation aux oraux', ferie:'Pentecôte — lundi 17/05'},
     21:{special:'Préparation aux oraux'},
@@ -13369,19 +13369,35 @@ const EDT = (function(){
     7:[['7.1','Killian VERGNENEGRE F.'], ['7.2','Lola ZAIRE'], ['7.3','Minyar MARAY']]
   };
 
-  /* Les concours. `confirme` reste faux tant que l'organisateur n'a pas publié ses dates :
-     l'écran affiche alors un badge « à confirmer » plutôt que de laisser croire à une date ferme. */
+  /* Les concours, relevés sur les sites officiels le 12 septembre 2026.
+     `confirme` distingue ce que l'organisateur a publié de ce que le lycée a seulement prévu :
+     l'écran affiche un badge « à confirmer » plutôt que de laisser croire à une date ferme. */
   const CONCOURS = [
-    {sem:16, nom:'CCINP',           confirme:false},
-    {sem:18, nom:'Centrale-Supélec', confirme:false},
-    {sem:25, nom:'oraux',           confirme:false}
+    { sem:16, nom:'CCINP', titre:'Écrits CCINP', confirme:false,
+      quand:'semaine du 19 avril 2027',
+      repere:'20 → 23 avril en 2026, 5 → 9 mai en 2025',
+      note:"Prévision du lycée. Le CCINP n'a pas encore publié son calendrier 2027 — la bascule a lieu d'habitude entre octobre et décembre." },
+    { sem:17, nom:'Centrale-Supélec', titre:'Écrits Centrale-Supélec', confirme:true,
+      quand:'lundi 26 → jeudi 29 avril 2027',
+      source:'concours-centrale-supelec.fr',
+      note:"Fenêtre annoncée toutes filières ; les horaires TSI épreuve par épreuve paraîtront avec la notice, début décembre. En TSI, cette banque porte aussi Mines-Ponts, Mines-Télécom, Polytechnique, Arts et Métiers et l'ESTP." },
+    { sem:25, nom:'oraux', titre:'Oraux', confirme:true,
+      quand:'21 juin → 18 juillet 2027',
+      source:'concours-centrale-supelec.fr',
+      repere:'en 2026 : Centrale 22 juin → 5 juillet, CCINP 24 juin → 4 juillet, TIPE dès le 22 juin',
+      note:"Période à bloquer, et non des dates de passage : le créneau TSI durera environ deux semaines à l'intérieur de cette fenêtre." }
   ];
+
+  /* Ce que la recherche a corrigé dans le calendrier distribué par le lycée. */
+  const CONCOURS_ALERTE = "Le calendrier du lycée place les écrits Centrale-Supélec du 3 au 8 mai. "
+    + "Le concours a publié le 26 au 29 avril 2027 — une semaine plus tôt, et juste après le CCINP. "
+    + "La semaine du 3 mai est celle des Mines-Ponts, qui ne concerne pas la filière TSI.";
 
   const lundiDe = i => new Date(LUNDI0 + i*7*86400000);
   const groupeDe = t => parseInt(String(t||'').split('.')[0], 10) || 0;
   const tpDe = t => { const g = groupeDe(t); return g ? (g<=4 ? 1 : 2) : 0; };
 
-  return {NUM, COLLO0, GRILLE, BLOCS, COLLO, FR, FR_H, FR_DERNIERE, TP_A, CAL, ROSTER, CONCOURS,
+  return {NUM, COLLO0, GRILLE, BLOCS, COLLO, FR, FR_H, FR_DERNIERE, TP_A, CAL, ROSTER, CONCOURS, CONCOURS_ALERTE,
           lundiDe, groupeDe, tpDe, J:['lundi','mardi','mercredi','jeudi','vendredi','samedi']};
 })();
 
@@ -13463,6 +13479,37 @@ function edtTP(id, i){
   return EDT.GRILLE.filter(x => x.tp === rot).sort((x,y)=> x.j-y.j || _edtMin(x.h) - _edtMin(y.h));
 }
 
+/* Passerelle vers les révisions : une colle ou un DS porte une matière, et le site sait
+   la réviser. Les libellés du calendrier sont libres (« Modélis. (3h) · Info (1h) »), on y
+   cherche donc les matières par mots-clés normalisés. */
+const EDT_SUJETS = { maths:'maths', mathematiques:'maths', pc:'physique', physique:'physique',
+  chimie:'physique', si:'si', info:'info', informatique:'info', modelisation:'si', modelis:'si',
+  anglais:'anglais', francais:'francais' };
+const EDT_COURT = { maths:'maths', physique:'PC', si:'SI', info:'info', anglais:'anglais', francais:'français' };
+
+function edtSujetsDe(libelle){
+  const out = [];
+  for(const mot of edtNorm(libelle).split(' ')){
+    const sj = EDT_SUJETS[mot];
+    if(sj && !out.includes(sj)) out.push(sj);
+  }
+  return out;
+}
+function edtTopicsDe(sujet){
+  if(typeof TOPICS === 'undefined') return [];
+  const AL = (typeof allowedLevels === 'function') ? allowedLevels() : null;
+  /* Anglais et français sont transversaux (level 'tr') : ils ne figurent pas dans les
+     niveaux autorisés d'une classe, mais restent révisables — comme dans subjectsForNav. */
+  return Object.keys(TOPICS).filter(k => TOPICS[k] && TOPICS[k].subject === sujet
+    && (!AL || TOPICS[k].level === 'tr' || AL.includes(TOPICS[k].level)));
+}
+function _edtRevHTML(libelle){
+  const sujets = edtSujetsDe(libelle).filter(sj => edtTopicsDe(sj).length);
+  if(!sujets.length) return '';
+  return ' ' + sujets.map(sj => '<button class="btn ghost" data-edtrev="'+sj+'" style="padding:2px 9px;font-size:11px;white-space:nowrap">'
+    + 'réviser ' + (EDT_COURT[sj]||sj) + '</button>').join(' ');
+}
+
 const _edtBadge = 'display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.02em';
 const _edtLigne = 'display:flex;gap:10px;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--line)';
 
@@ -13533,13 +13580,15 @@ function _edtSemaineHTML(){
   if(cal.special) h += '<p style="'+_edtBadge+';background:var(--accent);color:var(--on-accent)">'+cal.special
       + (cal.aconfirmer ? ' — à confirmer' : '') + '</p>';
   if(cal.ferie)   h += '<p style="color:var(--warn-text);font-size:12.5px;margin:6px 0">Férié : '+cal.ferie+'</p>';
+  if(cal.note)    h += '<p style="color:var(--muted);font-size:12.5px;margin:8px 0;line-height:1.5">'+cal.note+'</p>';
 
   if(id){
     const colles = edtColles(id, i), tps = edtTP(id, i);
     h += '<p class="section-label" style="margin:16px 0 2px">Colles — '+(colles.length||'aucune')+'</p>';
     if(colles.length) h += colles.map(c =>
         '<div style="'+_edtLigne+'"><span style="min-width:96px;color:var(--muted);font-size:13px">'+EDT.J[c.j]+' '+c.h+'</span>'
-      + '<b style="flex:1;white-space:nowrap">'+c.m+'</b><span style="color:var(--muted);font-size:13px">'+c.k+'</span></div>').join('');
+      + '<b style="white-space:nowrap">'+c.m+'</b>'+_edtRevHTML(c.m)
+      + '<span style="flex:1;text-align:right;color:var(--muted);font-size:13px">'+c.k+'</span></div>').join('');
     else h += '<p style="color:var(--muted);font-size:13px;margin:4px 0">Pas de colle programmée cette semaine.</p>';
 
     if(tps.length){
@@ -13557,7 +13606,8 @@ function _edtSemaineHTML(){
     if(cal.dm) h += '<div style="'+_edtLigne+'"><span style="min-width:96px;color:var(--muted);font-size:13px">DM (5h)</span>'
       + '<b style="flex:1">'+cal.dm+'</b><span style="color:var(--muted);font-size:13px">à rendre semaine '+EDT.NUM[Math.min(i+1,EDT.NUM.length-1)]+'</span></div>';
     if(cal.ds) h += '<div style="'+_edtLigne+'"><span style="min-width:96px;color:var(--muted);font-size:13px">DS (4h)</span>'
-      + '<b style="flex:1">'+cal.ds+'</b><span style="color:var(--muted);font-size:13px">samedi 8h</span></div>';
+      + '<b>'+cal.ds+'</b>'+_edtRevHTML(cal.ds)
+      + '<span style="flex:1;text-align:right;color:var(--muted);font-size:13px">samedi 8h</span></div>';
   }
 
   return h + _edtDecompteHTML(i);
@@ -13598,6 +13648,7 @@ function _edtAnneeHTML(){
       + (now ? ' <span style="'+_edtBadge+';background:var(--accent);color:var(--on-accent)">cette semaine</span>' : '') + '</td>';
     if(cal.special) h += '<td colspan="2" style="padding:6px 0;color:var(--accent-soft)"><b>'+cal.special+'</b>'
       + (cal.aconfirmer ? ' <span style="'+_edtBadge+';background:var(--panel-2);color:var(--warn-text)">à confirmer</span>' : '')+'</td>';
+    else if(cal.note) h += '<td colspan="2" style="padding:6px 0;color:var(--muted);font-size:12.5px">'+cal.note+'</td>';
     else h += '<td style="padding:6px 8px 6px 0;color:var(--muted)">'+(cal.dm||'—')+'</td>'
            + '<td style="padding:6px 0">'+(cal.ds||(cal.conge?'<span style="color:var(--muted)">'+cal.conge+'</span>':'—'))+'</td>';
     h += '</tr>';
@@ -13605,16 +13656,52 @@ function _edtAnneeHTML(){
   return h + '</table></div>';
 }
 
+function _edtConcoursHTML(){
+  let h = '<div style="background:var(--panel-2);border:1px solid var(--warn-text);border-radius:12px;padding:14px;margin-bottom:18px">'
+    + '<p style="margin:0 0 4px;font-weight:700;font-size:13px;color:var(--warn-text)">⚠️ Un écart avec le calendrier distribué en classe</p>'
+    + '<p style="margin:0;font-size:12.5px;line-height:1.5;color:var(--ink)">'+EDT.CONCOURS_ALERTE+'</p></div>';
+
+  for(const c of EDT.CONCOURS){
+    const badge = c.confirme
+      ? '<span style="'+_edtBadge+';background:var(--ok-text);color:var(--on-ink)">publié par le concours</span>'
+      : '<span style="'+_edtBadge+';background:var(--panel-2);color:var(--warn-text)">à confirmer</span>';
+    h += '<div style="border-bottom:1px solid var(--line);padding:12px 0">'
+      + '<div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;margin-bottom:4px">'
+      + '<b style="font-size:14.5px">'+c.titre+'</b>'+badge+'</div>'
+      + '<p style="margin:0 0 4px;font-size:14px"><b>'+c.quand+'</b>'
+      + '<span style="color:var(--muted);font-size:12.5px"> · semaine '+c.sem+'</span></p>'
+      + (c.note   ? '<p style="margin:4px 0 0;color:var(--muted);font-size:12.5px;line-height:1.5">'+c.note+'</p>' : '')
+      + (c.repere ? '<p style="margin:4px 0 0;color:var(--muted);font-size:12px;line-height:1.5">Repère : '+c.repere+'</p>' : '')
+      + (c.source ? '<p style="margin:4px 0 0;color:var(--muted);font-size:11.5px">Source : '+c.source+'</p>' : '')
+      + '</div>';
+  }
+
+  h += '<p style="margin:16px 0 0;color:var(--muted);font-size:12px;line-height:1.55">'
+    + 'Relevé sur les sites officiels le 12 septembre 2026. En cas d’informations discordantes, seule la notice du concours fait foi, '
+    + 'et le calendrier reste « sous réserve de l’arrêté à paraître ». À re-vérifier : le calendrier SCEI début novembre, '
+    + 'la notice Centrale TSI et l’ouverture des inscriptions début décembre, le calendrier CCINP d’ici décembre.</p>'
+    + '<p style="margin:10px 0 0;color:var(--muted);font-size:12px;line-height:1.55">'
+    + 'Ni e3a-Polytech ni la Banque PT n’ouvrent de voie TSI : leurs dates ne concernent pas cette classe.</p>';
+  return h;
+}
+
 function renderEDT(){
   const host = $('#edtBody'); if(!host) return;
-  const t = [['semaine','Ma semaine'],['grille','La grille'],['annee',"L'année"]];
+  const t = [['semaine','Ma semaine'],['grille','La grille'],['annee',"L'année"],['concours','Concours']];
   host.innerHTML = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">'
     + t.map(([k,l])=>'<button class="btn '+(k===_edtTab?'':'ghost')+'" data-edttab="'+k+'" style="padding:6px 14px;font-size:13px">'+l+'</button>').join('')
     + '</div>'
-    + (_edtTab==='grille' ? _edtGrilleHTML() : _edtTab==='annee' ? _edtAnneeHTML() : _edtSemaineHTML());
+    + (_edtTab==='grille'   ? _edtGrilleHTML()
+     : _edtTab==='annee'    ? _edtAnneeHTML()
+     : _edtTab==='concours' ? _edtConcoursHTML()
+     : _edtSemaineHTML());
   host.querySelectorAll('[data-edttab]').forEach(b => b.onclick = () => { _edtTab = b.dataset.edttab; renderEDT(); });
   host.querySelectorAll('[data-edtid]').forEach(b => b.onclick = () => { _edtChoix = false; edtSetId(b.dataset.edtid); });
   host.querySelectorAll('[data-edtchange]').forEach(b => b.onclick = () => { _edtChoix = !_edtChoix; renderEDT(); });
+  host.querySelectorAll('[data-edtrev]').forEach(b => b.onclick = () => {
+    const keys = edtTopicsDe(b.dataset.edtrev);
+    if(keys.length && typeof startReviewForTopics === 'function') startReviewForTopics(keys);
+  });
   host.querySelectorAll('[data-edtnav]').forEach(b => b.onclick = () => {
     const d = +b.dataset.edtnav;
     _edtIdx = d === 0 ? null : Math.max(0, Math.min(EDT.NUM.length-1, edtIdxAffiche() + d));
