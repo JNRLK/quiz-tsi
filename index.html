@@ -606,6 +606,12 @@ window.MathJax = {
     #authProfile .section-label{margin:10px 0 4px !important}
     #authSubmit{margin-top:12px !important}
 
+    /* Destinations déplacées dans le menu ☰ « Rubriques ». Masquées ici, dans la feuille de style
+       statique, et non en JavaScript en fin de module : sinon la barre s'affiche entière pendant
+       plusieurs secondes puis s'effondre, et la page saute sous le doigt. Les boutons restent dans
+       le DOM et cliquables : c'est le menu qui les déclenche. */
+    #coursIconBtn, #dsIconBtn, #statsBtn, #lbIconBtn, #histoIconBtn, #juryBtn, #edtIconBtn{display:none}
+
     /* boutons d'action : icône seule sur mobile (avant : display:none → inaccessibles) */
     #statsBtn .bl, #juryBtn .bl, #adminBtn .bl, #advBtn .bl{display:none}
     #statsBtn, #juryBtn, #adminBtn, #advBtn{padding:8px 10px; font-size:14px}
@@ -761,6 +767,7 @@ window.MathJax = {
   .cloud-banner a{color:var(--accent-bright); cursor:pointer; text-decoration:underline}
   /* overlay défilable : un formulaire long (inscription) ne doit jamais rogner le bouton de validation.
      margin:auto sur l'enfant centre sans rogner le haut/bas quand le contenu dépasse (le parent défile). */
+  #coursIconBtn, #dsIconBtn, #statsBtn, #lbIconBtn, #histoIconBtn, #juryBtn, #edtIconBtn{display:none}
   .modal-overlay{position:fixed; inset:0; z-index:50; background:var(--scrim); backdrop-filter:blur(5px); display:flex; padding:20px; padding-bottom:max(20px, env(safe-area-inset-bottom)); overflow-y:auto; -webkit-overflow-scrolling:touch; animation:rise .2s both}
   .modal{position:relative; width:100%; max-width:380px; margin:auto; background:var(--modal-bg); border:1px solid var(--line); border-radius:20px; padding:26px; box-shadow:0 30px 70px -20px rgba(0,0,0,.85)}
   .modal-close{position:absolute; top:14px; right:14px; background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; line-height:1}
@@ -968,6 +975,7 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
         <span id="syncIndicator" class="sync-ind hidden"></span>
         <div class="tool-bar" role="group" aria-label="Outils">
           <button class="btn ghost mini icon-only" id="homeIconBtn" aria-label="Accueil" title="Retour à l'accueil"><span class="bi" aria-hidden="true">🏠</span><span class="bl">Accueil</span></button>
+          <button class="btn ghost mini icon-only" id="rubriquesBtn" aria-label="Rubriques" title="Toutes les rubriques du site"><span class="bi" aria-hidden="true">☰</span><span class="bl">Rubriques</span></button>
           <button class="btn ghost mini icon-only" id="statsBtn" aria-label="Ma progression" title="Ma progression"><span class="bi" aria-hidden="true">📊</span><span class="bl">Ma progression</span></button>
           <button class="btn ghost mini icon-only" id="juryBtn" aria-label="Mot du jury" title="Mot du jury"><span class="bi" aria-hidden="true">📋</span><span class="bl">Mot du jury</span></button>
           <button class="btn ghost mini icon-only" id="coursIconBtn" aria-label="Cours" title="Lire le cours chapitre par chapitre"><span class="bi" aria-hidden="true">📚</span><span class="bl">Cours</span></button>
@@ -13323,7 +13331,7 @@ const EDT = (function(){
     43:{dm:'1 par matière',       conge:'Congés de la Toussaint'},
     44:{dm:'1 par matière',       conge:'Congés de la Toussaint'},
     45:{dm:'Maths',               ds:'Français'},
-    46:{dm:'PC',                  ds:'SI',            ferie:'Armistice — mercredi 11/11'},
+    46:{dm:'PC',                  ds:'SI',            ferie:'Armistice — mercredi 11/11', ferieJours:[2]},
     47:{dm:'Anglais',             ds:'Maths'},
     48:{dm:'Modélisation · Info', ds:'PC'},
     49:{dm:'SI',                  ds:'Anglais (3h) · Info (1h)'},
@@ -13343,14 +13351,14 @@ const EDT = (function(){
     10:{dm:'Français · Info',     ds:'Maths'},
     11:{dm:'SI',                  ds:'PC'},
     12:{dm:'Maths ?',             ds:'Français (semaine) · Info (samedi)'},
-    13:{special:'Révision aux écrits', ferie:'Pâques — lundi 29/03'},
+    13:{special:'Révision aux écrits', ferie:'Pâques — lundi 29/03', ferieJours:[0]},
     14:{special:'Révision autonome aux écrits', conge:'Congés de Pâques'},
     15:{special:'Révision autonome aux écrits', conge:'Congés de Pâques'},
     16:{special:'Écrits CCINP', aconfirmer:true},
-    17:{special:'Écrits Centrale-Supélec — 26 au 29 avril', ferie:'Fête du travail — samedi 01/05'},
+    17:{special:'Écrits Centrale-Supélec — 26 au 29 avril', ferie:'Fête du travail — samedi 01/05', ferieJours:[5]},
     18:{note:"Le calendrier du lycée plaçait ici les écrits Centrale-Supélec. Le concours a publié le 26 au 29 avril, soit la semaine 17."},
     19:{special:'Préparation aux oraux'},
-    20:{special:'Préparation aux oraux', ferie:'Pentecôte — lundi 17/05'},
+    20:{special:'Préparation aux oraux', ferie:'Pentecôte — lundi 17/05', ferieJours:[0]},
     21:{special:'Préparation aux oraux'},
     22:{special:'Préparation aux oraux'},
     23:{special:'Préparation aux oraux'},
@@ -13446,11 +13454,11 @@ function edtId(){
 }
 function edtAuto(){ return !edtProfil().trinome && !!edtIdDepuisNom(edtProfil().nom); }
 
-async function edtSetId(v){
+function edtSetId(v){
   const p = edtProfil(); p.trinome = v || null;
   try{ localStorage.setItem('quiztsi_profile', JSON.stringify(p)); }catch(e){}
-  try{ if(typeof Cloud!=='undefined' && Cloud.saveProfile) await Cloud.saveProfile({trinome: v||null}); }catch(e){}
-  renderEDT();
+  renderEDT();                       // d'abord l'écran : hors ligne, setDoc peut rester en suspens indéfiniment
+  try{ if(typeof Cloud!=='undefined' && Cloud.saveProfile) Cloud.saveProfile({trinome: v||null}); }catch(e){}
 }
 
 const _edtMin = h => { const m=/^(\d+)h(\d*)$/.exec(h||''); return m ? (+m[1])*60 + (+m[2]||0) : 0; };
@@ -13515,7 +13523,7 @@ function _edtRevHTML(libelle){
 }
 
 const _edtBadge = 'display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.02em';
-const _edtLigne = 'display:flex;gap:10px;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--line)';
+const _edtLigne = 'display:flex;gap:6px 10px;align-items:baseline;flex-wrap:wrap;padding:7px 0;border-bottom:1px solid var(--line)';
 
 /* Le décompte suit la semaine consultée : sur la semaine courante il compte les jours
    depuis aujourd'hui, ailleurs il compte les semaines depuis la semaine affichée. */
@@ -13529,7 +13537,7 @@ function _edtDecompteHTML(i){
   if(i === edtIdxCourant()){
     const now = new Date();
     const j = Math.round((EDT.lundiDe(iCible).getTime() - Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))/86400000);
-    return '<p style="margin:20px 0 0;color:var(--muted);font-size:13px">⏳ <b style="color:var(--ink)">'+j+' jours</b> avant les écrits '+cible.nom+badge+'</p>';
+    return '<p style="margin:20px 0 0;color:var(--muted);font-size:13px">⏳ <b style="color:var(--ink)">'+j+' jour'+(j>1?'s':'')+'</b> avant les écrits '+cible.nom+badge+'</p>';
   }
   const sem = iCible - i;
   return '<p style="margin:20px 0 0;color:var(--muted);font-size:13px">⏳ <b style="color:var(--ink)">'+sem+' semaine'+(sem>1?'s':'')
@@ -13553,6 +13561,23 @@ function _edtSelecteurHTML(idActuel){
        + '</span></div>';
   }
   return h + '</div>';
+}
+
+/* Une colle peut tomber pendant un TP : le colloscope et la rotation des TP sont deux tableaux
+   distincts, et rien ne garantit qu'ils ont été croisés. On le signale à l'élève plutôt que de
+   choisir à sa place lequel des deux est faux. */
+function _edtPlage(h){
+  const m = /^(\d+)h(\d*)\s*[–-]\s*(\d+)h(\d*)$/.exec(h||'');
+  if(m) return [(+m[1])*60 + (+m[2]||0), (+m[3])*60 + (+m[4]||0)];
+  const d = _edtMin(h); return [d, d + 60];     // une colle occupe environ une heure
+}
+function _edtConflit(colle, tps){
+  const [a, b] = _edtPlage(colle.h);
+  return tps.some(t => {
+    if(t.j !== colle.j) return false;
+    const [x, y] = _edtPlage(t.h);
+    return a < y && x < b;
+  });
 }
 
 function _edtSemaineHTML(){
@@ -13589,18 +13614,27 @@ function _edtSemaineHTML(){
   if(id){
     const colles = edtColles(id, i), tps = edtTP(id, i);
     h += '<p class="section-label" style="margin:16px 0 2px">Colles — '+(colles.length||'aucune')+'</p>';
-    if(colles.length) h += colles.map(c =>
-        '<div style="'+_edtLigne+'"><span style="min-width:96px;color:var(--muted);font-size:13px">'+EDT.J[c.j]+' '+c.h+'</span>'
-      + '<b style="white-space:nowrap">'+c.m+'</b>'+_edtRevHTML(c.m)
-      + '<span style="flex:1;text-align:right;color:var(--muted);font-size:13px">'+c.k+'</span></div>').join('');
+    if(colles.length) h += colles.map(c => {
+      const ferie   = (cal.ferieJours||[]).includes(c.j);
+      const surTP   = _edtConflit(c, tps);
+      const alerte  = ferie ? '<span style="'+_edtBadge+';background:var(--panel-2);color:var(--warn-text)">jour férié</span>'
+                    : surTP ? '<span style="'+_edtBadge+';background:var(--panel-2);color:var(--warn-text)">pendant ton TP</span>' : '';
+      return '<div style="'+_edtLigne+'"><span style="min-width:96px;color:var(--muted);font-size:13px">'+EDT.J[c.j]+' '+c.h+'</span>'
+      + '<b>'+c.m+'</b>'+alerte+_edtRevHTML(c.m)
+      + '<span style="flex:1;text-align:right;color:var(--muted);font-size:13px">'+c.k+'</span></div>';
+    }).join('');
     else h += '<p style="color:var(--muted);font-size:13px;margin:4px 0">Pas de colle programmée cette semaine.</p>';
 
     if(tps.length){
       h += '<p class="section-label" style="margin:16px 0 2px">TP — groupe TP'+tp+'</p>';
       h += tps.map(x =>
         '<div style="'+_edtLigne+'"><span style="min-width:96px;color:var(--muted);font-size:13px">'+EDT.J[x.j]+' '+x.h+'</span>'
-      + '<b style="flex:1;white-space:nowrap">'+x.t+'</b><span style="color:var(--muted);font-size:13px">'+x.s+'</span></div>').join('');
+      + '<b>'+x.t+'</b><span style="flex:1;text-align:right;color:var(--muted);font-size:13px">'+x.s+'</span></div>').join('');
     }
+    if(colles.some(c => _edtConflit(c, tps)))
+      h += '<p style="color:var(--warn-text);font-size:12px;margin:8px 0 0;line-height:1.45">Cette colle tombe pendant ton TP : le colloscope et la rotation des TP sont deux tableaux séparés. Vérifie auprès du professeur lequel prime.</p>';
+    if(colles.some(c => (cal.ferieJours||[]).includes(c.j)))
+      h += '<p style="color:var(--warn-text);font-size:12px;margin:8px 0 0;line-height:1.45">Cette colle tombe un jour férié — elle sera sans doute déplacée.</p>';
     if(sem <= 13 && sem >= 2 && !cal.conge && !cal.special)
       h += '<p style="color:var(--muted);font-size:12px;margin:10px 0 0;line-height:1.45">Les colles de français du second semestre ne sont pas encore publiées dans le colloscope — elles s’ajouteront ici.</p>';
   }
@@ -13785,8 +13819,8 @@ function edtOuvrirMenu(){
 }
 
 (function(){
-  /* Les destinations quittent la barre ; 🏠 Accueil, ➕ Approfondissement et 🎓 Vue classe y restent. */
-  const bar = document.querySelector('.tool-bar'); if(!bar) return;
+  /* Le bouton ☰ et le masquage des destinations sont dans le HTML et la feuille de style statiques :
+     ici on ne fait plus que créer la fenêtre du menu et brancher les clics. */
   if(!document.getElementById('rubriquesModal')){
     const m = document.createElement('div');
     m.className = 'modal-overlay hidden'; m.id = 'rubriquesModal';
@@ -13798,17 +13832,8 @@ function edtOuvrirMenu(){
     m.querySelector('#rubriquesClose').onclick = edtFermerMenu;
     m.onclick = e => { if(e.target === m) edtFermerMenu(); };
   }
-  const btn = document.createElement('button');
-  btn.className = 'btn ghost mini icon-only'; btn.id = 'rubriquesBtn';
-  btn.setAttribute('aria-label','Rubriques'); btn.title = 'Toutes les rubriques du site';
-  btn.innerHTML = '<span class="bi" aria-hidden="true">☰</span><span class="bl">Rubriques</span>';
-  btn.onclick = edtOuvrirMenu;
-  const home = document.getElementById('homeIconBtn');
-  if(home && home.nextSibling) bar.insertBefore(btn, home.nextSibling); else bar.appendChild(btn);
-
-  for(const [, entrees] of EDT_RUBRIQUES) for(const [id] of entrees){
-    const b = document.getElementById(id); if(b) b.style.display = 'none';
-  }
+  const btn = document.getElementById('rubriquesBtn');
+  if(btn) btn.onclick = edtOuvrirMenu;
   document.addEventListener('keydown', e => { if(e.key === 'Escape') edtFermerMenu(); });
 })();
 
@@ -14925,7 +14950,7 @@ $('#juryBack').onclick = ()=>{
    Reprend la logique SRS : cartes dues + nouvelles (plafonnées/jour) ; à défaut,
    entraînement libre sur ces chapitres. */
 function startReviewForTopics(keys){
-  if(lockedLevel){ const AL=allowedLevels(); keys = keys.filter(k => TOPICS[k] && AL.includes(TOPICS[k].level)); }  // élève : sa classe + années inférieures ; jamais au-dessus
+  if(lockedLevel){ const AL=allowedLevels(); keys = keys.filter(k => TOPICS[k] && (TOPICS[k].level==='tr' || AL.includes(TOPICS[k].level))); }  // élève : sa classe + années inférieures ; jamais au-dessus. Les matières transversales (anglais, français) n'ont pas d'année et restent toujours révisables, comme dans subjectsForNav.
   const set = new Set(keys);
   const d = SRS._d();
   const hMap = {}; QUESTIONS.forEach(q=>{ hMap[qHash(q.q)] = q; });
