@@ -9224,11 +9224,21 @@ const SRS = {
     const rl = {}, sl = {}, jours = {};
     (d.reviewLog||[]).forEach(r=>{ if(r && typeof r.t==='number'){ const k=this._dayKey(r.t); rl[k]=(rl[k]||0)+1; } });
     (d.sessions||[]).forEach(s=>{ if(s && typeof s.date==='number'){ const k=this._dayKey(s.date); sl[k]=(sl[k]||0)+(s.total||0); } });
-    new Set(Object.keys(rl).concat(Object.keys(sl))).forEach(k=>{ jours[k] = (sl[k]!=null) ? sl[k] : rl[k]; });
-    // La session EN COURS n'est pas encore journalisée : on garde le compteur vif du jour si
-    // aucune session d'aujourd'hui n'a encore été enregistrée, sinon le travail en cours s'efface.
-    const t = this._today();
-    if(jours[t] == null && d.days && d.days[t]) jours[t] = d.days[t];
+    /* COMBLEMENT, PLUS JAMAIS REMPLACEMENT (correctif de l'audit de phase A).
+       Cette fonction affirmait « n'écrire que vers le haut » ; en réalité `d.days = jours`
+       ÉCRASAIT le compteur exact tenu par review(). Or les deux sources reconstituées ne mesurent
+       PAS des cartes : `reviewLog` compte des NOTATIONS (une carte en apprentissage y figure deux
+       ou trois fois le même jour, et les découvertes en sont absentes), et `sessions` somme des
+       cartes SERVIES, repassages compris — la même carte revue matin, midi et soir y vaut 3.
+       Conséquences mesurées : un compteur vif de 55 cartes retombait à 30 dès l'ouverture du
+       classement, et le même élève valait 48 ou 88 cartes/semaine selon l'appareil.
+       Désormais la reconstitution ne sert QU'À COMBLER les jours absents de `d.days` — l'historique
+       d'avant le compteur exact — et aucune valeur déjà connue ne peut baisser. */
+    const anciens = d.days || {};
+    new Set(Object.keys(rl).concat(Object.keys(sl))).forEach(k=>{
+      if(anciens[k] == null) jours[k] = (sl[k]!=null) ? sl[k] : rl[k];   // trou historique seulement
+    });
+    for(const k in anciens){ if((anciens[k]||0) > (jours[k]||0)) jours[k] = anciens[k]; }
     d.days = jours;
     d.daysSeed = this._SEED_VER;
     this._elagueJours(d);
@@ -9293,7 +9303,12 @@ const SRS = {
           slim[h] = o;
         }
         const paquet = { cards: slim, streak: dd.streak || null, daily: dd.daily || null,
-                         days: dd.days || null, daysSeed: dd.daysSeed || 0, reviewLog: log };
+                         days: dd.days || null,
+                         /* On annonce la VERSION DE COMPTAGE du format, pas un compteur d'état interne :
+                            juste après un mergeCloud, dd.daysSeed valait 0 et le paquet partait donc avec
+                            daysSeed=0 — que le receveur rejetait d'emblée (garde « >= _SEED_VER »), si bien
+                            que le volume quotidien ne traversait jamais d'un appareil à l'autre. */
+                         daysSeed: dd.days ? this._SEED_VER : (dd.daysSeed || 0), reviewLog: log };
         /* Entrées d'index d'une valeur : 2 par scalaire (index croissant + décroissant) ;
            une map ou un tableau ne coûte rien en propre, seules ses feuilles comptent. */
         const feuilles = v => {
@@ -9419,21 +9434,31 @@ const SRS = {
     // daily : si le cloud concerne aujourd'hui, on garde le plus grand nombre de nouvelles introduites
     if(cloud.daily && cloud.daily.day){
       const t = this._today(), ld = d.daily;
-      if(cloud.daily.day === t && (!ld || ld.day !== t || (cloud.daily.newSeen||0) > (ld.newSeen||0))){
-        d.daily = cloud.daily;
+      /* FUSION CHAMP PAR CHAMP (correctif de l'audit) : la condition ne portait que sur `newSeen`
+         mais l'affectation remplaçait l'objet ENTIER, `total` compris. Un téléphone ayant beaucoup
+         révisé (total 60, aucune découverte) se faisait écraser par un ordinateur qui avait juste
+         découvert trois cartes : l'objectif du jour retombait de 60 à 3 en pleine session. */
+      if(cloud.daily.day === t){
+        const lt = (ld && ld.day === t) ? ld : {day:t, newSeen:0, total:0};
+        d.daily = { day: t,
+                    newSeen: Math.max(lt.newSeen||0, cloud.daily.newSeen||0),
+                    total:   Math.max(lt.total||0,   cloud.daily.total||0) };
       }
     }
     // reviewLog : union locale ∪ cloud, dédupliquée par timestamp, triée, plafonnée.
     // → rétention vraie + heatmap d'activité cohérentes entre appareils, et base d'agrégation pour la vue prof.
     if(Array.isArray(cloud.reviewLog) && cloud.reviewLog.length){
+      const avant = (d.reviewLog||[]).length;
       const seen = new Set((d.reviewLog||[]).map(r=>r.t));
       const merged = (d.reviewLog||[]).slice();
       cloud.reviewLog.forEach(r=>{ if(r && typeof r.t==='number' && !seen.has(r.t)){ merged.push(r); seen.add(r.t); } });
       merged.sort((a,b)=>a.t-b.t);
       d.reviewLog = merged.slice(-2000);
-      // le journal s'est élargi : on rejoue l'ensemencement des volumes quotidiens sur les jours
-      // que cet appareil n'avait jamais vus (opération idempotente, elle n'écrit que vers le haut).
-      d.daysSeed = 0;
+      /* On ne relance le comblement que si le journal s'est RÉELLEMENT élargi. L'ancien code posait
+         daysSeed = 0 dès que le cloud rapportait un journal non vide, donc à chaque chargement de
+         page, à chaque retour sur l'application (visibilitychange) et à chaque synchro manuelle :
+         le réensemencement se rejouait plusieurs fois par jour. */
+      if(merged.length > avant) d.daysSeed = 0;
     }
     /* days : volume quotidien. Union par MAXIMUM et non par somme — un jour déjà synchronisé
        reviendrait sinon s'ajouter à lui-même à chaque aller-retour, et le compteur enflerait
@@ -9551,7 +9576,11 @@ const SRS = {
     const dn = d.daily || (d.daily = {day: today, newSeen: 0, total: 0});
     if(dn.day !== today){ dn.day = today; dn.newSeen = 0; dn.total = 0; }
     if(!dejaVue) dn.newSeen++;                          // une nouvelle carte introduite aujourd'hui
-    dn.total = (dn.total||0) + 1;                       // toute carte corrigée aujourd'hui (objectif quotidien)
+    /* Même garde que le volume quotidien : on compte des CARTES, pas des notations. Sans elle, une
+       carte neuve (paliers 1 min et 10 min) valait 3 et une carte oubliée 2 de plus — l'objectif du
+       jour affichait « 97 / 20 » pour 57 cartes réellement vues, soit +70 %. */
+    const premiereDuJour = !dejaVue || !lastAvant || this._dayKey(lastAvant) !== today;
+    if(premiereDuJour) dn.total = (dn.total||0) + 1;    // une carte corrigée = une unité, une fois par jour
     /* Volume du jour, découvertes comprises — la série qui alimente « cartes de la semaine ».
        On compte des CARTES, pas des notations : une carte en apprentissage est re-présentée deux
        ou trois fois dans la même journée (étapes de quelques minutes), et la compter à chaque
@@ -9559,7 +9588,6 @@ const SRS = {
        Une carte n'est donc comptée qu'à sa PREMIÈRE note du jour ; une découverte compte toujours
        (sa date `last` est initialisée à la création, elle ne prouve aucune révision antérieure). */
     const dj = d.days || (d.days = {});
-    const premiereDuJour = !dejaVue || !lastAvant || this._dayKey(lastAvant) !== today;
     if(premiereDuJour) dj[today] = (dj[today]||0) + 1;
     this._elagueJours(d);
     const st = d.streak || (d.streak = {count: 0, lastDay: null});
@@ -14063,12 +14091,17 @@ function activityHeatmap(extDays){
   const poser = (k,n)=>{ if(k && n > (days[k]||0)) days[k]=n; };
   try{
     const dd = SRS._d();
-    const rl={}; (dd.reviewLog||[]).forEach(r=>{ if(r&&r.t){ const k=cle(r.t); rl[k]=(rl[k]||0)+1; } });
-    for(const k in rl) poser(k, rl[k]);
-    const sl={}; (dd.sessions||[]).forEach(s=>{ if(typeof s.date==='number'){ const k=cle(s.date); sl[k]=(sl[k]||0)+(s.total||0); } });
-    for(const k in sl) poser(k, sl[k]);
-    // days — compteur exact tenu à chaque notation (découvertes comprises), la meilleure source.
+    /* UNE SEULE SOURCE CHIFFRÉE (correctif de l'audit) : `days` est le seul compteur qui mesure des
+       CARTES DISTINCTES. `reviewLog` compte des NOTATIONS et `sessions` des cartes SERVIES,
+       repassages compris ; retenir le maximum des trois gonflait le total affiché de 43 % (1 407
+       annoncées pour 987 réelles) et faisait franchir les seuils de couleur — une journée à 40
+       cartes était peinte « 50+ ». Les deux autres sources ne servent donc plus qu'à MARQUER comme
+       actif un jour antérieur au compteur exact, sans prétendre en connaître le volume : c'est
+       exactement ce à quoi sert le mécanisme `approx` déjà en place. */
     const dj = SRS.daysMap(); for(const k in dj) poser(k, dj[k]);
+    const marquer = k => { if(k && !days[k]){ days[k]=1; approx[k]=1; } };
+    (dd.reviewLog||[]).forEach(r=>{ if(r&&r.t) marquer(cle(r.t)); });
+    (dd.sessions||[]).forEach(s=>{ if(typeof s.date==='number') marquer(cle(s.date)); });
   }catch(e){}
   if(extDays && extDays.counts) for(const k in extDays.counts) poser(k, extDays.counts[k]);
   if(extDays && extDays.flags)  for(const k in extDays.flags) if(!days[k]){ days[k]=1; approx[k]=1; }
