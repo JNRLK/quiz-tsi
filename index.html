@@ -16388,7 +16388,45 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     // updateViaCache:'none' => sw.js n'est jamais servi depuis le cache HTTP,
     // donc une nouvelle version est toujours détectée.
-    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+    /* Une séance est-elle en cours ? Recharger à ce moment-là fait perdre la file et la position. */
+  window._seanceEnCours = function(){
+    try{
+      return ['quizScreen','examScreen','colleScreen','oralScreen','dsScreen'].some(id=>{
+        const e = document.getElementById(id);
+        return e && !e.classList.contains('hidden');
+      });
+    }catch(e){ return false; }
+  };
+  /* Applique la mise à jour si c'est sûr ; sinon l'annonce et repasse plus tard. */
+  window.appliquerMaj = function(){
+    if(!window._majPrete) return false;
+    if(window._seanceEnCours()){ annoncerMaj(); return false; }
+    location.reload();
+    return true;
+  };
+  function annoncerMaj(){
+    if(document.getElementById('majBanniere')) return;
+    const b = document.createElement('div');
+    b.id = 'majBanniere';
+    b.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);z-index:9999;'
+      + 'bottom:calc(env(safe-area-inset-bottom,0px) + 14px);max-width:min(92vw,420px);'
+      + 'background:var(--panel-2);border:1px solid var(--line);border-radius:12px;'
+      + 'padding:9px 12px;display:flex;align-items:center;gap:10px;font-size:13px;'
+      + 'box-shadow:0 6px 22px rgba(0,0,0,.28)';
+    b.innerHTML = '<span style="flex:1">Nouvelle version — elle s\'appliquera à la fin de ta séance.</span>'
+      + '<button type="button" class="btn ghost mini" id="majMaintenant">Recharger</button>';
+    document.body.appendChild(b);
+    const bt = b.querySelector('#majMaintenant');
+    if(bt) bt.onclick = ()=>{ location.reload(); };
+  }
+  /* Deux occasions de rattraper : le retour à un écran calme, et le passage en arrière-plan
+     (là, le rechargement est invisible pour l'élève). */
+  setInterval(()=>{ if(window._majPrete && !window._seanceEnCours()) location.reload(); }, 20000);
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState === 'hidden' && window._majPrete && !window._seanceEnCours()) location.reload();
+  });
+
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
       .then((reg) => {
         reg.update();                                    // cherche tout de suite
         setInterval(() => reg.update(), 60 * 60 * 1000); // puis toutes les heures
@@ -16396,12 +16434,20 @@ if ('serviceWorker' in navigator) {
         // page = vraie mise à jour → on recharge pour charger le HTML frais.
         // Évite que les élèves restent coincés sur une ancienne page en cache
         // (cause des gates « profil / vérif e-mail » sautés sur Chrome).
+        /* MISE À JOUR DIFFÉRÉE (correctif de l'audit). Cette branche appelait location.reload()
+           dès qu'une nouvelle version s'installait, SANS regarder l'écran courant : l'élève était
+           renvoyé à l'accueil en pleine carte, autant de fois qu'il y avait de déploiements dans la
+           journée, en perdant la file de sa séance et sa position. Le besoin d'origine reste valable
+           (ne pas laisser un élève coincé sur une vieille page en cache, cause des gates sautés) :
+           on recharge donc toujours, mais au PREMIER MOMENT SÛR — jamais pendant une révision, un
+           examen, une colle, un oral ou un DS. */
         reg.addEventListener('updatefound', () => {
           const nw = reg.installing;
           if (!nw) return;
           nw.addEventListener('statechange', () => {
             if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-              location.reload();
+              window._majPrete = true;
+              appliquerMaj();
             }
           });
         });
