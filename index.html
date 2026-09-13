@@ -1348,6 +1348,11 @@ let isAdmin = false;
 // les accès dans la console admin, puis repasser à true.
 const ACCESS_GATE_ON = true;    // Verrou ACTIF : révision (SRS) + suivi réservés aux membres approuvés (classStatus==='approved') ou admin ; QCM libres pour tous
 let myClassStatus = null;                 // 'approved' | 'pending' | 'rejected' | null (lu sur le doc de l'élève)
+/* Pseudo tel qu'il est ENREGISTRÉ AU CLOUD. Le pseudo choisi à l'inscription ne vivait que dans le
+   localStorage de l'appareil d'inscription : sur tout autre appareil, le classement se rabattait sur le
+   début de l'adresse e-mail — soit, pour des adresses en prénom.nom, l'identité de l'élève affichée à
+   toute sa classe. On le relit donc du document cloud à chaque démarrage. */
+let myCloudPseudo = null;
 function revisionAllowed(){ return !ACCESS_GATE_ON || isAdmin || myClassStatus === 'approved'; }
 
 // Clé de réservation d'un pseudo (unicité insensible à la casse, ID Firestore valide)
@@ -1359,7 +1364,10 @@ function normUsername(s){
 
 const Cloud = {
   async signUp(email, pass, profile){
-    const pseudo = (profile && profile.pseudo) ? profile.pseudo : email.split('@')[0];
+    /* Le repli technique reste l'adresse — il faut un identifiant unique pour reserveUsername — mais il
+       est MARQUÉ comme dérivé, pour que le classement sache ne jamais le publier (cf. _lbPseudo). */
+    const pseudoChoisi = (profile && profile.pseudo) ? String(profile.pseudo).trim() : '';
+    const pseudo = pseudoChoisi || email.split('@')[0];
     // 0) Unicité du pseudo — pré-vérification (lecture publique de la collection usernames)
     if(await this.usernameTaken(pseudo)){ const e=new Error('username-taken'); e.code='app/username-taken'; throw e; }
     const c = await createUserWithEmailAndPassword(auth, email, pass);
@@ -1375,7 +1383,7 @@ const Cloud = {
     //    Toujours conservé en local pour ne rien perdre si les règles ne sont pas encore à jour.
     if(profile){
       try{ localStorage.setItem('quiztsi_profile', JSON.stringify(profile)); }catch(e){}
-      try{ await setDoc(doc(db,'users',uid), {profile:{statut:profile.statut||null, lycee:profile.lycee||null, filiere:profile.filiere||null, annee:profile.annee||null, nom:profile.nom||null, classe:profile.classe||null, note:profile.note||null}}, {merge:true}); }
+      try{ await setDoc(doc(db,'users',uid), {profile:{pseudo:pseudoChoisi||null, statut:profile.statut||null, lycee:profile.lycee||null, filiere:profile.filiere||null, annee:profile.annee||null, nom:profile.nom||null, classe:profile.classe||null, note:profile.note||null}}, {merge:true}); }
       catch(e){ console.warn("Profil non synchronisé : ajoute 'profile' aux règles Firestore (hasOnly).", e); }
       // Profil renseigné à l'inscription → ne jamais redéclencher l'écran de complétion sur cet appareil.
       try{ localStorage.setItem('quiztsi_profile_done', uid); }catch(e){}
@@ -1408,7 +1416,13 @@ const Cloud = {
       if(typeof it.ms==='number'){ bc.tms=(bc.tms||0)+it.ms; bc.tn=(bc.tn||0)+1; }
       if(it.mode==='qcm' && !it.correct && typeof it.chosen==='number' && it.chosen>=0){ (bc.dist||(bc.dist={}))[it.chosen]=(bc.dist[it.chosen]||0)+1; }
     });
-    await setDoc(uref, {email:currentUser.email, displayName: cur.displayName || currentUser.email.split('@')[0], lastActive:serverTimestamp(), agg}, {merge:true});
+    /* On n'invente PLUS de nom d'affichage à partir de l'adresse : cette ligne gravait le début de
+       l'e-mail dans users/{uid}.displayName à chaque fin de session, et c'est ce champ que lit le
+       classement. Si aucun nom n'est connu, on n'écrit simplement pas la clé (merge:true la laisse
+       intacte) et l'élève s'affiche « Élève » jusqu'à ce qu'il choisisse un pseudo. */
+    const majUser = {email:currentUser.email, lastActive:serverTimestamp(), agg};
+    if(cur.displayName) majUser.displayName = cur.displayName;
+    await setDoc(uref, majUser, {merge:true});
   },
   async myAggregate(){ if(!currentUser) return null; const snap = await getDoc(doc(db,'users',currentUser.uid)); return snap.exists()? (snap.data().agg||null) : null; },
   async myDoc(){ if(!currentUser) return null; const snap = await getDoc(doc(db,'users',currentUser.uid)); return snap.exists()? snap.data() : null; },
@@ -1531,6 +1545,15 @@ onAuthStateChanged(auth, async (user)=>{
         catch(e){ console.warn('profile check (essai '+(attempt+1)+')', e); }
       }
       myClassStatus = (readOk && udoc && udoc.profile && udoc.profile.classStatus) || null;
+      /* Pseudo : le profil cloud d'abord, le displayName du doc ensuite (il est écrit à l'inscription).
+         On le recopie dans le profil local pour que cet appareil l'ait aussi hors ligne. */
+      if(readOk && udoc){
+        myCloudPseudo = (udoc.profile && udoc.profile.pseudo) || udoc.displayName || null;
+        if(myCloudPseudo){
+          try{ const pl = JSON.parse(localStorage.getItem('quiztsi_profile')||'{}');
+               if(!pl.pseudo){ pl.pseudo = myCloudPseudo; localStorage.setItem('quiztsi_profile', JSON.stringify(pl)); } }catch(e){}
+        }
+      }
       // Anti-verrouillage : mémorise une approbation CONFIRMÉE (par compte) et la réutilise
       // UNIQUEMENT si la lecture cloud échoue totalement (réseau instable, token périmé sur
       // Chrome). Un membre déjà approuvé n'est ainsi jamais renvoyé vers « Rejoindre la
@@ -12975,7 +12998,19 @@ function enregistreOral(note, total){
 function _lbClassYear(){ return classeCourante(); }
 function _lbPseudo(){
   try{ const p=JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); if(p && p.pseudo) return p.pseudo; }catch(e){}
-  if(typeof currentUser!=='undefined' && currentUser){ if(currentUser.displayName) return currentUser.displayName; if(currentUser.email) return currentUser.email.split('@')[0]; }
+  /* GARDE-FOU FINAL : quelle que soit la provenance du nom, on refuse de publier une valeur qui est
+     le début de l'adresse de l'élève. Les comptes créés avant ce correctif portent exactement cela
+     dans leur displayName ; sans ce test, le classement continuerait à l'afficher. */
+  const adresse = (typeof currentUser!=='undefined' && currentUser && currentUser.email) ? String(currentUser.email).split('@')[0] : null;
+  const acceptable = n => (n && String(n).trim() && String(n).trim() !== adresse) ? String(n).trim() : null;
+  const cloud = (typeof myCloudPseudo!=='undefined') ? acceptable(myCloudPseudo) : null;
+  if(cloud) return cloud;
+  const auth = (typeof currentUser!=='undefined' && currentUser) ? acceptable(currentUser.displayName) : null;
+  if(auth) return auth;
+  /* PLUS DE REPLI SUR L'ADRESSE E-MAIL. `currentUser.email.split('@')[0]` publiait au classement, visible
+     de toute la classe, le début de l'adresse de l'élève — soit son prénom et son nom quand l'adresse est
+     de la forme prenom.nom@. Constaté sur 4 des 17 entrées en production. Un élève sans pseudo connu
+     s'affiche « Élève » : anonyme, c'est le seul repli acceptable pour une donnée personnelle de mineur. */
   return 'Élève';
 }
 /* Cartes de la semaine = 7 derniers jours, aujourd'hui compris, DÉCOUVERTES COMPRISES.
@@ -15692,7 +15727,14 @@ $('#pgSubmit').onclick = async ()=>{
     if(!annee) return pgError('Indique ton année (0, 1re ou 2e).');
     if(!classe) return pgError('Indique ta classe / groupe (ex. TSI-1).');
   }
+  /* PRÉSERVER LE PSEUDO. Cet écran construisait six clés sans `pseudo`, puis écrasait le profil local
+     ET — via Cloud.saveProfile, qui écrit la map entière — le profil cloud. Le pseudo choisi à
+     l'inscription disparaissait donc des deux côtés, et le classement se rabattait sur l'adresse e-mail. */
+  let pseudoExistant = null;
+  try{ const anc = JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); pseudoExistant = (anc && anc.pseudo) || null; }catch(e){}
+  if(!pseudoExistant && typeof myCloudPseudo!=='undefined') pseudoExistant = myCloudPseudo || null;
   const profile = {
+    pseudo: pseudoExistant,
     statut,
     nom: (statut!=='visiteur' ? nom : null) || null,
     lycee: lycee || null,
@@ -15704,7 +15746,9 @@ $('#pgSubmit').onclick = async ()=>{
   try{ await Cloud.saveProfile(profile); }
   catch(e){ console.warn('saveProfile', e); }   // règles Firestore : profil non synchro, mais on ne bloque pas
   try{ localStorage.setItem(PROFILE_DONE_KEY, u.uid); }catch(e){}
-  try{ localStorage.setItem('quiztsi_profile', JSON.stringify(profile)); }catch(e){}
+  /* Fusion, jamais remplacement : toutes les autres écritures de cette clé repartent de l'objet stocké. */
+  try{ const anc = JSON.parse(localStorage.getItem('quiztsi_profile')||'{}');
+       localStorage.setItem('quiztsi_profile', JSON.stringify(Object.assign(anc, profile))); }catch(e){}
   verifyGateActive = false;
   $('#profileModal').classList.add('hidden');
   location.reload();
