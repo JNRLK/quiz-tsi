@@ -15576,16 +15576,26 @@ async function renderAdmin(){
 }
 
 /* Dédup par e-mail : plusieurs docs Firestore peuvent partager le même e-mail
-   (comptes de test recréés → l'ancien doc users/{uid} reste orphelin). On garde
-   un seul doc par e-mail : le plus complet, sinon le plus actif, sinon le plus récent. */
+   (comptes recréés → l'ancien doc users/{uid} reste orphelin). On garde un seul doc par e-mail.
+
+   L'ACTIVITÉ PASSE DEVANT (correctif de l'audit). L'ordre précédent — profil complet, puis
+   nombre de réponses, puis date — désignait systématiquement le MAUVAIS document quand un élève
+   recréait son compte : l'orphelin avait le profil rempli et tout l'historique, le compte
+   réellement utilisé était vide et récent. Il était donc classé « doublon », et le bouton
+   « Supprimer les doublons » effaçait le compte VIVANT (profil, adhésion de classe, agrégats,
+   sessions et la progression stockée sous users/{uid}.srs) en gardant la coquille.
+   Or Firebase Auth n'autorise qu'UN compte par e-mail : le document vivant est, par
+   construction, celui dont la dernière activité est la plus récente. C'est donc lui le critère
+   premier ; le profil et le compteur ne départagent plus qu'à date strictement égale. */
 function admTms(ts){ return ts && ts.toDate ? ts.toDate().getTime() : 0; }
+function admVu(u){ return admTms(u.lastActive) || admTms(u.srsUpdated) || admTms(u.createdAt); }
 function admPickBetter(a,b){
+  const la=admVu(a), lb=admVu(b);
+  if(la!==lb) return la>lb ? a : b;
   const ca=profileIsComplete(a.profile), cb=profileIsComplete(b.profile);
   if(ca!==cb) return ca?a:b;
   const aa=(a.agg&&a.agg.totalAnswered)||0, ab=(b.agg&&b.agg.totalAnswered)||0;
-  if(aa!==ab) return aa>ab?a:b;
-  const la=admTms(a.lastActive)||admTms(a.createdAt), lb=admTms(b.lastActive)||admTms(b.createdAt);
-  return lb>la ? b : a;
+  return aa>=ab ? a : b;
 }
 function admDedupeSplit(users){
   const byEmail=new Map(); const noEmail=[];
@@ -15642,7 +15652,25 @@ async function clientPurgeUser(uid){
 async function admDeleteDuplicates(){
   const dups = ADM.discarded || [];
   if(!dups.length) return;
-  if(!confirm(`Supprimer les DONNÉES de ${dups.length} compte(s) en double (même e-mail) ?\n\nProfil, progression, demandes et pseudo seront effacés (irréversible).`)) return;
+  /* FILET DE SÉCURITÉ (correctif de l'audit) : on ne purge JAMAIS un document actif récemment,
+     même s'il a été classé « doublon ». Un tri qui se trompe ne doit pas pouvoir coûter le compte
+     d'un élève en cours d'année. */
+  const RECENT = 30*24*3600*1000, maintenant = Date.now();
+  const vifs = dups.filter(u => admVu(u) && (maintenant - admVu(u)) < RECENT);
+  if(vifs.length){
+    alert(`Suppression refusée.\n\n${vifs.length} de ces compte(s) ont servi il y a moins de 30 jours : `
+        + `ce ne sont pas des coquilles abandonnées.\n\n`
+        + vifs.map(u=>'· '+(u.email||u.uid)+' — vu le '+new Date(admVu(u)).toLocaleDateString('fr-FR')).join('\n')
+        + `\n\nSupprime-les un par un si tu es sûr de toi.`);
+    return;
+  }
+  /* La confirmation NOMME ce qu'elle va détruire : l'ancienne n'annonçait qu'un nombre, et les
+     doublons sont masqués de la liste — le prof ne pouvait pas savoir quel compte était visé. */
+  const detail = dups.map(u => '· ' + (u.email||'(sans e-mail)') + '  [' + String(u.uid).slice(0,6) + '…]'
+                 + (admVu(u) ? ' — dernière activité le ' + new Date(admVu(u)).toLocaleDateString('fr-FR') : ' — jamais utilisé')).join('\n');
+  if(!confirm(`Supprimer les DONNÉES de ${dups.length} compte(s) en double (même e-mail) ?\n\n`
+      + detail + `\n\nPour chaque e-mail, le document le PLUS RÉCEMMENT actif est conservé.\n`
+      + `Profil, progression, demandes et pseudo des comptes ci-dessus seront effacés (irréversible).`)) return;
   const btn=$('#admDelDup'); if(btn){ btn.disabled=true; btn.textContent='Suppression…'; }
   let okN=0; for(const u of dups){ try{ await clientPurgeUser(u.uid); okN++; }catch(e){ console.warn('purge', u.uid, e); } }
   alert(`Données supprimées pour ${okN}/${dups.length} compte(s).\n\nLes logins Firebase correspondants (vides, sans accès ni donnée) peuvent être retirés dans la console Firebase → Authentication.`);
