@@ -10643,10 +10643,20 @@ function buildFamilyAccordion(){
         `<span class="tn-ok">✅ ${s.learned}/${s.total}</span>`,
       ].filter(Boolean).join('');
       const renvoi = (s.total===0 && CHAP_RENVOI[key] && TOPICS[CHAP_RENVOI[key]]) ? CHAP_RENVOI[key] : null;
+      /* CHAPITRE DÉCLARÉ MAIS ENCORE VIDE (correctif de l'audit). 39 chapitres — surtout le programme
+         de TSI2, écrit à l'avance — se laissaient cocher puis ne lançaient rien : l'élève lisait
+         « Aucune question pour ce filtre — change de mode ou de chapitre », un message faux puisque
+         aucun mode n'y changerait quoi que ce soit. Le garde-fou existant (previewMode) n'agit que si
+         la matière ENTIÈRE de l'année est vide, ce qui n'est pas le cas ici. On applique donc le
+         traitement déjà retenu pour les renvois : le chapitre s'annonce à venir et ne se coche pas. */
+      const vide = (s.total===0 && !renvoi);
+      if(vide) selected.delete(key);          // une sélection héritée ne doit plus vider le pool
       info.innerHTML=`
-        <div class="topic-name" style="color:${on?t.raw:'var(--ink)'}">${t.name} ${annalesBadge(key)}</div>`
+        <div class="topic-name" style="color:${(on&&!vide)?t.raw:'var(--ink)'}">${t.name} ${annalesBadge(key)}</div>`
         + (renvoi
             ? `<div class="topic-nums" style="line-height:1.45">↪ contenu traité dans <b style="color:${TOPICS[renvoi].raw}">${TOPICS[renvoi].name}</b></div>`
+            : vide
+            ? `<div class="topic-nums" style="line-height:1.45">🕓 Chapitre à venir — aucune carte pour l'instant</div>`
             : `<div class="topic-bar"><i style="width:${pct}%;background:${t.raw}"></i></div>
                <div class="topic-nums">${numsHtml}</div>`);
       if(renvoi){
@@ -10660,6 +10670,12 @@ function buildFamilyAccordion(){
         };
         selBt.disabled = true; selBt.style.opacity = '.35'; selBt.style.cursor = 'not-allowed';
         selBt.setAttribute('aria-label', t.name+' — chapitre sans carte, voir '+TOPICS[renvoi].name);
+      } else if(vide){
+        row.classList.remove('on');
+        selBt.classList.remove('on');
+        selBt.disabled = true; selBt.style.opacity = '.35'; selBt.style.cursor = 'not-allowed';
+        selBt.setAttribute('aria-label', t.name+' — chapitre à venir, aucune carte pour l\'instant');
+        info.style.opacity = '.7';
       } else {
         // toute la zone d'info est tappable pour sélectionner (cible large sur mobile, pas seulement la pastille)
         info.style.cursor='pointer';
@@ -10943,8 +10959,14 @@ function updatePoolInfo(){
   if(selected.size===0){ if(pi) pi.textContent='Aucun chapitre sélectionné — touche un thème ci-dessus.'; return; }
   const tot = poolSize();
   const n = chosenLen===0 ? tot : Math.min(chosenLen, tot);
+  /* Le message d'origine conseillait de « changer de mode » même quand les chapitres choisis
+     n'ont tout simplement aucune carte — un conseil impossible à suivre. On distingue les deux cas. */
+  let tousVides = false;
+  try{ tousVides = tot===0 && selected.size>0 &&
+       [...selected].every(k => !QUESTIONS.some(q => q.topic===k)); }catch(e){}
   if(pi) pi.textContent = tot===0
-    ? 'Aucune question pour ce filtre — change de mode ou de chapitre.'
+    ? (tousVides ? 'Ces chapitres n\'ont pas encore de cartes — choisis-en un autre.'
+                 : 'Aucune question pour ce filtre — change de mode ou de chapitre.')
     : `${n} question${n>1?'s':''} sur ${tot} disponibles`;
 }
 $('#lenOpts').addEventListener('click', e=>{
