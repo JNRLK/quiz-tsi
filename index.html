@@ -1495,14 +1495,19 @@ onAuthStateChanged(auth, async (user)=>{
       // Isolation par compte : si la progression locale appartient à un AUTRE
       // utilisateur (ou à personne), on la purge AVANT de charger le cloud de ce
       // compte — sinon la progression de l'ancien compte « fuite » sur le nouveau.
+      /* ON LIT AVANT DE PURGER (correctif de l'audit). L'ordre inverse — purger puis lire — vidait
+         la progression locale, l'historique des colles, des oraux et des DS, PUIS tentait la lecture :
+         si elle échouait (réseau, App Check, jeton périmé), l'élève se retrouvait avec un compte vierge
+         et plus rien nulle part. Désormais, si loadSRS() lève, on ne purge pas, on n'écrit pas le
+         propriétaire local, et le verrou _cloudRead reste fermé : rien n'est perdu, rien n'est poussé. */
+      const cloud = await Cloud.loadSRS();
       let localOwner=null; try{ localOwner=localStorage.getItem(SRS_OWNER_KEY); }catch(e){}
       if(localOwner !== user.uid){
         if(typeof SRS!=='undefined') SRS.clear();
         try{ localStorage.setItem(SRS_OWNER_KEY, user.uid); }catch(e){}
       }
-      const cloud = await Cloud.loadSRS();
-      /* La lecture a ABOUTI (un compte neuf renvoie legitimement null) : l'ecriture est deverrouillee.
-         Si loadSRS leve, on n'arrive pas ici et le verrou reste ferme - c'est tout l'objet. */
+      /* La lecture a ABOUTI (un compte neuf renvoie légitimement null) : l'écriture est déverrouillée.
+         Si loadSRS lève, on n'arrive ni ici ni à la purge ci-dessus — c'est tout l'objet. */
       if(typeof SRS!=='undefined') SRS._cloudRead = true;
       if(cloud && typeof SRS!=='undefined'){ SRS.mergeCloud(cloud); SRS.gc(); SRS._syncCloud(); }
     }catch(e){ console.warn('SRS cloud load', e); }
@@ -9308,7 +9313,18 @@ const SRS = {
                             juste après un mergeCloud, dd.daysSeed valait 0 et le paquet partait donc avec
                             daysSeed=0 — que le receveur rejetait d'emblée (garde « >= _SEED_VER »), si bien
                             que le volume quotidien ne traversait jamais d'un appareil à l'autre. */
-                         daysSeed: dd.days ? this._SEED_VER : (dd.daysSeed || 0), reviewLog: log };
+                         daysSeed: dd.days ? this._SEED_VER : (dd.daysSeed || 0), reviewLog: log,
+                         /* COLLE, ORAL ET DS BLANCS (correctif de l'audit). Tout leur historique vivait
+                            dans la même clé localStorage que le SRS, mais ne partait JAMAIS au cloud :
+                            il ne survivait donc ni au changement d'appareil, ni au SRS.clear() de la
+                            reconnexion. L'élève retrouvait « Aucune colle ni oral pour l'instant »,
+                            ses 23 exercices de DS marqués « jamais faits », et le tirage lui reproposait
+                            ce qu'il venait de faire — l'anti-répétition lit ces mêmes journaux.
+                            Volumes bornés à la source (colleLog 300, dsLog 400) : quelques dizaines de ko. */
+                         colleEx: dd.colleEx || null,
+                         colleLog: Array.isArray(dd.colleLog) ? dd.colleLog.slice(-300) : null,
+                         dsLog: Array.isArray(dd.dsLog) ? dd.dsLog.slice(-400) : null,
+                         oralDernier: dd.oralDernier || null };
         /* Entrées d'index d'une valeur : 2 par scalaire (index croissant + décroissant) ;
            une map ou un tableau ne coûte rien en propre, seules ses feuilles comptent. */
         const feuilles = v => {
@@ -9332,7 +9348,9 @@ const SRS = {
            variable d'ajustement ; les cartes ne sont jamais tronquées. */
         const SRS_OCTETS_BUDGET = 700*1024;
         const octets = o => { try{ return new Blob([JSON.stringify(o)]).size; }catch(_){ return JSON.stringify(o).length; } };
-        const coutCartes = octets({cards:paquet.cards, streak:paquet.streak, daily:paquet.daily, days:paquet.days});
+        const coutCartes = octets({cards:paquet.cards, streak:paquet.streak, daily:paquet.daily, days:paquet.days,
+                                   colleEx:paquet.colleEx, colleLog:paquet.colleLog,
+                                   dsLog:paquet.dsLog, oralDernier:paquet.oralDernier});
         let rogne = 0;
         while(log.length > 50 && coutCartes + octets(log) > SRS_OCTETS_BUDGET){
           log = log.slice(Math.ceil(log.length/2));
@@ -9471,6 +9489,40 @@ const SRS = {
       const dj = d.days || (d.days = {});
       for(const k in cloud.days){ const n = +cloud.days[k]||0; if(n > (dj[k]||0)) dj[k] = n; }
       this._elagueJours(d);
+      /* La série venue du cloud est déjà au bon format : on RESTITUE le drapeau, sinon la première
+         lecture venue relançait une reconstruction qui écrasait la fusion qu'on vient de faire. */
+      d.daysSeed = Math.max(d.daysSeed||0, cloud.daysSeed||0);
+    }
+
+    /* COLLE, ORAL, DS BLANCS — fusion des quatre journaux (correctif de l'audit).
+       Ces entrées sont IMMUABLES (une colle passée ne change plus), donc une union suffit :
+       aucune n'écrase jamais l'autre, et les deux appareils convergent. */
+    if(cloud.colleEx && typeof cloud.colleEx === 'object'){
+      const ce = d.colleEx || (d.colleEx = {});
+      for(const h in cloud.colleEx){
+        const cc = cloud.colleEx[h], lc = ce[h];
+        if(!cc || typeof cc !== 'object') continue;
+        if(!lc) ce[h] = cc;
+        else ce[h] = { n: Math.max(lc.n||0, cc.n||0), t: Math.max(lc.t||0, cc.t||0),
+                       ko: !!(lc.ko || cc.ko), aide: !!(lc.aide || cc.aide) };
+      }
+    }
+    const unir = (local, distant, cle, plafond) => {
+      if(!Array.isArray(distant) || !distant.length) return local;
+      const base = Array.isArray(local) ? local : [];
+      const vus = new Set(base.map(cle));
+      const tout = base.slice();
+      distant.forEach(x=>{ const k = cle(x); if(x && !vus.has(k)){ tout.push(x); vus.add(k); } });
+      tout.sort((a,b)=>(a && a.ts||a && a.t||0)-(b && b.ts||b && b.t||0));
+      return tout.slice(-plafond);
+    };
+    d.colleLog = unir(d.colleLog, cloud.colleLog, e=>String(e && e.ts), 300);
+    d.dsLog    = unir(d.dsLog,    cloud.dsLog,    e=>e ? e.ds+'|'+e.exo+'|'+e.t : '', 400);
+    /* oralDernier ne sert qu'à éloigner le prochain tirage du domaine qui vient de tomber :
+       l'appareil courant fait foi, le cloud ne comble que ce qu'il ignore. */
+    if(cloud.oralDernier && typeof cloud.oralDernier === 'object'){
+      const od = d.oralDernier || (d.oralDernier = {});
+      for(const k in cloud.oralDernier){ if(od[k] == null) od[k] = cloud.oralDernier[k]; }
     }
     this._save(d);
   },
