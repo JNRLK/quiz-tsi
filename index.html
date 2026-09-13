@@ -14580,7 +14580,13 @@ async function renderStats(){
     const pctMature = Math.round(counts.mature/totalCards*100);
     const ret = SRS.trueRetention(30);
 
-    const dueCap = Math.min(g.due, MAX_REVIEWS_PER_DAY), backlog = Math.max(0, g.due - dueCap);
+    /* MÊME PÉRIMÈTRE QUE L'ACCUEIL (correctif de l'audit). globalStats() compte les cartes dues sur
+       TOUT le paquet, sans filtre d'année ni de matière, alors que la barre d'accueil affiche
+       dueScoped() : l'élève lisait deux nombres différents pour la même question. On prend ici le
+       même compte que l'accueil, et on nomme séparément l'arriéré hors périmètre au lieu de le mêler. */
+    let dueVu = g.due, horsPerimetre = 0;
+    try{ dueVu = dueScoped().length; horsPerimetre = Math.max(0, dueHiddenCount()); }catch(e){}
+    const dueCap = Math.min(dueVu, MAX_REVIEWS_PER_DAY), backlog = Math.max(0, dueVu - dueCap);
     html += `<div class="due-chip">📅 ${dueCap} carte${dueCap!==1?'s':''} à réviser aujourd'hui${backlog>0?` <span style="opacity:.85">(+${backlog} en attente — lissé)</span>`:''} · ${g.dueIn7} d'ici 7 jours</div>`;
     if(g.leeches>0){
       html += `<div class="due-chip" style="background:rgba(248,113,113,.13);color:#f87171">🪤 ${g.leeches} carte${g.leeches!==1?'s':''}-problème — oubliée${g.leeches!==1?'s':''} ≥ ${SRS_LEECH_THRESHOLD}× : à retravailler autrement (relire la fiche, reformuler) ou signaler</div>`;
@@ -15388,7 +15394,21 @@ function startReviewForTopics(keys){
   const fresh = QUESTIONS.filter(q=>set.has(q.topic) && !d.cards[qHash(q.q)] && advAllowed(q));
   shuffle(fresh);
   let queue = [...due, ...fresh.slice(0, remaining)];
-  if(!queue.length){ queue = QUESTIONS.filter(q=>set.has(q.topic) && advAllowed(q)); shuffle(queue); } // repli : entraînement libre
+  /* REPLI FILTRÉ PAR L'ÉCHÉANCE (correctif de l'audit). Quand aucune carte du thème n'est due et que
+     le quota de nouvelles est épuisé, on repartait sur TOUTES les cartes du chapitre — y compris celles
+     notées la veille « revoir dans trois semaines ». Or la notation qui suit écrit le SRS : la carte
+     était re-planifiée alors qu'elle n'était pas due, et l'élève avait la nette impression de revoir
+     ce qu'il venait de faire. On ne sert donc que les cartes réellement échues ou jamais vues, exactement
+     comme le fait déjà makeReviewSource pour son entraînement libre. */
+  if(!queue.length){
+    const maintenant = Date.now();
+    queue = QUESTIONS.filter(q=>{
+      if(!set.has(q.topic) || !advAllowed(q)) return false;
+      const c = d.cards[qHash(q.q)];
+      return !c || (c.due||0) <= maintenant;
+    });
+    shuffle(queue);
+  }
   if(!queue.length){ alert('Aucune carte disponible pour ce thème.'); return; }
   shuffle(queue); queue = queue.slice(0, 40);
   pool = queue.map(q=>({...q, _choices: q.mode==='qcm'? shuffle(q.choices.map((c,i)=>({...c,orig:i}))) : undefined }));
@@ -15488,6 +15508,15 @@ function updateClassJoinUI(){
     host.innerHTML = `<div style="border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;font-size:14px"><span>✅</span><span>Tu es membre de la <b>classe TSI Chaptal</b>.</span></div>`;
     return;
   }
+  /* REFUS EXPLICITE (correctif de l'audit). Un élève dont la demande a été refusée gardait
+     `classRequest` dans son profil local, et le repli local juste en dessous forçait alors
+     « en attente de validation par ton professeur » — à vie, sans aucun moyen de redemander.
+     On efface donc ce drapeau au refus : l'élève retombe sur le bloc « Rejoindre », dont les
+     boutons sont déjà câblés, et il peut refaire sa demande. */
+  if(myClassStatus==='rejected'){
+    try{ const p=JSON.parse(localStorage.getItem('quiztsi_profile')||'{}');
+         if(p && p.classRequest){ delete p.classRequest; localStorage.setItem('quiztsi_profile', JSON.stringify(p)); } }catch(e){}
+  }
   // Demande en attente : statut serveur prioritaire, sinon drapeau local.
   let requested = (myClassStatus==='pending');
   try{ const p = JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); if(p && p.classRequest) requested = true; }catch(e){}
@@ -15496,6 +15525,7 @@ function updateClassJoinUI(){
       <span>⏳</span><span>Demande envoyée à la <b>classe TSI Chaptal</b> — en attente de validation par ton professeur.</span></div>`;
   } else {
     host.innerHTML = `<div style="border:1.5px solid var(--line);border-radius:14px;padding:14px;font-size:14px">
+      ${myClassStatus==='rejected' ? `<div style="margin-bottom:10px;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--line) 40%,transparent)">Ta demande précédente n'a pas été acceptée — tu peux en refaire une.</div>` : ''}
       <div style="margin-bottom:10px">🎓 Rejoins ta <b>classe</b> au lycée Chaptal pour que ton professeur suive ta progression.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn mini" data-join-year="0" type="button">Rejoindre TSI0</button>
@@ -15958,6 +15988,10 @@ async function clientPurgeUser(uid){
   const out = { sessions:0, usernames:0 };
   try{ const ss = await getDocs(collection(db,'users',uid,'sessions')); for(const d of ss.docs){ try{ await deleteDoc(d.ref); out.sessions++; }catch(_){} } }catch(_){}
   try{ const us = await getDocs(collection(db,'usernames')); for(const d of us.docs){ const v=d.data(); if(v && v.uid===uid){ try{ await deleteDoc(d.ref); out.usernames++; }catch(_){} } } }catch(_){}
+  /* L'entrée de classement d'un compte supprimé restait en place pour toujours — un fantôme dans le
+     classement de la classe, avec son pseudo et sa série. Les règles autorisent le propriétaire ET le
+     professeur à la supprimer. Best-effort : son échec ne doit pas empêcher la purge du compte. */
+  try{ await deleteDoc(doc(db,'leaderboard',uid)); out.leaderboard = 1; }catch(_){ }
   await deleteDoc(doc(db,'users',uid));
   return out;
 }
@@ -16266,11 +16300,17 @@ function paintAdmin(){
   // classStatus sur son doc serait bloqué par son propre verrou (et ses re-demandes avalées).
   // On écrit le statut canonique une fois, à l'ouverture de la console, pour que ça ne se
   // reproduise plus. (N'approuve QUE des élèves DÉJÀ approuvés dans le roster : sans risque.)
-  if(needBackfill.length && !ADM._healing){
+  if(needBackfill.length && !ADM._healing && !ADM._healDone){
     ADM._healing = true;
     Promise.all(needBackfill.map(u=> setMemberStatus(u.uid, 'approved').catch(e=>console.warn('auto-heal', u.uid, e))))
-      .then(()=>{ ADM._healing = false; renderAdmin(); })
-      .catch(()=>{ ADM._healing = false; });
+      /* UNE SEULE TENTATIVE (correctif de l'audit). Le garde était relâché AVANT le nouveau rendu et
+         aucune limite d'essais n'existait : si l'écriture était refusée, renderAdmin relançait la
+         réparation, qui échouait, qui relançait… en boucle et en silence. On ne réessaie plus, et
+         l'échec se voit. */
+      .then(()=>{ ADM._healDone = true; renderAdmin(); })
+      .catch(e=>{ ADM._healDone = true; console.warn('réparation du roster refusée', e);
+                  const b=$('#adminBody'); if(b) b.insertAdjacentHTML('afterbegin',
+                    '<div class="empty-state" style="text-align:left;padding:10px 12px">⚠️ Réparation automatique du roster refusée — approuve les élèves concernés à la main.</div>'); });
   }
   typeset(box);
 }
@@ -16312,6 +16352,21 @@ renderJuryTip();
 // on récupère l'état du cloud, on le fusionne au local, et on rafraîchit le tableau de bord.
 let _lastPull = 0;
 document.addEventListener('visibilitychange', ()=>{
+  /* PUBLIER EN PARTANT (correctif de l'audit). L'entrée de classement n'était écrite qu'à la fin
+     « propre » d'une séance, à l'ouverture de l'écran du classement ou à un changement de classe :
+     un élève qui révise tous les jours en fermant l'onglet en cours de route ne publiait jamais.
+     `pagehide` est trop tardif pour laisser partir une écriture réseau ; le passage en arrière-plan,
+     lui, laisse le temps. Throttlé, silencieux, sans effet s'il s'est retiré du classement. */
+  if(document.visibilityState === 'hidden'){
+    try{
+      if(currentUser && localStorage.getItem('quiztsi_lb_optin')!=='0'
+         && typeof Leaderboard!=='undefined' && Date.now() - (window._lastPub||0) > 30000){
+        window._lastPub = Date.now();
+        Leaderboard.publish(_lbPseudo()).catch(()=>{});
+      }
+    }catch(e){}
+    return;
+  }
   if(document.visibilityState !== 'visible') return;
   if(typeof currentUser === 'undefined' || !currentUser) return;
   if(Date.now() - _lastPull < 4000) return;   // throttle léger
