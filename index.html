@@ -1501,6 +1501,9 @@ onAuthStateChanged(auth, async (user)=>{
         try{ localStorage.setItem(SRS_OWNER_KEY, user.uid); }catch(e){}
       }
       const cloud = await Cloud.loadSRS();
+      /* La lecture a ABOUTI (un compte neuf renvoie legitimement null) : l'ecriture est deverrouillee.
+         Si loadSRS leve, on n'arrive pas ici et le verrou reste ferme - c'est tout l'objet. */
+      if(typeof SRS!=='undefined') SRS._cloudRead = true;
       if(cloud && typeof SRS!=='undefined'){ SRS.mergeCloud(cloud); SRS.gc(); SRS._syncCloud(); }
     }catch(e){ console.warn('SRS cloud load', e); }
     // Rafraîchit l'état serveur : emailVerified peut être périmé dans le token
@@ -1554,7 +1557,8 @@ onAuthStateChanged(auth, async (user)=>{
     }
   } else {
     // Déconnexion : purge de la progression locale pour empêcher toute fuite entre comptes
-    if(typeof SRS!=='undefined') SRS.clear();
+    // et REFERMETURE du verrou d'écriture (le compte suivant devra lire son cloud avant d'écrire).
+    if(typeof SRS!=='undefined'){ SRS.clear(); SRS._cloudRead = false; }
     try{ localStorage.removeItem(SRS_OWNER_KEY); }catch(e){}
     myClassStatus = null;
     // Connexion obligatoire : ouvrir la modale, non fermable
@@ -1739,14 +1743,15 @@ const TOPICS = {
   "s2_ia_systemes": { "name": "8. Intelligence artificielle appliquée aux systèmes", "family": "si_systemes", "raw": "#2dd4bf", "subject": "si", "level": "tsi2" },
   "s2_numerique": { "name": "9. Résolution numérique et simulation", "family": "si_systemes", "raw": "#5eead4", "subject": "si", "level": "tsi2" },
   "s2_theorie_mecanismes": { "name": "9. Théorie des mécanismes : mobilité et hyperstatisme", "family": "si_meca", "raw": "#ea580c", "subject": "si", "level": "tsi1" },
-  /* ===== INFORMATIQUE TSI1 — chapitres ouverts par le DM « prérequis de SUP » (T. Galopin) :
-     vocabulaire de la programmation, structures de données, terminaison/correction/complexité,
-     représentation des nombres, bases des graphes. ===== */
-  "i1_vocabulaire": { "name": "1. Spécifier, tester, documenter", "family": "info_algo", "raw": "#10b981", "subject": "info", "level": "tsi1" },
+  /* ===== INFORMATIQUE TSI1 — les six chapitres suivent le plan de la FICHE DE COURS
+     « Culture générale informatique en TSI1 » (T. Galopin) et de l'interrogation de cours
+     associée, qui ajoute la partie « graphes ». ===== */
+  "i1_vocabulaire": { "name": "1. Expression, affectation, effet de bord", "family": "info_algo", "raw": "#10b981", "subject": "info", "level": "tsi1" },
   "i1_structures": { "name": "2. Listes et dictionnaires", "family": "info_donnees", "raw": "#34d399", "subject": "info", "level": "tsi1" },
-  "i1_correction": { "name": "3. Terminaison, correction et complexité", "family": "info_algo", "raw": "#6ee7b7", "subject": "info", "level": "tsi1" },
-  "i1_nombres": { "name": "4. Représentation des nombres", "family": "info_donnees", "raw": "#2dd4bf", "subject": "info", "level": "tsi1" },
-  "i1_graphes": { "name": "5. Graphes : vocabulaire et représentations", "family": "info_graphes", "raw": "#059669", "subject": "info", "level": "tsi1" },
+  "i1_complexite": { "name": "3. Complexité des algorithmes", "family": "info_algo", "raw": "#6ee7b7", "subject": "info", "level": "tsi1" },
+  "i1_correction": { "name": "4. Validité : terminaison et correction", "family": "info_algo", "raw": "#a7f3d0", "subject": "info", "level": "tsi1" },
+  "i1_nombres": { "name": "5. Représentation des nombres", "family": "info_donnees", "raw": "#2dd4bf", "subject": "info", "level": "tsi1" },
+  "i1_graphes": { "name": "6. Graphes : vocabulaire et représentations", "family": "info_graphes", "raw": "#059669", "subject": "info", "level": "tsi1" },
   /* ===== FRANÇAIS-PHILOSOPHIE — thème 2026-2027 « Les arcanes de la création » :
      Platon (Ion ; La République, livre X), Zola (L'Œuvre), Woolf (Un lieu à soi).
      Le thème est le MÊME en première et en seconde année, d'où level:'tr'.
@@ -3425,7 +3430,14 @@ const IPT_CTX = {
   complet: "occurrences = {}\nfor mot in texte:                      # n tours\n    occurrences[mot] = occurrences.get(mot, 0) + 1\n\nmeilleur_mot = texte[0]\nmeilleur_effectif = 0\nfor mot in texte:                      # n tours\n    if occurrences[mot] > meilleur_effectif:\n        meilleur_effectif = occurrences[mot]\n        meilleur_mot = mot",
   capteur: "Capteur de temp\u00e9rature (flux cod\u00e9 en diff\u00e9rentiel)\n  premi\u00e8re mesure  : 8 bits non sign\u00e9s, de 0 \u00e0 255\n  mise \u00e0 l'\u00e9chelle : 0 \u2192 -25 \u00b0C   et   255 \u2192 +60 \u00b0C\n  \u00e9carts suivants : 4 bits sign\u00e9s (compl\u00e9ment \u00e0 deux)",
   moyenne: "temperatures_brutes = [251, 250, 251, 250, 251, 250, 251, 250]\nresolution_capteur = 1/3\ntemperatures = [v * resolution_capteur - 25 for v in temperatures_brutes]\nmoyenne = sum(temperatures) / len(temperatures)\nprint(moyenne)      # 58.49999999999999   au lieu de 58.5",
-  graphe:  "graphe_vols_minutes = {           # poids = dur\u00e9e du vol, en minutes\n    \"CDG\": {\"ABJ\": 400, \"CMN\": 185, \"DEL\": 500, \"CAI\": 270},\n    \"DEL\": {\"CDG\": 595, \"CAI\": 340, \"KTM\": 105},\n    \"CAI\": {\"CDG\": 280, \"CMN\": 330, \"DEL\": 395},\n    \"CMN\": {\"CDG\": 180, \"CAI\": 290, \"ABJ\": 270},\n    \"KTM\": {\"DEL\": 130, \"LUA\": 30},\n    \"LUA\": {},\n    \"ABJ\": {\"CDG\": 395, \"CMN\": 260}\n}"
+  graphe:  "graphe_vols_minutes = {           # poids = dur\u00e9e du vol, en minutes\n    \"CDG\": {\"ABJ\": 400, \"CMN\": 185, \"DEL\": 500, \"CAI\": 270},\n    \"DEL\": {\"CDG\": 595, \"CAI\": 340, \"KTM\": 105},\n    \"CAI\": {\"CDG\": 280, \"CMN\": 330, \"DEL\": 395},\n    \"CMN\": {\"CDG\": 180, \"CAI\": 290, \"ABJ\": 270},\n    \"KTM\": {\"DEL\": 130, \"LUA\": 30},\n    \"LUA\": {},\n    \"ABJ\": {\"CDG\": 395, \"CMN\": 260}\n}",
+  /* --- contextes de la fiche de cours T. Galopin et de l'interrogation --- */
+  objets:  "x = \"TSI\"\nL = [\"Très\", \"Sérieux\", \"Ingénieurs\"]\nDico = {\"T\": \"Très\", \"S\": \"Sérieux\", \"I\": \"Ingénieurs\"}",
+  compteur:"compteur = 0\n\ndef incrementer():\n    global compteur\n    compteur = compteur + 1   # modifie un état visible en dehors de la fonction",
+  fact:    "def Fact(n: int) -> int:\n    res = 1\n    k = 1\n    while k <= n:\n        res = res * k\n        k = k + 1\n    return res",
+  somme:   "def somme(L: list[int]) -> int:\n    s = 0\n    i = 0\n    while i < len(L):\n        s = s + L[i]\n        i = i + 1\n    return s",
+  doublon: "def contient_doublon(L: list) -> bool:\n    n = len(L)\n    for i in range(n):\n        for j in range(i+1, n):\n            if L[i] == L[j]:\n                return True\n    return False",
+  mystere: "graphe = {\n    \"A\": {\"B\": 10, \"C\": 4},\n    \"B\": {\"A\": 10, \"D\": 7},\n    \"C\": {\"A\": 4},\n    \"D\": {\"B\": 7, \"C\": 6}\n}\n\ndef mystere(graphe: dict) -> int:\n    total = 0\n    for sommet in graphe:\n        total = total + len(graphe[sommet])\n    return total"
 };
 // mode: 'qcm' (choices), 'trou'/'saisie' (answer + accept[]), 'flash' (answer), 'code' (code Python exécuté)
 const QUESTIONS = [
@@ -7091,7 +7103,6 @@ const QUESTIONS = [
   {topic:"si_statique",mode:"flash",q:"Exprimer le torseur transmissible par une liaison sphère-plan (ponctuelle) de normale $\\vec{z}$.",answer:"$\\forall M\\in(A,\\vec{z})$ :\n$$\\{\\mathcal{T}_{1\\to2}\\}=\\begin{Bmatrix}0&0\\\\0&0\\\\Z_{12}&0\\end{Bmatrix}_{M,\\mathcal{B}}$$\n1 inconnue ; seule la force normale $Z_{12}$ est transmise.",exp:"5 degrés de liberté ; c'est la liaison la moins contraignante.",qimg:"ponctuelle"},
   {topic:"si_statique",mode:"flash",q:"Exprimer le torseur transmissible par une liaison sphérique à doigt.",answer:"Au centre $A$, doigt selon $\\vec{z}$, rainure dans le plan $(\\vec{y},\\vec{z})$ :\n$$\\{\\mathcal{T}_{1\\to2}\\}=\\begin{Bmatrix}X_{12}&0\\\\Y_{12}&M_{12}\\\\Z_{12}&0\\end{Bmatrix}_{A,\\mathcal{B}}$$\n4 inconnues.",exp:"2 degrés de liberté (2 rotations) : le doigt supprime une rotation par rapport à la rotule simple, d'où le moment transmis $M_{12}$.",qimg:"spherique_doigt"},
   {topic:"si_statique",mode:"flash",q:"Exprimer le torseur transmissible par une liaison cylindre-plan (linéaire rectiligne).",answer:"$\\forall M\\in\\text{plan}(A,\\vec{x},\\vec{y})$ :\n$$\\{\\mathcal{T}_{1\\to2}\\}=\\begin{Bmatrix}0&0\\\\0&M_{12}\\\\Z_{12}&0\\end{Bmatrix}_{M,\\mathcal{B}}$$\n2 inconnues : force normale $Z_{12}$ et moment $M_{12}$ selon $\\vec{y}$.",exp:"4 degrés de liberté ; le contact se fait suivant une ligne (droite parallèle à $\\vec{x}$).",qimg:"lin_rectiligne"},
-{topic:"si_liaisons",mode:"flash",q:"Tableau de synthèse — récapitule les 11 liaisons normalisées (schéma, degrés de liberté, torseur cinématique, torseur transmissible).",answer:"Voir le tableau de synthèse ci-dessous.",recap:"liaisons"},
 {topic:"si_analyse",mode:"flash",q:"Qu'est-ce que le besoin auquel répond un système ?",answer:"C'est la raison d'être du système : le service qu'il doit rendre à ses utilisateurs (acteurs). On l'exprime en identifiant les acteurs qui interagissent avec le système et les services attendus — c'est l'objet du diagramme de cas d'utilisation (uc). Le besoin est le point de départ de toute la conception.",exp:"Exprimé par le client/utilisateur, le besoin est ensuite traduit en exigences techniques."},
   {topic:"si_analyse",mode:"flash",q:"Quelle est la différence entre un besoin et une exigence ?",answer:"Le besoin exprime une attente, souvent qualitative. L'exigence en est la traduction technique, qualifiée et quantifiée (un critère, un niveau/valeur, éventuellement une flexibilité). Un besoin se décline en plusieurs exigences.",exp:"« Traduire un besoin fonctionnel en exigences » est une compétence explicite du programme (A1)."},
   {topic:"si_analyse",mode:"flash",q:"Que signifie « qualifier et quantifier une exigence » ?",answer:"Qualifier = préciser le critère d'appréciation (la grandeur qui mesure l'exigence). Quantifier = lui associer un niveau : une valeur chiffrée avec son unité, et éventuellement une tolérance (flexibilité).",exp:"Une exigence non quantifiée n'est ni vérifiable ni évaluable."},
@@ -7529,51 +7540,53 @@ const QUESTIONS = [
       {topic:"fr_notions",mode:"flash",q:"Qu'est-ce que l'artiste démiurge, et quelle œuvre du programme le met à l'épreuve ?",answer:"Celui qui <b>donne vie à la matière</b> : Pygmalion, et Victor Frankenstein, « le Prométhée moderne ».",exp:"Cours, I.c ; icono 10, Gérôme, Pygmalion et Galatée (1890). Chez Zola le démiurge échoue : la Baigneuse de Mahoudeau s'anime en s'écroulant."},
       {topic:"fr_theme",mode:"flash",q:"Pourquoi le mythe de Prométhée figure-t-il la condition même de l'artiste ?",answer:"Il est <b>puni pour avoir créé</b> : donner le feu, donc la culture, est un acte d'<b>hybris</b> que les dieux châtient.",exp:"Cours, I.c. Prométhée façonne aussi les hommes : créateur et modeleur. Écho : Victor maudit sa découverte, Claude se pend devant sa toile."},
 
-  /* ===== INFORMATIQUE TSI1 — DM « prérequis de SUP » (T. Galopin) : vocabulaire de la
-     programmation, représentation des nombres, bases des graphes. Cartes rédigées à partir
-     du corrigé ; les cartes `mode:'code'` sont exécutées pour de vrai par PYMINI. ===== */
+  /* ===== INFORMATIQUE TSI1 — périmètre = la FICHE DE COURS « Culture générale informatique
+     en TSI1 » (T. Galopin, 10 p.) ET l'interrogation de cours associée (18 QCM). Les six chapitres
+     suivent le plan de la fiche : expression/affectation/effet de bord, listes et dictionnaires,
+     complexité, validité (variant et invariant), représentation des nombres, puis graphes (partie 6
+     de l'interrogation). Les cartes `mode:'code'` sont exécutées pour de vrai par PYMINI. ===== */
 
-  /* ---- 1. Vocabulaire : spécifier, tester, documenter ---- */
-  {topic:'i1_vocabulaire', mode:'flash', q:"Qu'appelle-t-on la signature d'une fonction Python ?",
-   answer:"La <b>ligne du <code>def</code></b> : nom de la fonction, paramètres avec leurs types, et type de la valeur renvoyée.",
-   exp:"Exemple du DM : <code>def mot_le_plus_frequent(texte: list[str]) -&gt; str:</code>. C'est le contrat minimal : ce qu'on donne, ce qu'on reçoit."},
-
-  {topic:'i1_vocabulaire', mode:'flash', q:"Que contient la spécification d'une fonction, et où l'écrit-on ?",
-   answer:"Ce que fait la fonction, ses <b>entrées</b> et ses <b>sorties</b> — écrite dans la <b>docstring</b>, entre triples guillemets sous le <code>def</code>.",
-   exp:"Dans le DM, ce sont les lignes 4 à 12 : rôle, entrée (liste de mots NON VIDE), sortie (le mot le plus fréquent, le premier en cas d'égalité)."},
-
-  {topic:'i1_vocabulaire', mode:'flash', q:"Qu'est-ce qu'une pré-condition ?",
-   answer:"Une <b>hypothèse sur les données d'entrée</b> que l'appelant doit garantir : hors de ces conditions, la fonction ne promet plus rien.",
-   exp:"Ici : « texte est une liste de chaînes » et « texte est non vide ». La pré-condition fait partie du contrat, au même titre que le résultat."},
-
-  {topic:'i1_vocabulaire', mode:'flash', q:"Qu'est-ce qu'une post-condition ?",
-   answer:"Une <b>propriété garantie en sortie</b> par la fonction, dès lors que les pré-conditions sont respectées.",
-   exp:"Ici : le mot renvoyé est bien le plus fréquent, et c'est le <b>premier rencontré</b> lorsque plusieurs mots ont l'effectif maximal."},
-
-  {topic:'i1_vocabulaire', mode:'flash', q:"Qu'est-ce qu'une assertion en Python ?",
-   answer:"Une <b>vérification exécutable</b> : <code>assert condition, \"message\"</code> arrête aussitôt le programme avec ce message si la condition est fausse.",
-   exp:"C'est la traduction en code d'une pré-condition (ou d'un test) : l'erreur apparaît tôt et clairement, au lieu de surgir plus loin sous une forme obscure."},
-
-  {topic:'i1_vocabulaire', mode:'flash', q:"À quoi sert l'instruction <b>assert len(texte) &gt; 0</b> placée en tête de la fonction ?",
-   qcode:IPT_CTX.entete,
-   answer:"À vérifier la pré-condition « texte non vide » : sans elle, <code>texte[0]</code> lèverait une <b>IndexError</b> et la question n'aurait aucun sens.",
-   exp:"L'assertion interrompt le programme avec un message explicite dès que l'appelant sort du contrat, au lieu de laisser une erreur incompréhensible plus loin."},
-
-  {topic:'i1_vocabulaire', mode:'flash', q:"Qu'appelle-t-on le jeu de tests d'une fonction ?",
-   answer:"L'ensemble des <b>appels de vérification</b> (le plus souvent des <code>assert</code>) sur des valeurs choisies, <b>cas limites compris</b>.",
-   exp:"Dans le DM : un seul mot, une égalité d'effectifs, des mots tous différents. Un test qui passe ne prouve rien en général ; un test qui échoue prouve un bug."},
+  /* ---- 1. Expression, comparaison, affectation, effet de bord ---- */
 
   {topic:'i1_vocabulaire', mode:'flash', q:"Quelle différence y a-t-il entre une expression et une instruction ?",
-   answer:"Une <b>expression</b> est évaluée et produit une valeur ; une <b>instruction</b> (une affectation, par exemple) modifie l'état du programme.",
-   exp:"<code>occurrences.get(mot, 0)</code> produit une valeur sans rien changer ; <code>occurrences[mot] = …</code> modifie le dictionnaire."},
-
-  {topic:'i1_vocabulaire', mode:'flash', q:"Qu'est-ce qu'un effet de bord ?",
-   answer:"Une <b>modification d'un état extérieur</b> à la valeur renvoyée : une structure de données, un fichier, l'affichage.",
-   exp:"Remplir <code>occurrences</code> est l'effet de bord de la première boucle : la fonction ne se contente pas de calculer, elle modifie une structure de données."},
+   answer:"Une <b>expression</b> est évaluée et <b>renvoie une valeur sans modifier</b> la variable appelée ; une <b>instruction</b> — une affectation, par exemple — <b>modifie l'état</b> du programme.",
+   exp:"Avec <code>x = 'TSI'</code> : l'expression <code>x</code> renvoie 'TSI' sans y toucher, <code>L[2]</code> renvoie 'Ingénieurs', <code>Dico[\"S\"]</code> renvoie 'Sérieux'. En face, <code>x = 'TSI2'</code> est une instruction."},
 
   {topic:'i1_vocabulaire', mode:'flash', q:"Qu'appelle-t-on une comparaison dans un code Python ?",
-   answer:"Une <b>expression booléenne</b> qui confronte deux valeurs et vaut <code>True</code> ou <code>False</code>.",
-   exp:"<code>occurrences[mot] &gt; meilleur_effectif</code> et <code>occurrences[mot] == meilleur_effectif</code> en sont : à ne pas confondre avec l'affectation <code>=</code>."},
+   answer:"Une <b>expression booléenne</b> qui confronte deux valeurs, <b>ne modifie ni l'une ni l'autre</b>, et renvoie <code>True</code> ou <code>False</code>.",
+   exp:"<code>x == \"TSI\"</code> renvoie True sans changer x ; <code>len(Dico[\"S\"]) &gt;= 4</code> renvoie False sans toucher à Dico. Ne pas confondre <code>==</code> (comparaison) et <code>=</code> (affectation)."},
+
+  {topic:'i1_vocabulaire', mode:'flash', q:"Qu'est-ce qu'une affectation, et que modifie-t-elle exactement ?",
+   qcode:IPT_CTX.objets,
+   answer:"L'usage de <code>=</code> : la variable — l'« étiquette » — est <b>repointée vers un autre objet</b>. C'est l'étiquette qu'on déplace, pas l'objet qu'on modifie.",
+   exp:"Après <code>y = x</code> puis <code>x = 'TSI2'</code>, l'expression <code>(x, y)</code> vaut <code>('TSI2', 'TSI')</code> : seule l'étiquette x a bougé, y pointe toujours vers l'objet d'origine."},
+
+  {topic:'i1_vocabulaire', mode:'qcm', q:"On exécute <b>L = [1, 2, 3]</b> puis <b>M = L</b> et <b>M.append(4)</b>. Qu'affiche <b>print(L)</b> ?",
+   choices:[{t:"<code>[1, 2, 3, 4]</code>", c:true},
+            {t:"<code>[1, 2, 3]</code>", c:false},
+            {t:"Une erreur", c:false},
+            {t:"<code>None</code>", c:false}],
+   exp:"<code>M = L</code> ne copie rien : les deux noms désignent la <b>même liste</b>. L'ajout fait par M se voit donc depuis L — c'est un effet de bord. Pour une vraie copie : <code>M = L.copy()</code>."},
+
+  {topic:'i1_vocabulaire', mode:'flash', q:"Pourquoi <b>LL = L</b> puis <b>L[1] = \"Sérieux.ses\"</b> modifie-t-il aussi LL, alors que <b>y = x</b> puis <b>x = 'TSI2'</b> laisse y intact ?",
+   answer:"Parce que <code>=</code> ne fait que <b>poser une étiquette</b> sur un objet : L et LL désignent la même liste, et la modifier <b>en place</b> se voit des deux côtés. Réaffecter x, au contraire, ne déplace <b>que</b> l'étiquette x.",
+   exp:"Une chaîne est <b>immuable</b> : on ne peut que la remplacer. Une liste et un dictionnaire sont <b>mutables</b> : on peut les modifier sur place — d'où les effets de bord."},
+
+  {topic:'i1_vocabulaire', mode:'flash', q:"Qu'est-ce qu'un effet de bord ?",
+   answer:"Toute action qui <b>modifie un état observable en dehors du calcul local</b>, sous quelque forme que ce soit : un objet mutable, une variable globale, un fichier, l'affichage.",
+   exp:"Il ne réattribue pas une étiquette, il <b>modifie l'objet</b> : <code>L[2] = ...</code>, <code>L.append(...)</code>, <code>Dico[\"2\"] = ...</code> sont des effets de bord, contrairement à l'affectation <code>y = x</code>."},
+
+  {topic:'i1_vocabulaire', mode:'qcm', q:"Parmi ces lignes, laquelle ne produit <b>aucun</b> effet de bord ? (x est une variable locale contenant un entier, L une liste, D un dictionnaire)",
+   choices:[{t:"<code>x = x + 1</code>", c:true},
+            {t:"<code>L.append(x)</code>", c:false},
+            {t:"<code>D[\"cle\"] = x</code>", c:false},
+            {t:"<code>L[0] = x</code>", c:false}],
+   exp:"Les trois autres modifient un objet <b>mutable</b> partagé, donc un état visible hors du calcul local. <code>x = x + 1</code> ne fait que repointer une étiquette <b>locale</b> sur un nouvel entier : rien ne sort de la fonction."},
+
+  {topic:'i1_vocabulaire', mode:'flash', q:"Comment une fonction peut-elle modifier une variable scalaire définie en dehors d'elle ?",
+   qcode:IPT_CTX.compteur,
+   answer:"En la déclarant <code>global</code>. Sans cette déclaration, l'affectation créerait une variable <b>locale</b> et laisserait l'extérieur inchangé.",
+   exp:"Pour un objet <b>mutable</b>, <code>global</code> est inutile : <code>L.append(...)</code> modifie l'objet lui-même, donc l'effet se voit de l'extérieur sans rien déclarer. D'où deux mécanismes bien distincts."},
 
   {topic:'i1_vocabulaire', mode:'qcm', q:"Dans le code du DM, comment qualifie-t-on <b>occurrences.get(mot, 0)</b> ?",
    qcode:IPT_CTX.compte,
@@ -7581,19 +7594,34 @@ const QUESTIONS = [
             {t:"Une instruction : elle ajoute la clé <code>mot</code> au dictionnaire", c:false},
             {t:"Une assertion : elle vérifie que <code>mot</code> est bien une clé", c:false},
             {t:"Une comparaison : elle teste si <code>mot</code> vaut 0", c:false}],
-   exp:"<code>.get</code> lit sans écrire : si la clé est absente elle renvoie la valeur par défaut 0, mais ne crée rien. L'affectation qui l'entoure, elle, est une instruction."},
+   exp:"<code>.get</code> lit sans écrire : si la clé est absente, elle renvoie la valeur par défaut 0, mais ne crée rien dans le dictionnaire. L'affectation qui l'entoure, elle, est bien une instruction."},
 
-  {topic:'i1_vocabulaire', mode:'qcm', q:"Que se passe-t-il lorsque la condition d'un <b>assert</b> est fausse à l'exécution ?",
-   choices:[{t:"Le programme s'arrête en levant une <code>AssertionError</code>, avec le message fourni", c:true},
-            {t:"La fonction renvoie <code>None</code> et l'exécution continue", c:false},
-            {t:"Le message s'affiche, puis la fonction poursuit son travail", c:false},
-            {t:"Rien : <code>assert</code> n'est qu'un commentaire à destination du lecteur", c:false}],
-   exp:"C'est tout l'intérêt : l'exécution s'interrompt au plus près de la faute, avec un message que le programmeur a lui-même rédigé."},
 
   /* ---- 2. Listes et dictionnaires ---- */
+
+  {topic:'i1_structures', mode:'flash', q:"Quelles sont les façons de construire une liste en Python ?",
+   answer:"<b>Par extension</b> <code>L = [...]</code> · <b>par compréhension</b> <code>[f(t) for t in s]</code> · <b>par répétition</b> <code>[e] * n</code> · par <b>append</b> successifs · par <b>concaténation</b> <code>L1 + L2</code>.",
+   exp:"Exemples du cours, avec <code>x = 'TSI'</code> : <code>[lettre for lettre in x]</code> donne <code>['T', 'S', 'I']</code>, et <code>[\"?\"] * 3</code> donne <code>['?', '?', '?']</code>."},
+
+  {topic:'i1_structures', mode:'flash', q:"Et quelles sont les façons de construire un dictionnaire ?",
+   answer:"<b>Par extension</b> <code>D = {cle: valeur, ...}</code> · <b>par compréhension</b> <code>{cle: valeur for ...}</code> · <b>clé par clé</b>, par insertions successives <code>D[cle] = valeur</code>.",
+   exp:"Exemple du cours : <code>{x[i]: L[i] for i in range(len(x))}</code> reconstruit Dico à partir de la chaîne <code>x = 'TSI'</code> et de la liste L. Les trois voies donnent le même dictionnaire."},
+
+  {topic:'i1_structures', mode:'flash', q:"Pour <b>L = ['Très', 'Sérieux', 'Ingénieurs']</b>, que valent <b>L[3]</b> et <b>L[1:3]</b> ?",
+   answer:"<code>L[3]</code> lève une <b>IndexError</b> : les seuls indices valides sont 0, 1 et 2. <code>L[1:3]</code> renvoie la <b>tranche</b> <code>['Sérieux', 'Ingénieurs']</code> — borne de gauche incluse, borne de droite exclue.",
+   exp:"À rapprocher du dictionnaire, où une clé absente lève une <b>KeyError</b>. Deux structures, deux erreurs : l'indice est imposé par la position, la clé est choisie par le programmeur."},
+
+  {topic:'i1_structures', mode:'flash', q:"Que fait <b>L.pop()</b>, et que fait <b>L.pop(-k)</b> ?",
+   answer:"<code>L.pop()</code> retire le <b>dernier</b> élément <b>et le renvoie</b> ; <code>L.pop(-k)</code> fait de même avec le k-ième en partant de la fin. Dans les deux cas L est modifiée : c'est un <b>effet de bord</b>.",
+   exp:"Coût : $O(1)$ pour le dernier — rien à déplacer — mais $O(k)$ pour <code>pop(-k)</code>, car il faut décaler tous les éléments qui suivent."},
+
+  {topic:'i1_structures', mode:'flash', q:"Quelle différence y a-t-il entre <b>L5 = L + [\"de 2main\"]</b> et <b>L.append(\"de 2main\")</b> ?",
+   answer:"La concaténation <code>+</code> crée une <b>nouvelle liste</b> et laisse L <b>inchangée</b> ; <code>append</code> modifie L <b>en place</b>, donc par effet de bord.",
+   exp:"Les coûts diffèrent aussi : <code>+</code> recopie tout, en $O(n_1+n_2)$, tandis qu'<code>append</code> ajoute au bout en $O(1)$. Attention, <code>L += [elt]</code> se comporte comme <code>append</code>, pas comme <code>+</code>."},
+
   {topic:'i1_structures', mode:'flash', q:"Qu'est-ce qu'un dictionnaire Python ?",
-   answer:"Une structure qui associe à chaque <b>clé</b> unique une <b>valeur</b> : l'accès se fait par la clé, jamais par un rang.",
-   exp:"<code>occurrences = {}</code> crée un dictionnaire vide ; <code>occurrences[\"papa\"] = 3</code> associe l'effectif 3 au mot « papa »."},
+   answer:"Une structure qui associe à chaque <b>clé</b> unique une <b>valeur</b> : l'accès se fait par la clé, jamais par un rang. <code>len(Dico)</code> donne le nombre de <b>couples</b> clé-valeur.",
+   exp:"La clé joue le rôle qu'a la position dans une liste — à ceci près qu'on la <b>choisit soi-même</b> et que les couples <b>ne sont pas classés</b>."},
 
   {topic:'i1_structures', mode:'flash', q:"Que renvoie <b>d[cle]</b> lorsque la clé n'existe pas dans le dictionnaire d ?",
    answer:"Rien : Python lève une <b>KeyError</b>. En lecture, la clé doit déjà exister.",
@@ -7601,7 +7629,7 @@ const QUESTIONS = [
 
   {topic:'i1_structures', mode:'flash', q:"Que fait <b>d.get(cle, defaut)</b> ?",
    answer:"Elle renvoie la valeur associée à la clé si elle existe, sinon <b>defaut</b> — et surtout <b>sans modifier</b> le dictionnaire.",
-   exp:"<code>occurrences[mot] = occurrences.get(mot, 0) + 1</code> vaut donc 1 à la première rencontre du mot, puis 2, 3… sans jamais lever de KeyError."},
+   exp:"Sur le dictionnaire du cours : <code>Dico.get(\"T\", 0)</code> renvoie 'Très', tandis que <code>Dico.get(\"Z\", 0)</code> renvoie 0 au lieu de lever une KeyError — et Dico reste intact."},
 
   {topic:'i1_structures', mode:'flash', q:"Que fait <b>d[cle] = valeur</b> lorsque la clé n'existe pas encore ?",
    answer:"Elle la <b>crée</b> : en affectation, l'indexation d'un dictionnaire ajoute la paire, alors qu'en lecture elle lèverait une KeyError.",
@@ -7611,9 +7639,10 @@ const QUESTIONS = [
    answer:"Ses <b>clés</b>. Pour les valeurs : <code>d.values()</code> ; pour les couples clé-valeur : <code>d.items()</code>.",
    exp:"D'où <code>for sommet in graphe:</code> qui parcourt les noms d'aéroports, puis <code>graphe[sommet]</code> pour atteindre leurs voisins."},
 
-  {topic:'i1_structures', mode:'flash', q:"Pourquoi compter des occurrences avec un dictionnaire plutôt qu'avec une liste de couples (mot, effectif) ?",
-   answer:"Pour le coût d'accès : <b>$O(1)$ en moyenne</b> dans un dictionnaire (hachage), contre <b>$O(k)$</b> dans une liste qu'il faut parcourir.",
-   exp:"Sur n mots dont k distincts : $O(n)$ avec un dictionnaire, $O(n\\times k)$ au pire avec une liste. L'espace occupé, lui, reste $O(k)$ dans les deux cas."},
+  {topic:'i1_structures', mode:'flash', q:"Que recopie exactement <b>L.copy()</b> — ou <b>D.copy()</b> ?",
+   answer:"<b>Le premier niveau seulement</b> : c'est une <b>copie superficielle</b>. Si les éléments (ou les valeurs) sont eux-mêmes <b>mutables</b>, ils restent <b>partagés</b> entre l'original et la copie.",
+   exp:"Avec <code>D = {\"I\": [\"Ingénieurs\"]}</code> : <code>D_copie[\"I\"] = [\"Ingénieur.es\"]</code> ne touche pas D, car c'est une affectation ; mais <code>D_copie[\"I\"].append(\".es\")</code> modifie aussi <code>D[\"I\"]</code>, car c'est un effet de bord sur la liste partagée.",
+   vig:"Le piège le plus fréquent du chapitre : une copie « faite » qui ne protège en réalité que l'étage du dessus."},
 
   {topic:'i1_structures', mode:'qcm', q:"Après <b>occurrences = {}</b> puis la boucle de comptage sur <b>['je', 'suis', 'je']</b>, que vaut le dictionnaire ?",
    qcode:IPT_CTX.compte, qctxTitle:"La boucle de comptage, avec texte = ['je', 'suis', 'je']",
@@ -7622,6 +7651,7 @@ const QUESTIONS = [
             {t:"{'je': 1, 'suis': 2}", c:false},
             {t:"['je', 'suis', 'je']", c:false}],
    exp:"Une clé est unique : la deuxième rencontre de « je » n'ajoute pas d'entrée, elle met à jour la valeur. D'où 2 pour « je », 1 pour « suis »."},
+
   {topic:'i1_structures', mode:'code', q:"Écris la fonction <b>occurrences(texte)</b> qui renvoie le dictionnaire associant à chaque mot de la liste texte son nombre d'apparitions.",
    code:{
      start:"def occurrences(texte):\n    compteur = {}\n    for mot in texte:\n        pass   # à remplacer : incrémenter le compteur de mot\n    return compteur\n",
@@ -7634,62 +7664,91 @@ const QUESTIONS = [
    answer:"Un compteur par clé, initialisé à 0 par <code>.get</code> :",
    exp:"Sans <code>.get(mot, 0)</code>, la première rencontre d'un mot lèverait une KeyError : la clé n'existe pas encore. Coût total : $O(n)$."},
 
-  {topic:'i1_structures', mode:'code', q:"Écris la fonction <b>mot_le_plus_frequent(texte)</b> qui renvoie le mot le plus fréquent de la liste texte — et, en cas d'égalité, le premier rencontré.",
-   code:{
-     start:"def mot_le_plus_frequent(texte):\n    assert len(texte) > 0, \"le texte ne doit pas être vide\"\n    occurrences = {}\n    # 1) compter les mots\n    # 2) retenir le mot d'effectif maximal (le PREMIER en cas d'égalité)\n    return texte[0]\n",
-     requires:['mot_le_plus_frequent'],
-     tests:[{call:'mot_le_plus_frequent(["papa", "papa", "papa", "quand", "mange"])', eq:'"papa"'},
-            {call:'mot_le_plus_frequent(["chat"])', eq:'"chat"', label:'cas limite : un seul mot'},
-            {call:'mot_le_plus_frequent(["a", "b", "a", "b"])', eq:'"a"', label:'cas limite : égalité → le 1er rencontré'},
-            {call:'mot_le_plus_frequent(["x", "y", "z"])', eq:'"x"', label:'cas limite : tous différents'},
-            {call:'mot_le_plus_frequent(["le", "chat", "le", "chien", "chat", "chat"])', eq:'"chat"', label:'test ajouté : la réponse n\'est PAS le premier mot du texte'}],
-     sol:"def mot_le_plus_frequent(texte):\n    assert len(texte) > 0, \"le texte ne doit pas être vide\"\n    occurrences = {}\n    for mot in texte:\n        occurrences[mot] = occurrences.get(mot, 0) + 1\n    meilleur_mot = texte[0]\n    meilleur_effectif = 0\n    for mot in texte:\n        if occurrences[mot] > meilleur_effectif:\n            meilleur_effectif = occurrences[mot]\n            meilleur_mot = mot\n    return meilleur_mot\n"},
-   answer:"Un comptage, puis un parcours qui ne remplace le champion qu'en cas d'effectif <b>strictement</b> supérieur :",
-   exp:"L'inégalité stricte suffit à garantir la post-condition « le premier rencontré » : à égalité, on ne remplace pas. Complexité $O(n)$ en temps, $O(k)$ en espace.",
-   vig:"Le jeu de tests du DM est passé par un simple <code>return texte[0]</code> : ses quatre cas commencent tous par la réponse attendue. Un test qui passe ne prouve rien — d'où le cinquième, ajouté ici."},
 
-  /* ---- 3. Terminaison, correction, complexité ---- */
+  /* ---- 3. Complexité des algorithmes ---- */
+
+  {topic:'i1_complexite', mode:'flash', q:"Quels sont les deux types de complexité d'un algorithme, et que mesurent-ils ?",
+   answer:"La complexité <b>spatiale</b> — l'espace mémoire utilisé — et la complexité <b>temporelle</b> — le nombre d'opérations élémentaires. Toutes deux s'expriment comme <b>fonction de la taille des entrées</b>.",
+   exp:"La spatiale est en général la moins problématique des deux : c'est le temps de calcul qui rend un programme inutilisable sur de grandes données."},
+
+  {topic:'i1_complexite', mode:'flash', q:"Que décrit la notation de Landau $O$ ?",
+   answer:"L'évolution du nombre de calculs en ne gardant que le <b>terme dominant</b>, et <b>sans la constante multiplicative</b>.",
+   exp:"Ainsi $3n^2+100n+7=O(n^2)$ : pour n grand, $n^2$ écrase tout le reste. On compare des <b>ordres de grandeur</b>, jamais des durées en secondes."},
+
+  {topic:'i1_complexite', mode:'flash', q:"Qu'appelle-t-on une opération élémentaire ?",
+   answer:"Une opération <b>arithmétique, logique ou de comparaison</b> · un accès mémoire <b>en lecture</b> (le renvoi de la valeur d'une variable) · un accès mémoire <b>en écriture</b> (une affectation) · l'<b>appel d'une fonction</b>.",
+   exp:"Évaluer une complexité, c'est compter combien de fois ces opérations sont exécutées en fonction de la taille de l'entrée."},
+
+  {topic:'i1_complexite', mode:'flash', q:"Quelle est la complexité des opérations usuelles sur une liste L de longueur n ?",
+   answer:"<b>$O(1)$</b> : <code>len(L)</code>, lecture <code>L[i]</code>, écriture <code>L[i] = …</code>, <code>L.append(elt)</code> (ou <code>L += [elt]</code>), <code>L.pop()</code><br><b>$O(n)$</b> : <code>L.copy()</code> ou <code>L[:]</code>, <code>elt in L</code>, <code>max(L)</code>, <code>min(L)</code><br><b>$O(n_1+n_2)$</b> : <code>L1 + L2</code> &nbsp;·&nbsp; <b>$O(k)$</b> : <code>L.pop(-k)</code>",
+   exp:"Pour toutes ces opérations, le coût moyen et le pire des cas amorti coïncident. Le piège classique est <code>elt in L</code>, en $O(n)$ — alors que <code>cle in D</code> sur un dictionnaire coûte $O(1)$ en moyenne.",
+   vig:"Tableau à connaître par cœur : il suffit à dater la complexité de presque toutes les boucles du programme."},
+
+  {topic:'i1_complexite', mode:'qcm', q:"Quelle est la complexité temporelle de <b>elt in L</b> pour une liste L de longueur n ?",
+   choices:[{t:"$O(n)$", c:true},{t:"$O(1)$", c:false},{t:"$O(\\log n)$", c:false},{t:"$O(n^2)$", c:false}],
+   exp:"Une liste n'est pas triée : il faut la parcourir jusqu'à trouver l'élément, et aller jusqu'au bout pour conclure qu'il est absent. Sur un dictionnaire, <code>cle in D</code> coûte $O(1)$ en moyenne — c'est tout l'intérêt du hachage."},
+
+  {topic:'i1_complexite', mode:'flash', q:"Pourquoi compter des occurrences avec un dictionnaire plutôt qu'avec une liste de couples (mot, effectif) ?",
+   answer:"Pour le coût d'accès : <b>$O(1)$ en moyenne</b> dans un dictionnaire (hachage), contre <b>$O(k)$</b> dans une liste qu'il faut parcourir.",
+   exp:"Sur n mots dont k distincts : $O(n)$ avec un dictionnaire, $O(n\\times k)$ au pire avec une liste. L'espace occupé, lui, reste $O(k)$ dans les deux cas."},
+
+  {topic:'i1_complexite', mode:'flash', q:"Pourquoi dit-on que l'accès à un dictionnaire coûte $O(1)$ « en moyenne » ?",
+   answer:"Parce qu'il repose sur le <b>hachage</b> : la clé est transformée en position, donc atteinte directement — sauf collisions, qui dégradent le cas le pire.",
+   exp:"À retenir en TSI : $O(1)$ en moyenne pour un dictionnaire, contre $O(k)$ pour retrouver une information dans une liste non triée de k éléments."},
+
+  {topic:'i1_complexite', mode:'flash', q:"Quelle est la complexité temporelle du comptage des mots d'un texte de n mots ?",
+   qcode:IPT_CTX.complet, qctxTitle:"L'algorithme : compter, puis chercher le maximum",
+   answer:"<b>$O(n)$</b> : deux boucles de n tours, chaque lecture ou écriture dans le dictionnaire coûtant $O(1)$ en moyenne.",
+   exp:"$O(n)+O(n)=O(n)$ : on additionne les coûts, puis on ne garde que le terme dominant en négligeant les constantes."},
+
+  {topic:'i1_complexite', mode:'flash', q:"Quelle est la complexité spatiale de ce comptage, et pourquoi ?",
+   qcode:IPT_CTX.complet, qctxTitle:"L'algorithme : compter, puis chercher le maximum",
+   answer:"<b>$O(k)$</b>, où k est le nombre de mots <b>distincts</b> : la seule structure créée est le dictionnaire, à une entrée par mot distinct ($k \\le n$).",
+   exp:"La complexité spatiale mesure la mémoire <b>ajoutée</b> par l'algorithme, pas la taille de la donnée d'entrée déjà présente."},
+
+  {topic:'i1_complexite', mode:'qcm', q:"Quelle est, dans le <b>pire des cas</b>, la complexité temporelle de cet algorithme, où n désigne la longueur de L ?",
+   qcode:IPT_CTX.doublon, qctxTitle:"Recherche d'un doublon dans une liste",
+   choices:[{t:"$O(n^2)$", c:true},{t:"$O(n)$", c:false},{t:"$O(n\\log n)$", c:false},{t:"$O(1)$", c:false}],
+   exp:"Deux boucles imbriquées : sans aucun doublon, le test est exécuté $\\frac{n(n-1)}{2}$ fois, et $\\frac{n(n-1)}{2}=O(n^2)$. S'il existe un doublon précoce, le <code>return True</code> sort bien avant — mais le pire des cas, lui, ne dépend pas de la chance."},
+
+  {topic:'i1_complexite', mode:'flash', q:"Calculer $x^n$ par multiplications successives ou par exponentiation rapide : quelles complexités ?",
+   answer:"Multiplications successives : <b>$O(n)$</b>, une par unité. Exponentiation rapide (on élève au carré et on divise l'exposant par 2) : <b>$O(\\log n)$</b>.",
+   exp:"Pour $n=10^6$ : un million de multiplications d'un côté, une vingtaine de l'autre. Le gain vient de ce que l'exposant passe de n à 1 en $\\lfloor\\log_2 n\\rfloor+1$ divisions par 2."},
+
+  {topic:'i1_complexite', mode:'flash', q:"Que signifie « complexité dans le pire cas » ?",
+   answer:"Le coût <b>maximal</b> sur toutes les entrées d'une même taille n : c'est une garantie, contrairement au coût moyen.",
+   exp:"Pour le comptage, le pire cas est atteint quand tous les mots sont distincts : le dictionnaire atteint alors n entrées."},
+
+  {topic:'i1_complexite', mode:'qcm', q:"Pour de très grands entiers, une addition n'est plus en $O(1)$. Que peut-on alors dire du coût de <b>sum()</b> ?",
+   choices:[{t:"Il dépend à la fois du nombre de termes <b>et</b> de la taille (en bits) des entiers manipulés", c:true},
+            {t:"Il reste en $O(n)$ quel que soit n, sans nuance à apporter", c:false},
+            {t:"Python limite la taille des entiers, donc le problème ne se pose jamais", c:false},
+            {t:"Il ne dépend que de la taille en bits, pas du nombre de termes", c:false}],
+   exp:"Additionner deux entiers de b bits coûte $O(b)$. Le total croît donc avec le nombre d'additions <b>et</b> avec la longueur des nombres additionnés."},
+
+
+  /* ---- 4. Validité des algorithmes : terminaison et correction ---- */
+
   {topic:'i1_correction', mode:'flash', q:"Qu'est-ce que le variant d'une boucle ?",
-   answer:"Une quantité <b>entière, positive ou nulle, qui décroît strictement</b> à chaque tour : son existence prouve que la boucle s'arrête.",
-   exp:"Pour <code>for mot in texte</code> : le nombre de mots restant à traiter. Il vaut len(texte) au départ et perd 1 par tour, d'où au plus len(texte) tours."},
+   answer:"Une quantité <b>entière, minorée, qui décroît strictement</b> à chaque tour : son existence prouve que la boucle s'arrête au bout d'un nombre fini d'itérations.",
+   exp:"Pour <code>Fact(n)</code>, où k part de 1 et augmente de 1 par tour, on prend $n-k+1$ : c'est un entier, il reste $\\gt 0$ tant que $k\\le n$, et il perd 1 à chaque tour."},
 
   {topic:'i1_correction', mode:'flash', q:"Qu'est-ce que l'invariant d'une boucle ?",
    answer:"Une propriété <b>vraie avant la boucle et préservée par chaque tour</b> : elle permet de prouver que le résultat obtenu en sortie est le bon.",
    exp:"On la démontre en trois temps : <b>initialisation</b>, <b>conservation</b> (un tour la maintient), <b>terminaison</b> (ce qu'elle donne quand la boucle s'arrête)."},
 
   {topic:'i1_correction', mode:'flash', q:"Que prouve-t-on avec un variant, et que prouve-t-on avec un invariant ?",
-   answer:"Le variant prouve la <b>terminaison</b> (la boucle s'arrête) ; l'invariant prouve la <b>correction</b> (elle calcule bien ce qu'on attend).",
-   exp:"Les deux sont nécessaires : un algorithme peut s'arrêter sur un résultat faux, ou calculer juste sans jamais s'arrêter."},
+   answer:"Le variant prouve la <b>terminaison</b> — la boucle s'arrête ; l'invariant prouve la <b>correction</b> — elle calcule bien ce qu'on attend.",
+   exp:"Ce sont les deux questions de validité, tranchées <b>avant toute exécution</b>, par un raisonnement analytique. Un algorithme peut très bien s'arrêter sur un résultat faux, ou calculer juste sans jamais s'arrêter."},
 
-  {topic:'i1_correction', mode:'flash', q:"Quel invariant porte la boucle qui remplit le dictionnaire <b>occurrences</b> ?",
-   qcode:IPT_CTX.compte,
-   answer:"Après le traitement des k premiers mots, <b>occurrences associe à chaque mot rencontré son nombre exact d'apparitions parmi ces k mots</b>.",
-   exp:"Initialisation : k = 0, dictionnaire vide. Conservation : le compteur du mot courant augmente de 1. Terminaison : k = len(texte), le comptage est complet."},
+  {topic:'i1_correction', mode:'flash', q:"Quel est l'invariant de la boucle <b>while</b> de Fact(n), et comment le vérifie-t-on ?",
+   qcode:IPT_CTX.fact,
+   answer:"À chaque passage par le test : <b>$res=(k-1)!$ et $1\\le k\\le n+1$</b>. On le vérifie en trois temps : <b>initialisation</b>, <b>conservation</b>, <b>utilité en sortie</b>.",
+   exp:"Initialisation : $res=1=0!$ et $k=1$. Conservation : si $res=(k-1)!$, après un tour $res=(k-1)!\\times k=k!$ et k devient $k+1$. Sortie : la boucle s'arrête à $k=n+1$, donc $res=n!$ — exactement le résultat attendu."},
 
-  {topic:'i1_correction', mode:'flash', q:"Quelle est la complexité temporelle du comptage des mots d'un texte de n mots ?",
-   qcode:IPT_CTX.complet, qctxTitle:"L'algorithme : compter, puis chercher le maximum",
-   answer:"<b>$O(n)$</b> : deux boucles de n tours, chaque lecture ou écriture dans le dictionnaire coûtant $O(1)$ en moyenne.",
-   exp:"$O(n)+O(n)=O(n)$ : on additionne les coûts, puis on ne garde que le terme dominant en négligeant les constantes."},
-
-  {topic:'i1_correction', mode:'flash', q:"Quelle est la complexité spatiale de ce comptage, et pourquoi ?",
-   qcode:IPT_CTX.complet, qctxTitle:"L'algorithme : compter, puis chercher le maximum",
-   answer:"<b>$O(k)$</b>, où k est le nombre de mots <b>distincts</b> : la seule structure créée est le dictionnaire, à une entrée par mot distinct ($k \\le n$).",
-   exp:"La complexité spatiale mesure la mémoire <b>ajoutée</b> par l'algorithme, pas la taille de la donnée d'entrée déjà présente."},
-
-  {topic:'i1_correction', mode:'flash', q:"Pourquoi dit-on que l'accès à un dictionnaire coûte $O(1)$ « en moyenne » ?",
-   answer:"Parce qu'il repose sur le <b>hachage</b> : la clé est transformée en position, donc atteinte directement — sauf collisions, qui dégradent le cas le pire.",
-   exp:"À retenir en TSI : $O(1)$ en moyenne pour un dictionnaire, contre $O(k)$ pour retrouver une information dans une liste non triée de k éléments."},
-
-  {topic:'i1_correction', mode:'flash', q:"Que signifie « complexité dans le pire cas » ?",
-   answer:"Le coût <b>maximal</b> sur toutes les entrées d'une même taille n : c'est une garantie, contrairement au coût moyen.",
-   exp:"Pour le comptage, le pire cas est atteint quand tous les mots sont distincts : le dictionnaire atteint alors n entrées."},
-
-  {topic:'i1_correction', mode:'qcm', q:"Pour de très grands entiers, une addition n'est plus en $O(1)$. Que peut-on alors dire du coût de <b>sum()</b> ?",
-   choices:[{t:"Il dépend à la fois du nombre de termes <b>et</b> de la taille (en bits) des entiers manipulés", c:true},
-            {t:"Il reste en $O(n)$ quel que soit n, sans nuance à apporter", c:false},
-            {t:"Python limite la taille des entiers, donc le problème ne se pose jamais", c:false},
-            {t:"Il ne dépend que de la taille en bits, pas du nombre de termes", c:false}],
-   exp:"Additionner deux entiers de b bits coûte $O(b)$. Le total croît donc avec le nombre d'additions <b>et</b> avec la longueur des nombres additionnés."},
+  {topic:'i1_correction', mode:'flash', q:"Une boucle <b>while m &gt; 0:</b> dont le corps se termine par <b>m = m // 2</b> : quel variant proposer ?",
+   answer:"<b>m lui-même</b> : c'est un entier, il est <b>minoré par 0</b> puisque la boucle ne tourne que tant que $m\\gt 0$, et il <b>décroît strictement</b>, car $m//2\\lt m$ dès que $m\\ge 1$.",
+   exp:"C'est le variant de l'exponentiation rapide. Comme il est divisé par 2 et non diminué de 1, la boucle fait environ $\\log_2 n$ tours au lieu de n."},
 
   {topic:'i1_correction', mode:'qcm', q:"Pourquoi la boucle <b>for mot in texte</b> se termine-t-elle toujours ?",
    qcode:IPT_CTX.compte,
@@ -7698,19 +7757,51 @@ const QUESTIONS = [
             {t:"Parce que Python limite le nombre d'itérations d'une boucle for", c:false},
             {t:"Parce que le dictionnaire <code>occurrences</code> finit par être plein", c:false}],
    exp:"C'est l'argument du variant : entier, minoré par 0, strictement décroissant, donc au plus len(texte) tours. Une boucle <code>while</code>, elle, exige de l'exhiber."},
-  /* ---- 4. Représentation des nombres ---- */
-  {topic:'i1_nombres', mode:'flash', q:"En quoi consiste le codage différentiel (compression delta) d'un flux de mesures ?",
-   answer:"À ne transmettre que la <b>première mesure brute complète</b> (sur 8 bits, par exemple), puis, pour chaque mesure suivante, <b>l'écart avec la précédente</b> (sur 4 bits).",
-   exp:"Les écarts sont petits, donc codables sur peu de bits : le volume transmis et stocké est divisé par deux — décisif pour un capteur qui émet en continu."},
+
+  {topic:'i1_correction', mode:'qcm', q:"Lequel de ces éléments est un <b>variant de boucle valide</b> pour la boucle while ci-dessous ?",
+   qcode:IPT_CTX.somme, qctxTitle:"Somme des éléments d'une liste",
+   choices:[{t:"<code>len(L) - i</code>", c:true},
+            {t:"<code>i</code>", c:false},
+            {t:"<code>s</code>", c:false},
+            {t:"<code>L[i]</code>", c:false}],
+   exp:"Il faut un entier minoré qui <b>décroît strictement</b> : <code>len(L) - i</code> vaut len(L) au départ, perd 1 par tour et s'annule à la sortie. <code>i</code> croît au lieu de décroître ; <code>s</code> et <code>L[i]</code> n'ont aucune raison de décroître, les éléments pouvant être négatifs."},
+
+  {topic:'i1_correction', mode:'qcm', q:"Lequel de ces énoncés est le meilleur <b>invariant de boucle</b> pour cette fonction — vrai avant chaque tour ?",
+   qcode:IPT_CTX.somme, qctxTitle:"Somme des éléments d'une liste",
+   choices:[{t:"<code>s == sum(L[:i])</code>, la somme des i premiers éléments de L", c:true},
+            {t:"<code>s == sum(L)</code>", c:false},
+            {t:"<code>i == len(L)</code>", c:false},
+            {t:"<code>s == 0</code>", c:false}],
+   exp:"Il doit être vrai à <b>chaque</b> tour, pas seulement à un instant : au départ $i=0$ et <code>sum(L[:0]) = 0 = s</code>. En sortie $i=$<code>len(L)</code>, donc <code>s == sum(L)</code> — et c'est ainsi que l'invariant prouve la correction. Les trois autres ne sont vrais qu'à un seul moment."},
+
+  {topic:'i1_correction', mode:'flash', q:"Quel invariant porte la boucle qui remplit le dictionnaire <b>occurrences</b> ?",
+   qcode:IPT_CTX.compte,
+   answer:"Après le traitement des k premiers mots, <b>occurrences associe à chaque mot rencontré son nombre exact d'apparitions parmi ces k mots</b>.",
+   exp:"Initialisation : k = 0, dictionnaire vide. Conservation : le compteur du mot courant augmente de 1. Terminaison : k = len(texte), le comptage est complet."},
+
+
+  /* ---- 5. Représentation des nombres ---- */
+
+  {topic:'i1_nombres', mode:'flash', q:"Que signifie « système positionnel et pondéré » pour la base 2, et que vaut $10010_2$ ?",
+   answer:"Chaque position porte un <b>poids</b>, puissance de 2 croissante de droite à gauche : $$10010_2=1\\times2^4+1\\times2^1=18.$$",
+   exp:"Le bit de droite est le <b>LSB</b> (<i>Least Significant Bit</i>, poids faible), celui de gauche le <b>MSB</b> (<i>Most Significant Bit</i>, poids fort). La base 16 obéit au même principe, avec des puissances de 16."},
+
+  {topic:'i1_nombres', mode:'flash', q:"Comment fonctionne la base 16, et que vaut $2A_{16}$ ?",
+   answer:"Elle compte <b>16 symboles</b> : les chiffres 0 à 9, puis $A, B, C, D, E, F$ pour 10 à 15. Les poids sont des puissances de 16 : $$2A_{16}=2\\times16+10=42.$$",
+   exp:"Un chiffre hexadécimal code exactement 4 bits, donc un octet s'écrit avec deux chiffres hexadécimaux — d'où son usage constant pour lire de la mémoire."},
 
   {topic:'i1_nombres', mode:'flash', q:"Quelles valeurs un entier non signé de 8 bits peut-il prendre ?",
-   answer:"De <b>0 à 255</b>, soit $2^8 = 256$ valeurs : tous les bits codent la valeur, aucun ne code le signe.",
-   exp:"C'est le format de la première mesure du capteur, mise à l'échelle sur l'intervalle de température $[-25\\,;60]$ °C."},
+   answer:"De <b>0 à 255</b>, soit $2^8=256$ valeurs : tous les bits codent la valeur, aucun ne code le signe.",
+   exp:"Cas particulier de la règle générale : sur n bits non signés, on code les entiers de <b>0 à $2^n-1$</b>, soit $2^n$ combinaisons. Un octet (ou <i>byte</i>) vaut 8 bits."},
 
-  {topic:'i1_nombres', mode:'flash', q:"Comment obtient-on la résolution de $1/3$ °C du capteur de température ?",
-   qcode:IPT_CTX.capteur,
-   answer:"En divisant l'<b>amplitude par le nombre de pas</b> : $\\dfrac{60-(-25)}{255-0}=\\dfrac{85}{255}=\\dfrac13$ °C par pas.",
-   exp:"Une mesure brute de 8 bits parcourt 255 pas de 0 à 255 ; la résolution est la variation de température correspondant à un pas."},
+  {topic:'i1_nombres', mode:'flash', q:"Comment écrit-on un entier <b>négatif</b> en complément à deux ?",
+   answer:"On part de l'écriture binaire de son <b>opposé</b>, on <b>inverse tous les bits</b>, puis on <b>ajoute 1</b>.",
+   exp:"Sur 4 bits : $5=0101$, inversion $1010$, plus 1 : $\\mathbf{1011}=-5$. Un entier positif s'écrit directement et se complète par des zéros à gauche : $3=\\mathbf{0011}$, et non « 0003 »."},
+
+  {topic:'i1_nombres', mode:'flash', q:"Sur n bits, en complément à deux, quel est l'intervalle des entiers relatifs représentables ?",
+   answer:"$$[\\,-2^{\\,n-1}\\ ;\\ 2^{\\,n-1}-1\\,]$$ soit $2^n$ valeurs en tout, mais <b>un négatif de plus que de positifs</b> : le 0 occupe une place du côté positif.",
+   exp:"Sur 4 bits : $-8$ à $7$. Sur 8 bits : $-128$ à $127$. À ne pas confondre avec $[0\\,;2^n-1]$, qui est l'intervalle du codage <b>non signé</b>.",
+   vig:"L'exposant est $n-1$, pas n : un bit entier est consommé par le signe."},
 
   {topic:'i1_nombres', mode:'flash', q:"Quels entiers code-t-on sur 4 bits en complément à deux, et où lit-on le signe ?",
    answer:"De <b>$-8$ à $7$</b> : le <b>bit de poids fort</b> donne le signe (0 pour positif, 1 pour négatif).",
@@ -7729,46 +7820,17 @@ const QUESTIONS = [
    answer:"Si $v \\gt 7$, l'entier vaut <b>$v-16$</b> ; sinon il vaut $v$ lui-même.",
    exp:"Exemple : 1110 vaut 14 en brut, donc $14-16=-2$. La condition $v \\gt 7$ équivaut à $v \\ge 8$, c'est-à-dire au bit de poids fort à 1."},
 
+  {topic:'i1_nombres', mode:'flash', q:"Récite la table des 16 mots de 4 bits en complément à deux.",
+   answer:"<code>0000</code>→0 · <code>0001</code>→1 · <code>0010</code>→2 · <code>0011</code>→3 · <code>0100</code>→4 · <code>0101</code>→5 · <code>0110</code>→6 · <code>0111</code>→7<br><code>1000</code>→−8 · <code>1001</code>→−7 · <code>1010</code>→−6 · <code>1011</code>→−5 · <code>1100</code>→−4 · <code>1101</code>→−3 · <code>1110</code>→−2 · <code>1111</code>→−1",
+   exp:"Deux façons de la retrouver sans l'apprendre bêtement : le MSB à 1 signale un négatif, qui vaut alors $v-16$ ; ou bien, en partant de <code>1111</code> = −1, chaque retrait de 1 au binaire retire 1 à la valeur."},
+
   {topic:'i1_nombres', mode:'qcm', q:"En complément à deux sur 4 bits, quel entier la valeur brute <b>1010</b> représente-t-elle ?",
    choices:[{t:"$-6$", c:true},{t:"$10$", c:false},{t:"$-10$", c:false},{t:"$-5$", c:false}],
-   exp:"$1010_2 = 10$ en brut ; comme $10 \\gt 7$, l'entier vaut $10-16=-6$. Avec une résolution de $1/3$ °C par pas, cela fait $-6\\times\\frac13 = -2{,}00$ °C."},
+   exp:"$1010_2=10$ en lecture brute ; comme $10\\gt 7$, le MSB vaut 1, donc l'entier représenté est $10-16=-6$."},
 
-  {topic:'i1_nombres', mode:'flash', q:"Pourquoi une somme de 50 millions de mesures ne provoque-t-elle aucun dépassement de capacité en Python ?",
-   answer:"Parce que le type <code>int</code> est en <b>précision arbitraire</b> : sa représentation en mémoire s'étend automatiquement, dans la limite de la mémoire disponible.",
-   exp:"50 millions de mesures valant au plus 255 donnent 12,75 milliards : bien au-delà de 8 bits. Un langage à entiers 64 bits finit par déborder ; Python, jamais."},
-
-  {topic:'i1_nombres', mode:'flash', q:"$1/3$ est-il un nombre décimal, et un flottant peut-il le représenter exactement ?",
-   answer:"Non dans les deux cas : $0{,}333\\ldots$ a une infinité de chiffres, et la <b>mantisse finie</b> d'un flottant n'en stocke qu'une valeur approchée.",
-   exp:"Un décimal possède un nombre <b>fini</b> de chiffres après la virgule. $1/3$ n'est décimal ni en base 10, ni en base 2 : l'approximation est inévitable."},
-
-  {topic:'i1_nombres', mode:'flash', q:"Sous quelle forme un flottant est-il stocké en mémoire par Python ?",
-   answer:"En <b>norme IEEE 754 double précision</b> : $(-1)^s\\times m\\times 2^e$ — un bit de signe s, une mantisse m (53 bits utiles) et un exposant e.",
-   exp:"Seule la valeur binaire représentable la <b>plus proche</b> est conservée : c'est de là que vient l'écart avec la valeur mathématique."},
-
-  {topic:'i1_nombres', mode:'flash', q:"Pourquoi « disposer de plus de mémoire » ne rendrait-il pas un flottant plus précis ?",
-   answer:"Parce que la <b>taille de la mantisse est fixe</b> (53 bits) : c'est le format, et non la mémoire disponible, qui plafonne le nombre de chiffres significatifs.",
-   exp:"C'est l'inverse des entiers, en précision arbitraire : eux s'étendent tant qu'il reste de la mémoire. Deux types, deux comportements."},
-
-  {topic:'i1_nombres', mode:'flash', q:"D'où vient l'affichage <b>58.49999999999999</b> là où le calcul exact donne 58,5 ?",
-   qcode:IPT_CTX.moyenne, qctxTitle:"Le calcul qui produit cet affichage",
-   answer:"De l'<b>approximation de $1/3$</b> : l'erreur minime de représentation se propage et s'accumule dans les multiplications, puis dans la moyenne.",
-   exp:"Chaque opération sur des flottants peut réintroduire un arrondi ; sur une longue chaîne de calculs, ces arrondis finissent par se voir au dernier chiffre."},
-
-  {topic:'i1_nombres', mode:'flash', q:"Comment tester l'égalité de deux flottants dans un jeu de tests ?",
-   answer:"Jamais avec <code>==</code> : on compare <b>à une tolérance près</b>, par exemple <code>assert abs(a - b) &lt; 1e-9</code>.",
-   exp:"Une moyenne qui vaut mathématiquement 58,5 peut être stockée 58.49999999999999 : <code>assert moyenne == 58.5</code> échoue alors que le calcul est juste."},
-
-  {topic:'i1_nombres', mode:'flash', q:"Écrire <b>0.33</b> au lieu de <b>1/3</b> : est-ce la même cause que l'imprécision des flottants ?",
-   qcode:IPT_CTX.capteur,
-   answer:"Non : c'est une <b>erreur de modélisation</b> (troncature décimale volontaire, environ 1 %), sans rapport avec l'arrondi binaire, lui de l'ordre de $10^{-16}$.",
-   exp:"Sur une mesure brute de 255, l'écart atteint $255\\times(1/3-0{,}33)\\approx 0{,}85$ °C : incomparablement plus grand que l'erreur de représentation."},
-
-  {topic:'i1_nombres', mode:'qcm', q:"Quelle affirmation décrit correctement les nombres en Python ?",
-   choices:[{t:"Les entiers sont en précision arbitraire, les flottants ont une mantisse de taille fixe", c:true},
-            {t:"Entiers et flottants sont tous deux codés sur 64 bits figés", c:false},
-            {t:"Les flottants s'étendent en mémoire autant que nécessaire, comme les entiers", c:false},
-            {t:"Un entier devenu trop grand est automatiquement converti en flottant", c:false}],
-   exp:"D'où deux comportements opposés : aucune limite de taille pour un entier, mais un nombre de chiffres significatifs plafonné pour un flottant."},
+  {topic:'i1_nombres', mode:'flash', q:"Que vaut le mot binaire <b>1001</b> lu sur 4 bits ?",
+   answer:"C'est <b>ambigu</b> : $1001_{(2)}=9$ en numération <b>naturelle</b>, mais $-7$ en <b>complément à deux</b>.",
+   exp:"Le système de décodage doit donc savoir <b>au préalable</b> dans quel codage le mot lui arrive : la suite de bits, à elle seule, ne le dit pas."},
 
   {topic:'i1_nombres', mode:'code', q:"Écris la fonction <b>decoder_ecart(brut)</b> qui décode un écart de 4 bits lu en complément à deux (entier brut entre 0 et 15).",
    code:{
@@ -7784,6 +7846,49 @@ const QUESTIONS = [
    answer:"Un seul test suffit, sur le bit de poids fort :",
    exp:"La condition $v \\gt 7$ (équivalente à $v \\ge 8$) revient à lire le bit de poids fort : au-delà, on retranche $2^4 = 16$."},
 
+  {topic:'i1_nombres', mode:'flash', q:"Pourquoi une somme de 50 millions de mesures ne provoque-t-elle aucun dépassement de capacité en Python ?",
+   answer:"Parce que le type <code>int</code> de Python est en <b>multiprécision</b> : il n'est pas implémenté sur une base fixe, et sa représentation s'étend dans la limite de la mémoire disponible.",
+   exp:"À retenir : en Python, les entiers relatifs ou non <b>ne sont jamais approximés</b>, quelle que soit leur taille. Le prix payé est en mémoire et en cycles processeur par opération."},
+
+  {topic:'i1_nombres', mode:'qcm', q:"Quelle affirmation décrit correctement les nombres en Python ?",
+   choices:[{t:"Les entiers sont en précision arbitraire, les flottants ont une mantisse de taille fixe", c:true},
+            {t:"Entiers et flottants sont tous deux codés sur 64 bits figés", c:false},
+            {t:"Les flottants s'étendent en mémoire autant que nécessaire, comme les entiers", c:false},
+            {t:"Un entier devenu trop grand est automatiquement converti en flottant", c:false}],
+   exp:"D'où deux comportements opposés : aucune limite de taille pour un entier, mais un nombre de chiffres significatifs plafonné pour un flottant."},
+
+  {topic:'i1_nombres', mode:'flash', q:"$1/3$ est-il un nombre décimal, et un flottant peut-il le représenter exactement ?",
+   answer:"Non dans les deux cas : $0{,}333\\ldots$ a une infinité de chiffres, et la <b>mantisse finie</b> d'un flottant n'en stocke qu'une valeur approchée.",
+   exp:"Un décimal possède un nombre <b>fini</b> de chiffres après la virgule. $1/3$ n'est décimal ni en base 10, ni en base 2 : l'approximation est inévitable."},
+
+  {topic:'i1_nombres', mode:'flash', q:"Sous quelle forme un flottant est-il stocké en mémoire par Python ?",
+   answer:"Sous la forme <b>$(-1)^s\\times M\\times 2^{e}$</b> de la norme <b>IEEE 754</b> : un bit de <b>signe</b> s, un <b>exposant</b> e, et une <b>mantisse</b> $M\\in[1,2[$. Le mot binaire range les trois dans cet ordre : signe | exposant | mantisse.",
+   exp:"Python utilise la <b>double précision</b> : mantisse sur 53 bits et exposant entre $-1022$ et $1023$ (contre 24 bits et $-126$ à $127$ en simple précision). Seule la valeur représentable la plus proche est conservée."},
+
+  {topic:'i1_nombres', mode:'flash', q:"Pourquoi « disposer de plus de mémoire » ne rendrait-il pas un flottant plus précis ?",
+   answer:"Parce que la <b>taille de la mantisse est fixe</b> (53 bits) : c'est le format, et non la mémoire disponible, qui plafonne le nombre de chiffres significatifs.",
+   exp:"C'est l'inverse des entiers, en précision arbitraire : eux s'étendent tant qu'il reste de la mémoire. Deux types, deux comportements."},
+
+  {topic:'i1_nombres', mode:'qcm', q:"En Python, avec <b>x = 10.0 ** 50</b>, que renvoie <b>x + 1 == x</b> ?",
+   choices:[{t:"<code>True</code>", c:true},
+            {t:"<code>False</code>", c:false},
+            {t:"Une erreur de dépassement de capacité", c:false},
+            {t:"<code>True</code> seulement si x est déclaré entier", c:false}],
+   exp:"La mantisse ne retient que 53 bits significatifs : à l'échelle de $10^{50}$, ajouter 1 n'en change aucun. Même famille de surprises : <code>0.1 + 0.9 == 1.0</code> renvoie True, alors que <code>0.1 == 1.0 - 0.9</code> renvoie False."},
+
+  {topic:'i1_nombres', mode:'flash', q:"Quelles sont les trois choses à éviter dans un calcul sur des flottants ?",
+   answer:"1. Comparer l'<b>égalité stricte</b> de deux flottants — il faut les comparer à $\\varepsilon$ près.<br>2. <b>Additionner des nombres d'ordres de grandeur très différents</b>.<br>3. <b>Soustraire des valeurs voisines</b> déjà entachées d'arrondi.",
+   exp:"Les cas 2 et 3 détruisent les chiffres significatifs : le petit terme est purement absorbé, ou la soustraction ne laisse subsister que du bruit d'arrondi."},
+
+  {topic:'i1_nombres', mode:'flash', q:"D'où vient l'affichage <b>58.49999999999999</b> là où le calcul exact donne 58,5 ?",
+   qcode:IPT_CTX.moyenne, qctxTitle:"Le calcul qui produit cet affichage",
+   answer:"De l'<b>approximation de $1/3$</b> : l'erreur minime de représentation se propage et s'accumule dans les multiplications, puis dans la moyenne.",
+   exp:"Chaque opération sur des flottants peut réintroduire un arrondi ; sur une longue chaîne de calculs, ces arrondis finissent par se voir au dernier chiffre."},
+
+  {topic:'i1_nombres', mode:'flash', q:"Comment tester l'égalité de deux flottants dans un jeu de tests ?",
+   answer:"Jamais avec <code>==</code> : on compare <b>à une tolérance près</b>, par exemple <code>assert abs(a - b) &lt; 1e-9</code>.",
+   exp:"Une moyenne qui vaut mathématiquement 58,5 peut être stockée 58.49999999999999 : <code>assert moyenne == 58.5</code> échoue alors que le calcul est juste."},
+
   {topic:'i1_nombres', mode:'code', q:"Écris la fonction <b>presque_egal(a, b)</b> qui compare deux flottants à $10^{-9}$ près, comme il faut le faire dans un jeu de tests.",
    code:{
      start:"def presque_egal(a, b):\n    # NE PAS écrire a == b : les arrondis rendent l'égalité exacte illusoire\n    return a == b\n",
@@ -7794,8 +7899,15 @@ const QUESTIONS = [
             {call:'presque_egal(58.5, 58.5000001)', eq:'False', label:'un écart de 1e-7 reste un vrai écart'}],
      sol:"def presque_egal(a, b):\n    return abs(a - b) < 1e-9\n"},
    answer:"On compare l'<b>écart</b> à une tolérance, jamais les valeurs elles-mêmes :",
-   exp:"C'est la correction du test raté du DM : <code>assert abs(moyenne4 - 58.5) &lt; 1e-9</code> à la place de <code>assert moyenne4 == 58.5</code>."},
-  /* ---- 5. Graphes : vocabulaire et représentations ---- */
+   exp:"C'est la seule façon correcte d'écrire un test sur un résultat flottant : <code>assert abs(moyenne - 58.5) &lt; 1e-9</code>, jamais <code>assert moyenne == 58.5</code>."},
+
+  {topic:'i1_nombres', mode:'flash', q:"Patriot (1991) et Ariane 5 (1996) : que retenir de ces deux accidents ?",
+   answer:"<b>Patriot</b> : une erreur d'<b>arrondi accumulée</b> — 0,34 s de dérive après 100 h de fonctionnement — fait manquer l'interception d'un Scud ; 28 morts.<br><b>Ariane 5</b> : un flottant 64 bits converti en <b>entier 16 bits</b> alors qu'il dépassait $2^{15}$ ; explosion 40 s après l'allumage.",
+   exp:"Deux causes bien distinctes : la <b>précision</b> des flottants d'un côté, le <b>dépassement de capacité</b> à la conversion de l'autre. D'où la formule du cours : ne plaisantons pas avec la représentation des nombres."},
+
+
+  /* ---- 6. Graphes : vocabulaire et représentations ---- */
+
   {topic:'i1_graphes', mode:'flash', q:"Dans un graphe modélisant un réseau de vols, que représentent un sommet, une arête (ou un arc) et un poids ?",
    answer:"Le <b>sommet</b> est un aéroport, l'<b>arête</b> (ou l'<b>arc</b> si le graphe est orienté) un vol direct, le <b>poids</b> sa distance ou sa durée.",
    exp:"Un <b>arc</b> est un couple <b>ordonné</b> (origine, destination) ; une <b>arête</b> est une paire non ordonnée, sans sens de parcours."},
@@ -7820,6 +7932,10 @@ const QUESTIONS = [
             {t:"Les poids sont des entiers et non des flottants", c:false}],
    exp:"Si tous les poids étaient symétriques — comme dans le graphe des distances, où CDG→ABJ et ABJ→CDG valent 4900 — le graphe serait non orienté."},
 
+  {topic:'i1_graphes', mode:'flash', q:"Comment définit-on les degrés entrant et sortant d'un sommet d'un graphe orienté ?",
+   answer:"$d^+$ est le nombre d'<b>arcs qui en partent</b>, $d^-$ le nombre d'<b>arcs qui y arrivent</b>.",
+   exp:"Exemple : un aéroport d'où partent 4 vols et où 4 vols arrivent a $d^+=d^-=4$ ; un aéroport où l'on ne fait qu'atterrir a $d^+=0$ et $d^-\\ge 1$."},
+
   {topic:'i1_graphes', mode:'flash', q:"Qu'est-ce qu'une liste d'adjacence, et comment la code-t-on en Python ?",
    answer:"La donnée, <b>pour chaque sommet, de ses voisins</b> — codée en Python par un <b>dictionnaire de dictionnaires</b> {sommet : {voisin : poids}}.",
    exp:"<code>graphe[\"CMN\"]</code> vaut {\"CDG\": 180, \"CAI\": 290, \"ABJ\": 270} : les trois vols directs au départ de Casablanca, avec leurs durées.",
@@ -7841,6 +7957,14 @@ const QUESTIONS = [
      {point:[6.6,0.3], label:"\\text{KTM}", at:'belowright'},
      {point:[7.4,1.7], label:"\\text{LUA}", at:'above'}]}},
 
+  {topic:'i1_graphes', mode:'qcm', q:"Quelle est la liste d'adjacence du sommet CMN dans le graphe des durées de vol ?",
+   qcode:IPT_CTX.graphe,
+   choices:[{t:"{CDG : 180, CAI : 290, ABJ : 270}", c:true},
+            {t:"{CDG : 1930, CAI : 3681, ABJ : 3146}", c:false},
+            {t:"{CDG : 185, CAI : 330, ABJ : 260}", c:false},
+            {t:"{CDG : 180, CAI : 290}", c:false}],
+   exp:"On lit la ligne de CMN : trois vols sortants, en minutes. Les valeurs 1930, 3681 et 3146 sont les distances en km ; 185, 330, 260 sont les durées des vols <b>entrants</b>."},
+
   {topic:'i1_graphes', mode:'flash', q:"Qu'est-ce que la matrice d'adjacence d'un graphe pondéré, et quelle place occupe-t-elle ?",
    answer:"Un tableau dont la case $(i,j)$ porte le poids de l'arc de i vers j (INFINI s'il n'existe pas) : <b>$|S|^2$ cases</b>, toujours.",
    exp:"Il faut fixer l'ordre des sommets : <code>sommets_liste[i]</code> désigne la ligne et la colonne i. Pour 7 aéroports : 49 cases, dont une majorité d'INFINI."},
@@ -7853,21 +7977,13 @@ const QUESTIONS = [
    answer:"<b>Graphe creux</b> (peu d'arêtes) → liste d'adjacence, place proportionnelle à $|S|+|A|$ ; <b>graphe dense</b> → matrice, test d'existence d'un arc en $O(1)$.",
    exp:"Avec 7 sommets et 9 vols directs, la matrice gaspille 49 cases presque toutes à INFINI, contre environ 25 « unités » de stockage pour la liste d'adjacence."},
 
-  {topic:'i1_graphes', mode:'flash', q:"Qu'est-ce qu'une boucle dans un graphe ?",
-   answer:"Un <b>arc (ou une arête) d'un sommet vers lui-même</b>. Un réseau de vols n'en comporte pas.",
-   exp:"Une boucle de poids 100 sur CAI signifierait un vol Le Caire → Le Caire de 100 km ou de 100 min : dépourvu de sens pour un vol commercial."},
-
-  {topic:'i1_graphes', mode:'flash', q:"Comment définit-on les degrés entrant et sortant d'un sommet d'un graphe orienté ?",
-   answer:"$d^+$ est le nombre d'<b>arcs qui en partent</b>, $d^-$ le nombre d'<b>arcs qui y arrivent</b>.",
-   exp:"Exemple : un aéroport d'où partent 4 vols et où 4 vols arrivent a $d^+=d^-=4$ ; un aéroport où l'on ne fait qu'atterrir a $d^+=0$ et $d^-\\ge 1$."},
-
-  {topic:'i1_graphes', mode:'qcm', q:"Quelle est la liste d'adjacence du sommet CMN dans le graphe des durées de vol ?",
-   qcode:IPT_CTX.graphe,
-   choices:[{t:"{CDG : 180, CAI : 290, ABJ : 270}", c:true},
-            {t:"{CDG : 1930, CAI : 3681, ABJ : 3146}", c:false},
-            {t:"{CDG : 185, CAI : 330, ABJ : 260}", c:false},
-            {t:"{CDG : 180, CAI : 290}", c:false}],
-   exp:"On lit la ligne de CMN : trois vols sortants, en minutes. Les valeurs 1930, 3681 et 3146 sont les distances en km ; 185, 330, 260 sont les durées des vols <b>entrants</b>."},
+  {topic:'i1_graphes', mode:'qcm', q:"Que renvoie <b>mystere(graphe)</b>, et qu'a-t-on calculé au juste ?",
+   qcode:IPT_CTX.mystere, qctxTitle:"Un graphe orienté, et la fonction qu'on exécute dessus",
+   choices:[{t:"7 — c'est le nombre d'<b>arcs</b> du graphe", c:true},
+            {t:"4 — c'est le nombre de sommets", c:false},
+            {t:"6 — c'est le nombre d'arêtes du graphe non orienté associé", c:false},
+            {t:"9 — c'est la somme des poids au départ d'un sommet", c:false}],
+   exp:"<code>len(graphe[sommet])</code> est le degré <b>sortant</b> du sommet : $2+2+1+2=7$. On retrouve la relation $\\sum_{s\\in S}d^+(s)=|A|$ — chaque arc est compté une fois, du côté de son origine."},
 
   {topic:'i1_graphes', mode:'code', q:"Écris la fonction <b>degre_graphe(graphe, aeroport)</b> qui renvoie le couple (degré sortant, degré entrant) de l'aéroport dans un graphe orienté donné en liste d'adjacence.",
    code:{
@@ -7905,18 +8021,6 @@ const QUESTIONS = [
      sol:"def origines_aeroport(graphe, aeroport):\n    origines = []\n    for sommet in graphe:\n        if aeroport in graphe[sommet]:\n            origines.append(sommet)\n    return origines\n"},
    answer:"Il faut interroger <b>tous</b> les sommets, car la liste d'adjacence ne mémorise que les arcs sortants :",
    exp:"<code>aeroport in graphe[sommet]</code> teste l'appartenance aux <b>clés</b> du dictionnaire des voisins. C'est le degré entrant, mais avec les noms au lieu du compte."},
-
-  {topic:'i1_graphes', mode:'code', q:"Écris la fonction <b>aeroports_relies(graphe, aeroport)</b> qui renvoie la liste TRIÉE des aéroports reliés à l'aéroport donné par un vol direct, dans un sens ou dans l'autre.",
-   code:{
-     setup:"graphe_vols_minutes = {\n    \"CDG\": {\"ABJ\": 400, \"CMN\": 185, \"DEL\": 500, \"CAI\": 270},\n    \"DEL\": {\"CDG\": 595, \"CAI\": 340, \"KTM\": 105},\n    \"CAI\": {\"CDG\": 280, \"CMN\": 330, \"DEL\": 395},\n    \"CMN\": {\"CDG\": 180, \"CAI\": 290, \"ABJ\": 270},\n    \"KTM\": {\"DEL\": 130, \"LUA\": 30},\n    \"LUA\": {},\n    \"ABJ\": {\"CDG\": 395, \"CMN\": 260}\n}",
-     start:"def aeroports_relies(graphe, aeroport):\n    relies = set()\n    # ajouter les destinations, puis les origines\n    return sorted(relies)\n",
-     requires:['aeroports_relies'],
-     tests:[{call:'aeroports_relies(graphe_vols_minutes, "KTM")', eq:'["DEL", "LUA"]', label:'KTM : DEL est à la fois origine et destination → une seule fois'},
-            {call:'aeroports_relies(graphe_vols_minutes, "LUA")', eq:'["KTM"]'},
-            {call:'aeroports_relies(graphe_vols_minutes, "CDG")', eq:'["ABJ", "CAI", "CMN", "DEL"]'}],
-     sol:"def aeroports_relies(graphe, aeroport):\n    relies = set()\n    for voisin in graphe[aeroport]:\n        relies.add(voisin)\n    for sommet in graphe:\n        if aeroport in graphe[sommet]:\n            relies.add(sommet)\n    return sorted(relies)\n"},
-   answer:"Un <b>ensemble</b> évite les doublons quand un aéroport est à la fois origine et destination :",
-   exp:"<code>set</code> ne garde qu'un exemplaire de chaque élément et <code>sorted</code> rend le résultat déterministe — indispensable pour un jeu de tests."},
 
   {topic:'i1_graphes', mode:'code', q:"Écris la fonction <b>est_symetrique(matrice)</b> qui teste si une matrice d'adjacence carrée est symétrique — donc si le graphe qu'elle décrit est non orienté.",
    code:{
@@ -9234,9 +9338,20 @@ const SRS = {
         return paquet;
   },
 
+  /* VERROU D'ECRITURE (v284) - voir _syncCloud. Faux tant que le cloud de CE compte n'a pas ete lu
+     avec succes dans cette session. */
+  _cloudRead: false,
   _cloudTimer: null,
   _syncCloud(){
     if(typeof currentUser==='undefined' || !currentUser) return;
+    /* VERROU D'ECRITURE (v284, audit de phase A). Tant que le cloud de ce compte n'a pas ete lu au
+       moins une fois, on n'ecrit RIEN. Sans ce verrou : une lecture ratee (reseau, App Check, jeton
+       perime) laissait un SRS local que SRS.clear() venait de vider, puis la premiere carte notee
+       declenchait Cloud.saveSRS - un updateDoc qui REMPLACE tout le champ `srs` - et la progression
+       de l'eleve etait ecrasee par ce quasi-vide sur TOUS ses appareils. SECONDE des deux causes du
+       « je revise une carte que j'ai deja revisee ». La progression locale, elle, n'est jamais perdue :
+       elle repartira a la premiere synchro reussie. */
+    if(!this._cloudRead){ console.warn('SRS : ecriture cloud differee - cloud pas encore lu'); return; }
     clearTimeout(this._cloudTimer);
     this._cloudTimer = setTimeout(async ()=>{
       try{
@@ -9278,7 +9393,16 @@ const SRS = {
       const cc = cloudCards[h];
       if(!cc || typeof cc !== 'object' || !('reps' in cc)) continue; // ignore streak/daily si format ancien
       const lc = d.cards[h];
-      if(!lc || (cc.reps||0) > (lc.reps||0) || ((cc.reps||0)===(lc.reps||0) && (cc.due||0) > (lc.due||0))){
+      /* ARBITRAGE PAR LA DATE DE DERNIERE NOTATION (v284, audit de phase A). Departager sur `reps`
+         - un compteur de NOTATIONS - faisait gagner la session la plus BAVARDE et non la plus RECENTE :
+         une carte notee « Facile » ce matin sur le telephone etait ecrasee par un PC reste sur un etat
+         plus ancien mais comptant plus de repetitions, et elle redevenait due le jour meme. C'est la
+         PREMIERE des deux causes du « je revise une carte que j'ai deja revisee ». `last` est ecrit par
+         review() a chaque note ; a egalite - cartes anciennes sans `last` - on retombe sur l'ancienne
+         regle, donc aucune regression pour les paquets historiques. */
+      const ccLast = cc.last||0, lcLast = lc ? (lc.last||0) : -1;
+      if(!lc || ccLast > lcLast || (ccLast === lcLast &&
+         ((cc.reps||0) > (lc.reps||0) || ((cc.reps||0)===(lc.reps||0) && (cc.due||0) > (lc.due||0))))){
         /* les cartes cloud sont désormais ALLÉGÉES (sans énoncé) : on réinjecte q/topic
            depuis la banque locale pour les lecteurs historiques (top des cartes ratées,
            filtres par chapitre). Une carte orpheline (hash inconnu) sera épurée par gc(). */
@@ -15032,11 +15156,17 @@ async function manualSync(){
   const btn = $('#syncNowBtn'); if(btn) btn.disabled = true;
   try{
     cloudSync('↑ Synchronisation…');
-    // Même paquet que la synchro automatique (allégé + budgété en entrées d'index) :
-    // envoyer `dd.cards` brut réinjectait les énoncés et refaisait déborder le document.
-    await Cloud.saveSRS(SRS._paquetCloud());
+    /* ORDRE INVERSE EN v284 : on LIT et on FUSIONNE AVANT d'ecrire. L'ordre precedent
+       (ecrire puis lire) poussait l'etat local - eventuellement vide par SRS.clear() apres une
+       lecture ratee - par-dessus le cloud, et le bouton « Synchroniser maintenant » devenait le
+       moyen le plus rapide de perdre sa progression. Lire d'abord rend l'operation sure, et le
+       paquet envoye ensuite contient deja la fusion.
+       Meme paquet que la synchro automatique (allege + budgete) : envoyer `dd.cards` brut
+       reinjectait les enonces et refaisait deborder le document. */
     const cloud = await Cloud.loadSRS();
+    SRS._cloudRead = true;
     if(cloud){ SRS.mergeCloud(cloud); SRS.gc(); }
+    await Cloud.saveSRS(SRS._paquetCloud());
     cloudOk('☁️ Synchronisé');
     updateSrsBar(); updateHeaderStats(); buildFamilyAccordion();
     await renderStats();
