@@ -13409,13 +13409,75 @@ function showDS(){
   sc.classList.remove('hidden'); sc.scrollIntoView({behavior:'smooth',block:'start'});
   renderDsList();
 }
+/* ── PROCHAINS DS (échéances) ─────────────────────────────────────────────────────
+   Le calendrier du lycée vit déjà dans EDT.CAL, mais il n'était lisible que depuis
+   l'emploi du temps : l'élève ouvrait « DS blancs » sans savoir ce qui l'attendait.
+   On le rapproche ici de l'entraînement, et on relie chaque échéance au DS blanc de
+   la matière quand il en existe un. */
+const _DS_MAT = [
+  [/franc|franç/i, 'francais'],
+  [/math/i,        'maths'],
+  [/\bSI\b/,       'si'],
+  [/\bPC\b|physiq/i, 'physique'],
+];
+function dsMatiereDe(libelle){
+  for(const [re, m] of _DS_MAT) if(re.test(libelle||'')) return m;
+  return null;
+}
+/* Les n prochaines échéances à partir de la semaine en cours. Le DS a lieu le samedi
+   (grille : samedi 8h-12h) ; la semaine du concours blanc compte comme une échéance. */
+function dsProchaines(n){
+  const out = [];
+  try{
+    const i0 = edtIdxCourant();
+    const auj = new Date();
+    const ajd = Date.UTC(auj.getFullYear(), auj.getMonth(), auj.getDate());
+    for(let i = i0; i < EDT.NUM.length && out.length < n; i++){
+      const cal = EDT.CAL[EDT.NUM[i]]; if(!cal) continue;
+      const libelle = cal.special || cal.ds; if(!libelle) continue;
+      const samedi = new Date(EDT.lundiDe(i).getTime() + 5*86400000);
+      const jours = Math.round((samedi.getTime() - ajd)/86400000);
+      if(jours < 0) continue;                       // déjà passé cette semaine
+      out.push({ libelle, samedi, jours, special: !!cal.special,
+                 matiere: cal.special ? null : dsMatiereDe(libelle) });
+    }
+  }catch(e){}
+  return out;
+}
+function _dsEcheancesHTML(){
+  const p = dsProchaines(4);
+  if(!p.length) return '';
+  const MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  const blancs = (typeof DS_BLANCS!=='undefined') ? DS_BLANCS : [];
+  let h = '<p class="section-label" style="margin:0 0 8px">Tes prochains DS</p>'
+        + '<div style="border:1px solid var(--line);border-radius:14px;padding:4px 14px;margin-bottom:18px">';
+  p.forEach((e, k) => {
+    const d = e.samedi;
+    const quand = e.jours === 0 ? 'aujourd’hui'
+                : e.jours === 1 ? 'demain'
+                : 'dans ' + e.jours + ' jours';
+    const blanc = e.matiere ? blancs.find(b => b.matiere === e.matiere) : null;
+    h += '<div style="display:flex;gap:8px 12px;align-items:baseline;flex-wrap:wrap;padding:9px 0'
+       + (k ? ';border-top:1px solid var(--line)' : '') + '">'
+       + '<span style="min-width:104px;color:var(--muted);font-size:12.5px">samedi ' + d.getUTCDate() + ' ' + MOIS[d.getUTCMonth()] + '</span>'
+       + '<b style="font-size:14px">' + e.libelle + '</b>'
+       + '<span style="' + _edtBadge + ';background:var(--panel-2);color:' + (e.jours <= 7 ? 'var(--warn-text)' : 'var(--muted)') + '">' + quand + '</span>'
+       + '<span style="flex:1;text-align:right">'
+       + (blanc ? '<button class="btn ghost mini" type="button" data-ds="' + blanc.id + '" style="padding:4px 10px;font-size:12px">S’entraîner</button>'
+                : '<span style="color:var(--muted);font-size:12px">pas encore de DS blanc</span>')
+       + '</span></div>';
+  });
+  h += '</div>';
+  return h;
+}
 function dsDots(d){ return '<span style="letter-spacing:2px;color:var(--accent)">'+'●'.repeat(d)+'<span style="opacity:.3">'+'●'.repeat(3-d)+'</span></span>'; }
 function renderDsList(){
   const body=$('#dsBody'); if(!body) return;
   const bk=$('#dsBack'); if(bk) bk.style.display='none';
   const list=(typeof DS_BLANCS!=='undefined') ? DS_BLANCS : [];
-  if(!list.length){ body.innerHTML='<div class="empty-state">Aucun DS blanc disponible pour l’instant.</div>'; return; }
-  let html='<p style="font-size:13px;color:var(--muted);margin:0 0 14px;line-height:1.55">Un DS blanc = le cours à maîtriser (flashcards) + des exercices corrigés issus des TD, à faire au brouillon puis à auto-corriger honnêtement.</p>';
+  const echeances = _dsEcheancesHTML();
+  if(!list.length){ body.innerHTML = echeances + '<div class="empty-state">Aucun DS blanc disponible pour l’instant.</div>'; return; }
+  let html=echeances+'<p style="font-size:13px;color:var(--muted);margin:0 0 14px;line-height:1.55">Un DS blanc = le cours à maîtriser (flashcards) + des exercices corrigés issus des TD, à faire au brouillon puis à auto-corriger honnêtement.</p>';
   list.forEach(ds=>{
     const faits=ds.exos.filter(e=>dsBest(ds.id,e.id)!==null).length;
     const notes=ds.exos.map(e=>dsBest(ds.id,e.id)).filter(n=>n!==null);
@@ -13587,16 +13649,18 @@ const EDT = (function(){
     {j:5, h:'8h00 – 12h00',  t:'DS',               s:'', ds:true}
   ];
 
-  /* Les 8 blocs de colles. Un bloc « haut » porte 3 matières, un bloc « bas » 2. */
+  /* Les 8 blocs de colles. Un bloc « haut » porte 3 matières, un bloc « bas » 2.
+     Cinquième champ : LA SALLE, relevée sur le colloscope 2026-27. Elle n'était pas stockée
+     jusqu'ici — l'élève avait l'heure et le nom du khôlleur, mais devait chercher où aller. */
   const BLOCS = [
-    {id:'H1', c:[['Maths',2,'16h','Mme CREUSE'],  ['Anglais',2,'18h','Mme YOUSFI'],   ['SI',1,'17h','M. DIDIER']]},
-    {id:'H2', c:[['Maths',0,'15h','Mme RASKINE'], ['Anglais',3,'17h','Mme WHITELEY'], ['SI',2,'17h','M. GERGADIER']]},
-    {id:'H3', c:[['Maths',2,'15h','M. KARAGOZ'],  ['Anglais',2,'17h','Mme YOUSFI'],   ['SI',3,'18h','M. DIJON']]},
-    {id:'H4', c:[['Maths',0,'16h','Mme RASKINE'], ['Anglais',3,'17h','M. LAURENT'],   ['SI',2,'16h','M. GALOPIN']]},
-    {id:'B1', c:[['Maths',2,'15h','M. SABATINI'], ['Physique',4,'12h','M. DUPEYRAT']]},
-    {id:'B2', c:[['Maths',2,'15h','Mme MARCUS'],  ['Physique',0,'16h','Mme DEVAILLY']]},
-    {id:'B3', c:[['Maths',0,'16h','M. HERVE'],    ['Physique',4,'12h','M. DUMONT']]},
-    {id:'B4', c:[['Maths',2,'15h','M. BUSSON'],   ['Physique',0,'15h','Mme DEVAILLY']]}
+    {id:'H1', c:[['Maths',2,'16h','Mme CREUSE','C45'],           ['Anglais',2,'18h','Mme YOUSFI','And 1.0'],   ['SI',1,'17h','M. DIDIER','Labo SI L50']]},
+    {id:'H2', c:[['Maths',0,'15h','Mme RASKINE','Batignolles 3'],['Anglais',3,'17h','Mme WHITELEY','L56'],     ['SI',2,'17h','M. GERGADIER','Labo SI L52']]},
+    {id:'H3', c:[['Maths',2,'15h','M. KARAGOZ','Batignolles 7'], ['Anglais',2,'17h','Mme YOUSFI','And 1.0'],   ['SI',3,'18h','M. DIJON','Atelier']]},
+    {id:'H4', c:[['Maths',0,'16h','Mme RASKINE','Batignolles 3'],['Anglais',3,'17h','M. LAURENT','L72'],       ['SI',2,'16h','M. GALOPIN','Labo SI L48']]},
+    {id:'B1', c:[['Maths',2,'15h','M. SABATINI','C55'],          ['Physique',4,'12h','M. DUPEYRAT','L26']]},
+    {id:'B2', c:[['Maths',2,'15h','Mme MARCUS','C33'],           ['Physique',0,'16h','Mme DEVAILLY','Batignolles 4']]},
+    {id:'B3', c:[['Maths',0,'16h','M. HERVE','L26'],             ['Physique',4,'12h','M. DUMONT','L amphi Phy.']]},
+    {id:'B4', c:[['Maths',2,'15h','M. BUSSON','C53'],            ['Physique',0,'15h','Mme DEVAILLY','Batignolles 4']]}
   ];
 
   /* Colloscope : pour chaque bloc, le groupe qui passe, semaine 38 → semaine 13. 0 = pas de colle. */
@@ -13789,8 +13853,8 @@ function edtColles(id, i){
   if(c<0 || c>28 || !g) return [];
   const out = [];
   const bloc = EDT.BLOCS.find(b => EDT.COLLO[b.id][c] === g);
-  if(bloc) for(const [m,j,h,k] of bloc.c) out.push({m,j,h,k});
-  for(let r=0;r<4;r++) if(EDT.FR[r][c] === id) out.push({m:'Français', j:3, h:EDT.FR_H[r], k:'M. GODET'});
+  if(bloc) for(const [m,j,h,k,s] of bloc.c) out.push({m,j,h,k,s});
+  for(let r=0;r<4;r++) if(EDT.FR[r][c] === id) out.push({m:'Français', j:3, h:EDT.FR_H[r], k:'M. GODET', s:'Bernouilli 2'});
   out.sort((a,b) => a.j - b.j || _edtMin(a.h) - _edtMin(b.h));
   return out;
 }
@@ -13877,10 +13941,12 @@ function _edtSelecteurHTML(idActuel){
 /* Une colle peut tomber pendant un TP : le colloscope et la rotation des TP sont deux tableaux
    distincts, et rien ne garantit qu'ils ont été croisés. On le signale à l'élève plutôt que de
    choisir à sa place lequel des deux est faux. */
-function _edtPlage(h){
+function _edtPlage(h, defaut){
   const m = /^(\d+)h(\d*)\s*[–-]\s*(\d+)h(\d*)$/.exec(h||'');
   if(m) return [(+m[1])*60 + (+m[2]||0), (+m[3])*60 + (+m[4]||0)];
-  const d = _edtMin(h); return [d, d + 60];     // une colle occupe environ une heure
+  /* Sans heure de fin : une colle occupe environ une heure, sauf le français qui tourne
+     par demi-heures (16h, 16h30, 17h, 17h30) — d'où le second argument. */
+  const d = _edtMin(h); return [d, d + (defaut||60)];
 }
 function _edtConflit(colle, tps){
   const [a, b] = _edtPlage(colle.h);
@@ -13889,6 +13955,107 @@ function _edtConflit(colle, tps){
     const [x, y] = _edtPlage(t.h);
     return a < y && x < b;
   });
+}
+
+/* ── GRILLE HEBDOMADAIRE ──────────────────────────────────────────────────────────
+   L'écran listait la semaine matière par matière ; on la DESSINE désormais, jours en
+   colonnes et heures en lignes, comme l'emploi du temps distribué par le lycée. Le
+   détail (khôlleurs, salles, alertes, liens de révision) reste sous la grille.
+   Couleurs : teinte à 16 % + liseré, texte à l'encre du thème — le même parti que les
+   pastilles de chapitre, le seul qui passe le contraste dans les trois thèmes. */
+const _EDT_COUL = {
+  'Maths':'#eab308', 'Physique-Chimie':'#f97316', 'Physique':'#f97316', 'SI':'#0ea5e9',
+  'TP SI':'#0284c7', 'TP PC':'#fb923c', 'Anglais':'#8b5cf6', 'Français':'#ec4899',
+  'Informatique':'#10b981', 'TIPE':'#64748b', 'DS':'#ef4444', 'Colle':'#6366f1'
+};
+const _EDT_H0 = 8*60, _EDT_H1 = 19*60, _EDT_PAS = 30;
+
+/* Tous les évènements de la semaine i pour l'élève id : cours fixes (TP de SA rotation
+   seulement), colles, et le DS du samedi. */
+function edtEvenements(id, i){
+  const cal = EDT.CAL[EDT.NUM[i]] || {};
+  const evts = [];
+  if(cal.conge) return evts;
+
+  const tps = id ? edtTP(id, i) : [];
+  const sien = new Set(tps.map(x => x.t+'|'+x.j+'|'+x.h));
+  EDT.GRILLE.forEach(g => {
+    if(g.colle || g.ds) return;                       // remplacés par les vraies données
+    if(g.tp){
+      if(id && !sien.has(g.t+'|'+g.j+'|'+g.h)) return;  // TP de l'autre rotation
+      evts.push({j:g.j, t:g.t, s:g.s, h:g.h, rot:(id ? '' : 'rotation '+g.tp)});
+      return;
+    }
+    evts.push({j:g.j, t:g.t, s:g.s, h:g.h});
+  });
+
+  if(id) edtColles(id, i).forEach(c => {
+    evts.push({ j:c.j, t:c.m, s:c.s, h:c.h, colle:true, k:c.k,
+                duree:(c.m === 'Français' ? 30 : 60),
+                ferie:(cal.ferieJours||[]).includes(c.j) });
+  });
+
+  const ds = cal.special || cal.ds;
+  if(ds) evts.push({ j:5, t:'DS', s:ds, h:'8h00 – 12h00', ds:true });
+  return evts;
+}
+
+function edtGrilleVisuelle(id, i){
+  const cal = EDT.CAL[EDT.NUM[i]] || {};
+  if(cal.conge) return '<div style="border:1px dashed var(--line);border-radius:14px;padding:22px;text-align:center;'
+    + 'color:var(--muted);font-size:14px;margin-bottom:6px">🌿 '+cal.conge+'</div>';
+
+  const evts = edtEvenements(id, i);
+  const nl = Math.round((_EDT_H1 - _EDT_H0)/_EDT_PAS);           // 22 lignes d'une demi-heure
+  const cell = 'border-right:1px solid var(--line);border-bottom:1px solid var(--line)';
+
+  let h = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 0 18px">'
+    + '<div style="display:grid;grid-template-columns:44px repeat(6,minmax(104px,1fr));'
+    + 'grid-auto-rows:21px;min-width:680px;border-top:1px solid var(--line);border-left:1px solid var(--line);'
+    + 'border-radius:10px;overflow:hidden;font-size:11.5px">';
+
+  /* en-tête : les six jours */
+  h += '<div style="'+cell+';grid-row:1;grid-column:1;background:var(--panel-2)"></div>';
+  EDT.J.forEach((j, n) => {
+    h += '<div style="'+cell+';grid-row:1;grid-column:'+(n+2)+';background:var(--panel-2);'
+       + 'display:flex;align-items:center;justify-content:center;font-weight:700;text-transform:capitalize">'+j+'</div>';
+  });
+
+  /* colonne des heures + fond quadrillé */
+  for(let r=0; r<nl; r++){
+    const min = _EDT_H0 + r*_EDT_PAS;
+    if(min % 60 === 0){
+      h += '<div style="'+cell+';grid-column:1;grid-row:'+(r+2)+'/'+(r+4)+';color:var(--muted);'
+         + 'display:flex;align-items:center;justify-content:center">'+(min/60)+'h</div>';
+    }
+    for(let c=0; c<6; c++) h += '<div style="'+cell+';grid-column:'+(c+2)+';grid-row:'+(r+2)+'"></div>';
+  }
+
+  /* les évènements, posés par-dessus */
+  evts.forEach(e => {
+    const [a, b] = _edtPlage(e.h, e.duree);
+    const r1 = Math.max(0, Math.round((a - _EDT_H0)/_EDT_PAS));
+    const r2 = Math.min(nl, Math.round((b - _EDT_H0)/_EDT_PAS));
+    if(r2 <= r1) return;
+    const brut = _EDT_COUL[e.t] || (e.colle ? _EDT_COUL['Colle'] : '#64748b');
+    const fond = 'color-mix(in srgb,'+brut+' 16%,var(--panel))';
+    const bord = 'color-mix(in srgb,'+brut+' 55%,transparent)';
+    const titre = e.colle ? 'Colle ' + e.t : e.t;
+    h += '<div style="grid-column:'+(e.j+2)+';grid-row:'+(r1+2)+'/'+(r2+2)+';background:'+fond+';'
+       + 'border:1px solid '+bord+';border-left:3px solid '+brut+';border-radius:6px;margin:1px;padding:3px 5px;'
+       + 'overflow:hidden;line-height:1.25;color:var(--ink)">'
+       + '<b style="display:block">'+titre+'</b>'
+       + (e.k ? '<span style="color:var(--muted)">'+e.k+'</span><br>' : '')
+       + (e.s ? '<span style="color:var(--muted)">'+e.s+'</span>' : '')
+       + (e.rot ? '<span style="color:var(--muted)">'+e.rot+'</span>' : '')
+       + (e.ferie ? '<span style="color:var(--warn-text)"> férié</span>' : '')
+       + '</div>';
+  });
+
+  h += '</div></div>';
+  if(!id) h += '<p style="color:var(--muted);font-size:12px;margin:-12px 0 16px">Les deux rotations de TP sont affichées : '
+             + 'choisis ton nom ci-dessous pour ne garder que la tienne, tes colles et leurs salles.</p>';
+  return h;
 }
 
 function _edtSemaineHTML(){
@@ -13922,9 +14089,11 @@ function _edtSemaineHTML(){
   if(cal.ferie)   h += '<p style="color:var(--warn-text);font-size:12.5px;margin:6px 0">Férié : '+cal.ferie+'</p>';
   if(cal.note)    h += '<p style="color:var(--muted);font-size:12.5px;margin:8px 0;line-height:1.5">'+cal.note+'</p>';
 
+  h += edtGrilleVisuelle(id, i);
+
   if(id){
     const colles = edtColles(id, i), tps = edtTP(id, i);
-    h += '<p class="section-label" style="margin:16px 0 2px">Colles — '+(colles.length||'aucune')+'</p>';
+    h += '<p class="section-label" style="margin:16px 0 2px">Le détail — colles : '+(colles.length||'aucune')+'</p>';
     if(colles.length) h += colles.map(c => {
       const ferie   = (cal.ferieJours||[]).includes(c.j);
       const surTP   = _edtConflit(c, tps);
@@ -13932,7 +14101,9 @@ function _edtSemaineHTML(){
                     : surTP ? '<span style="'+_edtBadge+';background:var(--panel-2);color:var(--warn-text)">pendant ton TP</span>' : '';
       return '<div style="'+_edtLigne+'"><span style="min-width:96px;color:var(--muted);font-size:13px">'+EDT.J[c.j]+' '+c.h+'</span>'
       + '<b>'+c.m+'</b>'+alerte+_edtRevHTML(c.m)
-      + '<span style="flex:1;text-align:right;color:var(--muted);font-size:13px">'+c.k+'</span></div>';
+      + '<span style="flex:1;text-align:right;color:var(--muted);font-size:13px">'+c.k
+      + (c.s ? ' <span style="'+_edtBadge+';background:var(--panel-2);color:var(--ink);font-weight:600">'+c.s+'</span>' : '')
+      + '</span></div>';
     }).join('');
     else h += '<p style="color:var(--muted);font-size:13px;margin:4px 0">Pas de colle programmée cette semaine.</p>';
 
@@ -13967,6 +14138,11 @@ function _edtGrilleHTML(){
   let h = '<p style="color:var(--muted);font-size:12.5px;margin:0 0 12px;line-height:1.45">La grille fixe de la semaine. '
     + (tp ? 'Tu es en <b>TP'+tp+'</b> : les deux rotations alternent d’une semaine à l’autre, « Ma semaine » dit laquelle s’applique.'
           : 'Indique qui tu es dans « Ma semaine » pour que tes TP soient résolus.') + '</p>';
+  /* La même grille dessinée que dans « Ma semaine », mais sans élève : les deux rotations
+     de TP y figurent, et aucune colle n'est résolue. Le tableau reste dessous, il se lit
+     mieux au doigt sur un téléphone. */
+  h += edtGrilleVisuelle(null, edtIdxCourant());
+  h += '<p class="section-label" style="margin:18px 0 2px">Le détail</p>';
   h += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:520px">';
   for(let j=0;j<6;j++){
     const lignes = EDT.GRILLE.filter(x=>x.j===j).sort((a,b)=>_edtMin(a.h)-_edtMin(b.h));
