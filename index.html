@@ -13982,6 +13982,8 @@ const _EDT_COUL = {
   'Informatique':'#10b981', 'TIPE':'#64748b', 'DS':'#ef4444', 'Colle':'#6366f1'
 };
 const _EDT_H0 = 8*60, _EDT_H1 = 19*60, _EDT_PAS = 30;
+const _EDT_PX = 26;      // hauteur d'une demi-heure. 21 px ne laissaient que deux lignes à une colle d'une heure,
+const _EDT_LH = 14.4;    // qui en porte trois (matière, khôlleur, salle) : la salle était coupée en deux.
 
 /* Tous les évènements de la semaine i pour l'élève id : cours fixes (TP de SA rotation
    seulement), colles, et le DS du samedi. */
@@ -14024,7 +14026,7 @@ function edtGrilleVisuelle(id, i){
 
   let h = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 0 18px">'
     + '<div style="display:grid;grid-template-columns:44px repeat(6,minmax(104px,1fr));'
-    + 'grid-auto-rows:21px;min-width:680px;border-top:1px solid var(--line);border-left:1px solid var(--line);'
+    + 'grid-auto-rows:'+_EDT_PX+'px;min-width:680px;border-top:1px solid var(--line);border-left:1px solid var(--line);'
     + 'border-radius:10px;overflow:hidden;font-size:11.5px">';
 
   /* en-tête : les six jours */
@@ -14039,7 +14041,7 @@ function edtGrilleVisuelle(id, i){
     const min = _EDT_H0 + r*_EDT_PAS;
     if(min % 60 === 0){
       h += '<div style="'+cell+';grid-column:1;grid-row:'+(r+2)+'/'+(r+4)+';color:var(--muted);'
-         + 'display:flex;align-items:center;justify-content:center">'+(min/60)+'h</div>';
+         + 'display:flex;align-items:flex-start;justify-content:center;padding-top:2px">'+(min/60)+'h</div>';
     }
     for(let c=0; c<6; c++) h += '<div style="'+cell+';grid-column:'+(c+2)+';grid-row:'+(r+2)+'"></div>';
   }
@@ -14054,14 +14056,27 @@ function edtGrilleVisuelle(id, i){
     const fond = 'color-mix(in srgb,'+brut+' 16%,var(--panel))';
     const bord = 'color-mix(in srgb,'+brut+' 55%,transparent)';
     const titre = e.colle ? 'Colle ' + e.t : e.t;
-    h += '<div style="grid-column:'+(e.j+2)+';grid-row:'+(r1+2)+'/'+(r2+2)+';background:'+fond+';'
-       + 'border:1px solid '+bord+';border-left:3px solid '+brut+';border-radius:6px;margin:1px;padding:3px 5px;'
+
+    /* Ce qui tient dans le bloc dépend de sa durée : une colle de français de 30 minutes n'a la place
+       que de son titre, une colle d'une heure porte le khôlleur et la salle, un cours de deux heures
+       a de la marge. On n'écrit que le nombre de lignes disponibles — chacune sur une seule ligne,
+       tronquée par des points de suspension — et l'infobulle porte toujours le détail complet. */
+    const infos = [];
+    if(e.k)     infos.push(['var(--muted)', e.k]);
+    if(e.s)     infos.push(['var(--muted)', e.s]);
+    if(e.rot)   infos.push(['var(--muted)', e.rot]);
+    if(e.ferie) infos.push(['var(--warn-text)', 'férié']);
+    const utile = (r2 - r1)*_EDT_PX - 8;                       // marges, bordures et rembourrage déduits
+    const place = Math.max(1, Math.floor(utile / _EDT_LH));    // au moins le titre
+    const tronq = 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+    const infobulle = [titre, e.h].concat(infos.map(x => x[1])).join(' · ').replace(/"/g, '&quot;');
+
+    h += '<div title="'+infobulle+'" style="grid-column:'+(e.j+2)+';grid-row:'+(r1+2)+'/'+(r2+2)+';background:'+fond+';'
+       + 'border:1px solid '+bord+';border-left:3px solid '+brut+';border-radius:6px;margin:1px;padding:2px 4px;'
        + 'overflow:hidden;line-height:1.25;color:var(--ink)">'
-       + '<b style="display:block">'+titre+'</b>'
-       + (e.k ? '<span style="color:var(--muted)">'+e.k+'</span><br>' : '')
-       + (e.s ? '<span style="color:var(--muted)">'+e.s+'</span>' : '')
-       + (e.rot ? '<span style="color:var(--muted)">'+e.rot+'</span>' : '')
-       + (e.ferie ? '<span style="color:var(--warn-text)"> férié</span>' : '')
+       + '<b style="display:block;'+tronq+'">'+titre+'</b>'
+       + infos.slice(0, place - 1).map(([c, t]) =>
+           '<span style="display:block;color:'+c+';'+tronq+'">'+t+'</span>').join('')
        + '</div>';
   });
 
