@@ -1329,7 +1329,7 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
 <script type="module">
 /* ====================== FIREBASE ====================== */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app-check.js";
+import { initializeAppCheck, ReCaptchaV3Provider, getToken as acGetToken } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app-check.js";
 import { getAuth, setPersistence, browserLocalPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, sendEmailVerification } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, updateDoc, getDoc, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp, runTransaction, deleteDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 /* Cloud Functions RETIRÉES : l'app fonctionne sur le tier GRATUIT Firebase (Spark). L'approbation de
@@ -1353,9 +1353,13 @@ const ADMIN_EMAILS = ["arthur.lesage05@gmail.com", "sophie-marcus@orange.fr"];
 const fbApp = initializeApp(firebaseConfig);
 // App Check (anti-abus / anti-robots) — reCAPTCHA v3. L'enforcement réel se règle côté console Firebase.
 // Enveloppé dans try/catch : en cas de souci, l'application continue de fonctionner normalement.
+/* On GARDE le fournisseur et l'instance (v313) : sans eux, impossible de savoir si un refus
+   « permission-denied » vient d'App Check, ni de renouveler le jeton pour réparer (voir Jetons). */
+const acProvider = new ReCaptchaV3Provider('6LexBSgtAAAAABJAkE-n-nwWOCcFZFepYhGGlAuI');
+let fbAppCheck = null;
 try {
-  initializeAppCheck(fbApp, {
-    provider: new ReCaptchaV3Provider('6LexBSgtAAAAABJAkE-n-nwWOCcFZFepYhGGlAuI'),
+  fbAppCheck = initializeAppCheck(fbApp, {
+    provider: acProvider,
     isTokenAutoRefreshEnabled: true
   });
 } catch (e) { console.warn('AppCheck init', e); }
@@ -1509,9 +1513,18 @@ const Cloud = {
     try{
       await updateDoc(ref, {srs:bundle, srsUpdated:serverTimestamp()});
     }catch(e){
-      if(e && (e.code === 'not-found' || /not-found/i.test(String(e.code||'')))){
-        await setDoc(ref, {srs:bundle, srsUpdated:serverTimestamp()}, {merge:true});
-      } else throw e;
+      /* DOCUMENT ABSENT (v313). Pour le prof, updateDoc répond not-found. Pour un ÉLÈVE, la règle
+         `update` évalue privilegedUnchanged() sur un resource nul et échoue : le serveur répond
+         permission-denied, et le repli setDoc ne s'exécutait jamais (vérifié à l'émulateur sur les
+         règles publiées). Lire son propre document reste permis même s'il n'existe pas : on vérifie,
+         et on le crée (règle `create` : isOwner, sans champ privilégié). */
+      const code = String((e && e.code) || '');
+      let absent = /not-found/i.test(code);
+      if(!absent && /permission-denied/i.test(code)){
+        try{ absent = !(await getDoc(ref)).exists(); }catch(_){ absent = false; }
+      }
+      if(absent) await setDoc(ref, {srs:bundle, srsUpdated:serverTimestamp()}, {merge:true});
+      else throw e;
     }
   },
   async sendReport(r){
@@ -1524,7 +1537,133 @@ const Cloud = {
   }
 };
 
+/* ==== JETONS (v313) ================================================================
+   CAUSE ÉTABLIE du « ⚠️ Synchro différée — permission-denied » (19/09/2026, compte prof sur iPhone).
+   Les règles publiées ne PEUVENT PAS refuser cette écriture au prof (isTeacher() passe en premier ;
+   118 cas rejoués à l'émulateur). Le refus vient d'App Check : quand le jeton App Check a expiré et
+   que son renouvellement échoue (reCAPTCHA v3 après une mise en veille iOS, réseau, score trop bas),
+   le SDK envoie un jeton FACTICE, Firestore répond PERMISSION_DENIED avant même les règles, et
+   abandonne définitivement l'écriture. Pire : une réponse 403 à l'échange pose dans le SDK un
+   verrou EN MÉMOIRE de 24 h — plus aucune écriture ni lecture ne passe dans cette page.
+   Ce bloc (1) SONDE la couche qui a cédé sans rien envoyer tant que le jeton est valide,
+   (2) RÉPARE (lève le verrou de 24 h, force un nouveau jeton, renouvelle le jeton d'identité),
+   (3) JOURNALISE chaque incident dans localStorage — `diagSynchro()` dans la console du navigateur.
+   Le SDK est épinglé en 12.14.0 : `_throttleData` est le champ lu et remis à zéro ; si une version
+   future le renomme, la garde `in` rend simplement la levée du verrou inopérante, sans erreur. */
+function estRefusJeton(e){ return /permission-denied|unauthenticated/i.test(String((e && (e.code || e.name)) || '')); }
+const _DELAI = '__delai__';
+const _attendre = ms => new Promise(r => setTimeout(() => r(_DELAI), ms));
+const Jetons = {
+  _forces: 0, _dernierForce: 0, _dernierIdToken: 0,
+  _FORCES_MAX: 3, _FORCE_ECART_MS: 10*60*1000,
+  _etatVerrou(){ const th = acProvider && acProvider._throttleData; return th ? th.httpStatus || null : null; },
+  /* Sans effet réseau tant que le jeton est valide (getToken non forcé le rend tel quel) ; ne lève
+     que s'il n'y a PLUS de jeton valide — donc exactement quand Firestore envoie le jeton factice.
+     Bornée à 8 s : si le script reCAPTCHA n'a jamais pu se charger (bloqueur de contenu), getToken
+     attend indéfiniment. */
+  async sonder(){
+    if(!fbAppCheck) return {couche:'appcheck', code:'appCheck/non-initialise', http:null};
+    try{
+      const r = await Promise.race([acGetToken(fbAppCheck, false), _attendre(8000)]);
+      if(r === _DELAI) return {couche:'appcheck', code:'appCheck/delai-depasse', http:null};
+      return {couche:'ok'};
+    }catch(e){
+      return {couche:'appcheck', code:String((e && e.code) || e), http:this._etatVerrou()};
+    }
+  },
+  /* Nouveau jeton App Check, verrou de 24 h levé au besoin. Espacé d'au moins 10 min, puis de 30 min
+     après trois essais : le verrou existe pour ne pas marteler l'échange, on ne le lève que parce que
+     la progression de l'élève est en jeu. En cas de succès, Firestore reçoit le jeton par son
+     écouteur et rouvre ses flux avec lui. */
+  async forcerAppCheck(s){
+    if(!fbAppCheck) return {...s, repare:false};
+    const ecart = this._forces >= this._FORCES_MAX ? 3*this._FORCE_ECART_MS : this._FORCE_ECART_MS;
+    if(Date.now() - this._dernierForce < ecart) return {...s, repare:false, borne:true};
+    this._forces++; this._dernierForce = Date.now();
+    if(acProvider && ('_throttleData' in acProvider) && acProvider._throttleData) acProvider._throttleData = null;
+    try{
+      const r = await Promise.race([acGetToken(fbAppCheck, true), _attendre(10000)]);
+      if(r === _DELAI) return {...s, repare:false, code2:'appCheck/delai-depasse'};
+      return {...s, repare:true};
+    }catch(e){
+      return {...s, repare:false, code2:String((e && e.code) || e), http2:this._etatVerrou()};
+    }
+  },
+  /* Répare dans l'ordre des couches et dit laquelle a cédé. */
+  async reparer(){
+    if(!auth.currentUser) return {couche:'session', code:'deconnecte', repare:false};
+    const s = await this.sonder();
+    let res = s;
+    if(s.couche === 'appcheck'){
+      res = await this.forcerAppCheck(s);
+      if(!res.repare) return res;
+    } else {
+      /* Jeton valide côté client mais écriture refusée : le flux avait pu partir avec le jeton
+         factice, ou le serveur refuse ce jeton. Un jeton neuf (borné) tranche les deux cas. */
+      await this.forcerAppCheck(s);
+    }
+    if(Date.now() - this._dernierIdToken > 5*60*1000){
+      this._dernierIdToken = Date.now();
+      try{ await auth.currentUser.getIdToken(true); }
+      catch(e){ return {couche:'auth', code:String((e && e.code) || e), repare:false}; }
+    }
+    return s.couche === 'ok' ? {couche:'inconnue', repare:true} : res;
+  }
+};
+/* Une tentative, puis réparation des jetons et UNE seconde tentative. Pas de boucle : les reprises
+   espacées sont l'affaire du planificateur de SRS._pousser. */
+async function avecReprise(fn){
+  try{ return await fn(); }
+  catch(e){
+    if(!estRefusJeton(e)) throw e;
+    const diag = await Jetons.reparer();
+    SyncDiag.noter('refus', e, diag);
+    if(diag.repare === false){ e._diag = diag; throw e; }
+    try{ return await fn(); }
+    catch(e2){ e2._diag = diag; throw e2; }
+  }
+}
+const SyncDiag = {
+  CLE: 'quiztsi_sync_diag',
+  noter(evt, e, diag){
+    const x = { t: Date.now(), evt,
+      code: e ? String(e.code || e.name || e.message || e).slice(0, 80) : null,
+      couche: (diag && diag.couche) || null, ac: (diag && (diag.code2 || diag.code)) || null,
+      http: (diag && (diag.http2 || diag.http)) || null, repare: diag ? (diag.repare == null ? null : !!diag.repare) : null,
+      enLigne: typeof navigator !== 'undefined' ? navigator.onLine : null,
+      pwa: !!(typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) };
+    try{
+      const l = JSON.parse(localStorage.getItem(this.CLE) || '[]');
+      l.push(x); localStorage.setItem(this.CLE, JSON.stringify(l.slice(-30)));
+    }catch(_){}
+    console.warn('Synchro :', x);
+    return x;
+  },
+  lire(){ try{ return JSON.parse(localStorage.getItem(this.CLE) || '[]'); }catch(_){ return []; } }
+};
+if(typeof window !== 'undefined') window.diagSynchro = () => {
+  const l = SyncDiag.lire();
+  try{ console.table(l.map(x => ({...x, t: new Date(x.t).toLocaleString('fr-FR')}))); }catch(_){}
+  return l;
+};
+/* Cause lisible par un élève (le code brut reste dans le journal). */
+function raisonSynchro(e){
+  const d = e && e._diag, c = String((e && (e.code || e.name)) || '');
+  if((typeof navigator !== 'undefined' && navigator.onLine === false) || /unavailable|network|deadline/i.test(c)) return 'hors ligne';
+  if(d && d.couche === 'appcheck')
+    return ((d.http2 || d.http) === 403 || /throttled/i.test(String(d.code2 || d.code))) ? 'contrôle anti-robot refusé' : 'contrôle anti-robot indisponible';
+  if(d && d.couche === 'auth') return 'session à renouveler';
+  if(d && d.couche === 'session') return 'déconnecté';
+  if(/invalid-argument/i.test(c)) return 'document refusé';
+  if(/resource-exhausted/i.test(c)) return 'quota du jour atteint';
+  return c || 'erreur inconnue';
+}
+/* ==== FIN JETONS ==== */
+
 const SRS_OWNER_KEY = 'quiztsi_srs_owner';
+/* Progression pas encore synchronisée d'un compte qui se déconnecte (v313) : mise de côté sous
+   cette clé, réintégrée à sa prochaine connexion, jamais fusionnée dans un autre compte. */
+const SRS_STASH_PREFIX = 'quiztsi_srs_stash_';
 onAuthStateChanged(auth, async (user)=>{
   currentUser = user;
   isAdmin = !!(user && ADMIN_EMAILS.map(e=>e.toLowerCase()).includes((user.email||'').toLowerCase()));
@@ -1538,17 +1677,17 @@ onAuthStateChanged(auth, async (user)=>{
          si elle échouait (réseau, App Check, jeton périmé), l'élève se retrouvait avec un compte vierge
          et plus rien nulle part. Désormais, si loadSRS() lève, on ne purge pas, on n'écrit pas le
          propriétaire local, et le verrou _cloudRead reste fermé : rien n'est perdu, rien n'est poussé. */
-      const cloud = await Cloud.loadSRS();
-      let localOwner=null; try{ localOwner=localStorage.getItem(SRS_OWNER_KEY); }catch(e){}
-      if(localOwner !== user.uid){
-        if(typeof SRS!=='undefined') SRS.clear();
-        try{ localStorage.setItem(SRS_OWNER_KEY, user.uid); }catch(e){}
+      if(typeof SRS!=='undefined') SRS._reclamerSiVide(user.uid);
+      const cloud = await avecReprise(()=>Cloud.loadSRS());
+      /* La lecture a ABOUTI (un compte neuf renvoie légitimement null). _ouvrirCompte purge la
+         progression d'un autre compte, déverrouille l'écriture, réintègre ce qui avait été mis de
+         côté à la déconnexion, puis fusionne le cloud. Si loadSRS lève, rien de tout cela : le
+         planificateur retentera la lecture (v313 — avant, le verrou restait fermé pour toute la page). */
+      if(typeof SRS!=='undefined'){
+        SRS._ouvrirCompte(user.uid, cloud);
+        if(cloud || SRS._etatSale()) SRS._syncCloud();
       }
-      /* La lecture a ABOUTI (un compte neuf renvoie légitimement null) : l'écriture est déverrouillée.
-         Si loadSRS lève, on n'arrive ni ici ni à la purge ci-dessus — c'est tout l'objet. */
-      if(typeof SRS!=='undefined') SRS._cloudRead = true;
-      if(cloud && typeof SRS!=='undefined'){ SRS.mergeCloud(cloud); SRS.gc(); SRS._syncCloud(); }
-    }catch(e){ console.warn('SRS cloud load', e); }
+    }catch(e){ console.warn('SRS cloud load', e); if(typeof SRS!=='undefined') SRS._surEchec(e, 'connexion'); }
     // Rafraîchit l'état serveur : emailVerified peut être périmé dans le token
     // mis en cache par le navigateur (Chrome surtout). Best-effort, non bloquant.
     try{ await user.reload(); if(auth.currentUser){ user = auth.currentUser; currentUser = user; } }
@@ -1610,7 +1749,14 @@ onAuthStateChanged(auth, async (user)=>{
   } else {
     // Déconnexion : purge de la progression locale pour empêcher toute fuite entre comptes
     // et REFERMETURE du verrou d'écriture (le compte suivant devra lire son cloud avant d'écrire).
-    if(typeof SRS!=='undefined'){ SRS.clear(); SRS._cloudRead = false; }
+    /* v313 : une déconnexion peut être SUBIE (au chargement, Auth déconnecte si sa vérification de
+       compte échoue — App Check compris). La progression pas encore synchronisée est donc mise de
+       côté pour son propriétaire avant la purge, et réintégrée à sa prochaine connexion. */
+    if(typeof SRS!=='undefined'){
+      let proprio = null; try{ proprio = localStorage.getItem(SRS_OWNER_KEY); }catch(e){}
+      SRS._mettreDeCote(proprio);
+      SRS.clear(); SRS._cloudRead = false; SRS._reinitSynchro();
+    }
     try{ localStorage.removeItem(SRS_OWNER_KEY); }catch(e){}
     myClassStatus = null;
     // Connexion obligatoire : ouvrir la modale, non fermable
@@ -9340,7 +9486,7 @@ try{ if(typeof window!=='undefined'){ window.optimizeFsrsWeights=optimizeFsrsWei
 
 const SRS = {
   _d(){ try{ return JSON.parse(localStorage.getItem(STATS_KEY)) || {cards:{}, sessions:[]}; }catch(e){ return {cards:{},sessions:[]}; } },
-  _save(d){ try{ localStorage.setItem(STATS_KEY, JSON.stringify(d)); }catch(e){} },
+  _save(d){ try{ localStorage.setItem(STATS_KEY, JSON.stringify(d)); }catch(e){ console.warn('SRS : écriture locale impossible', e); } this._marquerSale(); },
 
   // ---- Helpers de date (streak + quota quotidien de nouvelles cartes) ----
   // Jour courant en heure LOCALE (et non UTC) : sinon le « jour » bascule vers 2h du matin l'été (UTC+2) et casse des streaks pourtant continus.
@@ -9519,50 +9665,195 @@ const SRS = {
         return paquet;
   },
 
-  /* VERROU D'ECRITURE (v284) - voir _syncCloud. Faux tant que le cloud de CE compte n'a pas ete lu
-     avec succes dans cette session. */
+  /* VERROU D'ECRITURE (v284). Faux tant que le cloud de CE compte n'a pas ete lu avec succes dans
+     cette session : sans lui, une lecture ratee laissait un SRS local que SRS.clear() venait de vider,
+     et la premiere carte notee ecrasait la progression de l'eleve sur TOUS ses appareils (updateDoc
+     remplace tout le champ `srs`). Seul _ouvrirCompte l'ouvre, apres une lecture reussie. */
   _cloudRead: false,
   _cloudTimer: null,
+
+  /* ==== GESTIONNAIRE DE SYNCHRO (v313) ====
+     Avant : une écriture refusée était abandonnée (le SDK ne rejoue jamais un PERMISSION_DENIED),
+     un bandeau de 4 s s'affichait, et rien ne se passait avant la carte suivante ; une lecture ratée
+     au chargement fermait la synchro pour toute la page, sans un mot. Désormais :
+       • UN SEUL envoi à la fois (deux écritures concurrentes pouvaient se doubler dans la file du SDK) ;
+       • chaque refus passe par Jetons.reparer() puis une seconde tentative (avecReprise) ;
+       • en cas d'échec, reprises espacées — 15 s, 1 min, 5 min, 15 min puis toutes les 30 min — et relance
+         immédiate au retour sur l'appli et au retour du réseau ;
+       • une reprise RELIT et FUSIONNE le cloud avant d'écrire, pour ne jamais écraser une progression
+         plus récente venue d'un autre appareil ; idem si la dernière lecture date de plus de 10 min ;
+       • un marqueur persistant (_CLE_SALE) dit qu'il reste des notes non synchronisées : il survit
+         au rechargement et déclenche la mise de côté à la déconnexion. */
+  _CLE_SALE: 'quiztsi_srs_dirty',
+  _RELIRE_MS: 10*60*1000,
+  _REPRISES: [15e3, 60e3, 5*60e3, 15*60e3, 30*60e3],
+  _enVol: null, _encore: false, _echecs: 0, _raison: null, _repriseTimer: null,
+  _relireAvant: false, _sansRelire: false, _lastReadAt: 0,
+
+  _marquerSale(){
+    try{
+      const prev = JSON.parse(localStorage.getItem(this._CLE_SALE) || 'null');
+      const owner = localStorage.getItem(SRS_OWNER_KEY) || null;
+      localStorage.setItem(this._CLE_SALE, JSON.stringify({
+        jeton: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+        depuis: (prev && prev.owner === owner && prev.depuis) || Date.now(), owner }));
+    }catch(_){}
+  },
+  _etatSale(){ try{ return JSON.parse(localStorage.getItem(this._CLE_SALE) || 'null'); }catch(_){ return null; } },
+  /* Déconnexion : la progression d'`owner` pas encore synchronisée est mise de côté (format du
+     cloud, borné par _paquetCloud) — rien si tout était synchronisé. */
+  _mettreDeCote(owner){
+    if(!owner) return;
+    const s = this._etatSale();
+    if(!s || s.owner !== owner) return;
+    /* UNE seule mise de côté à la fois : le stockage du navigateur est compté (~5 Mo sur Safari) et la
+       progression VIVANTE du compte suivant passe avant. */
+    try{
+      for(let i = localStorage.length - 1; i >= 0; i--){
+        const k = localStorage.key(i);
+        if(k && k.indexOf(SRS_STASH_PREFIX) === 0 && k !== SRS_STASH_PREFIX + owner) localStorage.removeItem(k);
+      }
+      localStorage.setItem(SRS_STASH_PREFIX + owner, JSON.stringify(this._paquetCloud()));
+    }catch(e){ console.warn('SRS : mise de côté impossible', e); }
+  },
+  _reinitSynchro(){
+    clearTimeout(this._cloudTimer); this._cloudTimer = null;
+    clearTimeout(this._repriseTimer); this._repriseTimer = null;
+    this._echecs = 0; this._raison = null; this._relireAvant = false; this._sansRelire = false; this._lastReadAt = 0;
+  },
+  /* Connexion : un stockage local VIDE et sans propriétaire (appareil neuf, ou purgé à la déconnexion)
+     est attribué tout de suite au compte qui se connecte. Sans cela, les notes prises avant que la
+     première lecture du cloud aboutisse (hors ligne, App Check en panne) étaient purgées par elle,
+     comme si elles venaient d'un autre compte. Un stockage NON vide sans propriétaire reste purgé. */
+  _reclamerSiVide(uid){
+    try{
+      if(localStorage.getItem(SRS_OWNER_KEY)) return;
+      const d = this._d();
+      const vide = !Object.keys(d.cards || {}).length && !(d.sessions || []).length && !(d.reviewLog || []).length
+                && !(d.colleLog || []).length && !(d.dsLog || []).length && !Object.keys(d.colleEx || {}).length;
+      if(vide) localStorage.setItem(SRS_OWNER_KEY, uid);
+    }catch(_){}
+  },
+  /* SEUL point qui ouvre le verrou, toujours APRÈS une lecture réussie du cloud de `uid`. */
+  _ouvrirCompte(uid, cloud){
+    let localOwner = null; try{ localOwner = localStorage.getItem(SRS_OWNER_KEY); }catch(_){}
+    if(localOwner !== uid){
+      this._mettreDeCote(localOwner);      // l'autre compte retrouvera ses notes ; elles n'iront jamais ici
+      this.clear();
+      try{ localStorage.setItem(SRS_OWNER_KEY, uid); }catch(_){}
+    }
+    this._cloudRead = true;
+    this._lastReadAt = Date.now();
+    let miseDeCote = null;
+    try{ miseDeCote = JSON.parse(localStorage.getItem(SRS_STASH_PREFIX + uid) || 'null'); }catch(_){}
+    if(miseDeCote && typeof miseDeCote === 'object'){
+      this.mergeCloud(miseDeCote);
+      try{ localStorage.removeItem(SRS_STASH_PREFIX + uid); }catch(_){}
+    }
+    if(cloud) this.mergeCloud(cloud);
+    if(cloud || miseDeCote) this.gc();
+  },
+  _rafraichirUI(){
+    try{
+      if(typeof updateSrsBar === 'function') updateSrsBar();
+      if(typeof updateHeaderStats === 'function') updateHeaderStats();
+      if(typeof buildFamilyAccordion === 'function') buildFamilyAccordion();
+    }catch(_){}
+  },
   _syncCloud(){
     if(typeof currentUser==='undefined' || !currentUser) return;
-    /* VERROU D'ECRITURE (v284, audit de phase A). Tant que le cloud de ce compte n'a pas ete lu au
-       moins une fois, on n'ecrit RIEN. Sans ce verrou : une lecture ratee (reseau, App Check, jeton
-       perime) laissait un SRS local que SRS.clear() venait de vider, puis la premiere carte notee
-       declenchait Cloud.saveSRS - un updateDoc qui REMPLACE tout le champ `srs` - et la progression
-       de l'eleve etait ecrasee par ce quasi-vide sur TOUS ses appareils. SECONDE des deux causes du
-       « je revise une carte que j'ai deja revisee ». La progression locale, elle, n'est jamais perdue :
-       elle repartira a la premiere synchro reussie. */
-    if(!this._cloudRead){ console.warn('SRS : ecriture cloud differee - cloud pas encore lu'); return; }
     clearTimeout(this._cloudTimer);
-    this._cloudTimer = setTimeout(async ()=>{
+    this._cloudTimer = setTimeout(()=>{ this._cloudTimer = null; this._pousser('note'); }, 1500);
+  },
+  async _ecrire(paquet){
+    try{ await Cloud.saveSRS(paquet); }
+    catch(e1){
+      /* Dernier filet : si le document déborde ENCORE, on retente sans le journal —
+         la PROGRESSION passe avant tout, le journal ne sert qu'aux stats de rétention. */
+      const c1 = (e1 && (e1.code || e1.name)) ? String(e1.code || e1.name) : '';
+      if(/invalid-argument/i.test(c1) && paquet.reviewLog && paquet.reviewLog.length){
+        console.warn('SRS : refus Firestore malgré le budget — nouvel essai sans le journal');
+        paquet.reviewLog = [];
+        await Cloud.saveSRS(paquet);
+      } else throw e1;
+    }
+  },
+  /* Lit (si besoin), fusionne, écrit. Renvoie true si le cloud est à jour. Ne lève jamais. */
+  async _pousser(motif){
+    if(typeof currentUser==='undefined' || !currentUser) return false;
+    if(this._enVol){ this._encore = true; return this._enVol; }
+    clearTimeout(this._cloudTimer); this._cloudTimer = null;
+    clearTimeout(this._repriseTimer); this._repriseTimer = null;
+    const uid = currentUser.uid;
+    const envoi = (async ()=>{
+      /* Veille : un envoi qui ne se termine pas (jeton App Check qui n'arrive jamais, réseau
+         mourant) ne lève aucune erreur — le SDK retente en silence. On sonde et on répare quand
+         même, sans libérer le créneau : une seconde écriture lancée en parallèle pourrait passer
+         AVANT la première et être écrasée par elle. */
+      let veille = setTimeout(()=>{ veille = null; this._surLenteur(); }, 25000);
       try{
         cloudSync('↑ Synchronisation…');
-        const paquet = this._paquetCloud();
-        try{
-          await Cloud.saveSRS(paquet);
-          cloudOk('☁️ SRS sauvegardé');
-        }catch(e1){
-          /* Dernier filet : si le document déborde ENCORE, on retente sans le journal —
-             la PROGRESSION passe avant tout, le journal ne sert qu'aux stats de rétention. */
-          const c1 = (e1 && (e1.code || e1.name)) ? String(e1.code || e1.name) : '';
-          if(/invalid-argument/i.test(c1) && paquet.reviewLog.length){
-            console.warn('SRS : refus Firestore malgré le budget — nouvel essai sans le journal');
-            paquet.reviewLog = [];
-            await Cloud.saveSRS(paquet);
-            cloudOk('☁️ SRS sauvegardé (journal reporté)');
-          } else throw e1;
+        const relire = !this._cloudRead || this._relireAvant ||
+                       (!this._sansRelire && Date.now() - this._lastReadAt > this._RELIRE_MS);
+        if(relire){
+          const cloud = await avecReprise(()=>Cloud.loadSRS());
+          if(!currentUser || currentUser.uid !== uid) return false;   // compte changé pendant la lecture
+          this._ouvrirCompte(uid, cloud);
+          this._rafraichirUI();
         }
+        this._sansRelire = false;
+        let marque = null; try{ marque = localStorage.getItem(this._CLE_SALE); }catch(_){}
+        const paquet = this._paquetCloud();
+        await avecReprise(()=>this._ecrire(paquet));
+        if(!currentUser || currentUser.uid !== uid) return false;
+        const retabli = this._echecs > 0;
+        this._echecs = 0; this._raison = null; this._relireAvant = false;
+        /* Le marqueur n'est effacé que si RIEN n'a changé pendant l'envoi ; sinon on repart. */
+        try{
+          if(localStorage.getItem(this._CLE_SALE) === marque) localStorage.removeItem(this._CLE_SALE);
+          else this._syncCloud();
+        }catch(_){}
+        if(retabli) SyncDiag.noter('retabli:' + motif, null, {couche:'ok', repare:true});
+        cloudOk(retabli ? '☁️ Synchro rétablie' : '☁️ SRS sauvegardé', retabli);
+        return true;
       }catch(e){
-        console.warn('SRS cloud sync', e);
-        /* Le code Firebase est ce qui permet de trancher : permission-denied (règles ou App Check),
-           resource-exhausted (quota), invalid-argument (document refusé : trop d'entrées d'index
-           ou > 1 Mio), unavailable (réseau). Le masquer rendait le diagnostic impossible.
-           MESSAGE : la progression est intacte en local et repartira à la prochaine synchro —
-           le dire évite d'alarmer l'élève en pleine révision pour un incident rattrapable. */
-        const code = (e && (e.code || e.name)) ? String(e.code || e.name) : '';
-        cloudErr('⚠️ Synchro différée' + (code ? ' — ' + code : '') + ' (progression gardée sur cet appareil)');
+        this._surEchec(e, motif);
+        return false;
+      }finally{
+        if(veille) clearTimeout(veille);
       }
-    }, 1500);
+    })();
+    this._enVol = envoi;
+    try{ return await envoi; }
+    finally{
+      this._enVol = null;
+      if(this._encore){ this._encore = false; if(this._echecs === 0) this._syncCloud(); }
+    }
+  },
+  _surEchec(e, motif){
+    this._echecs++;
+    this._relireAvant = true;
+    this._raison = raisonSynchro(e);
+    SyncDiag.noter('echec:' + motif, e, e && e._diag);
+    cloudErr('⚠️ Synchro en attente — ' + this._raison + '. Nouvel essai automatique ; ta progression est gardée sur cet appareil.');
+    try{ if(typeof updateLastSyncLabel === 'function') updateLastSyncLabel(); }catch(_){}
+    this._planifierReprise();
+  },
+  _planifierReprise(){
+    clearTimeout(this._repriseTimer); this._repriseTimer = null;
+    if(typeof currentUser==='undefined' || !currentUser) return;
+    /* Page cachée ou hors ligne : ce sont le retour sur l'appli et l'événement « online » qui relancent. */
+    if((typeof document !== 'undefined' && document.visibilityState === 'hidden') ||
+       (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
+    const i = Math.min(Math.max(this._echecs, 1), this._REPRISES.length) - 1;
+    const delai = Math.round(this._REPRISES[i] * (0.8 + 0.4*Math.random()));
+    this._repriseTimer = setTimeout(()=>{ this._repriseTimer = null; this._pousser('reprise'); }, delai);
+  },
+  async _surLenteur(){
+    cloudErr('⏳ Synchro lente — nouvel essai en cours ; ta progression est gardée sur cet appareil.');
+    const s = await Jetons.sonder();
+    SyncDiag.noter('lent', null, s);
+    if(s.couche === 'appcheck') SyncDiag.noter('lent:reparation', null, await Jetons.forcerAppCheck(s));
   },
   // fusionne l'état cloud avec le local. Accepte le NOUVEAU format {cards, streak, daily}
   // comme l'ANCIEN (map de cartes brute). Cartes : on garde la plus avancée.
@@ -9931,7 +10222,7 @@ const SRS = {
   // Historique des sessions
   sessions(){ return (this._d().sessions||[]).slice(-14); },
 
-  clear(){ try{ localStorage.removeItem(STATS_KEY); }catch(e){} }
+  clear(){ try{ localStorage.removeItem(STATS_KEY); localStorage.removeItem(this._CLE_SALE); }catch(e){} }
 };
 
 /* Compatibilité ancienne clé v1 */
@@ -11042,7 +11333,9 @@ function undoLast(){
     if(s.card) d.cards[s.h] = s.card; else delete d.cards[s.h];
     d.daily = s.daily; d.streak = s.streak;
     if(Array.isArray(d.reviewLog) && d.reviewLog.length > s.reviewLogLen) d.reviewLog.length = s.reviewLogLen;
-    SRS._save(d); SRS._syncCloud();           // le cloud reflète aussi l'annulation
+    /* _sansRelire (v313) : la note annulée est peut-être déjà au cloud ; relire avant d'écrire la
+       ferait revenir (la fusion garde la notation la plus récente). On écrit donc l'état annulé tel quel. */
+    SRS._save(d); SRS._sansRelire = true; SRS._syncCloud();   // le cloud reflète aussi l'annulation
     // 2) restaurer les compteurs de session
     score = s.score; streak = s.sStreak; bestStreak = s.best;
     if(reviewSession && s.rsCount != null) reviewSession.count = s.rsCount;
@@ -12189,6 +12482,7 @@ function colleRecord(fn){
   if(!d.colleLog) d.colleLog = [];
   fn(d);
   SRS._save(d);
+  SRS._syncCloud();   // v313 : l'historique des colles et oraux partait seulement à la carte suivante
 }
 
 let colleS = null;
@@ -13466,6 +13760,7 @@ function dsRecord(dsId, exoId, note, max){
   const d=SRS._d(); if(!Array.isArray(d.dsLog)) d.dsLog=[];
   d.dsLog.push({ds:dsId, exo:exoId, note, max, t:Date.now()}); if(d.dsLog.length>400) d.dsLog=d.dsLog.slice(-400);
   SRS._save(d);
+  SRS._syncCloud();   // v313 : idem pour les DS blancs
 }
 function dsBest(dsId, exoId){ let b=null; dsLog().forEach(r=>{ if(r.ds===dsId && r.exo===exoId && (b===null || r.note>b)) b=r.note; }); return b; }
 function dsHashesOfTopics(topics){ const set=new Set(topics); return QUESTIONS.filter(q=>set.has(q.topic)).map(q=>qHash(q.q)); }
@@ -15778,8 +16073,9 @@ function cloudToast(type, msg){
   if(!el) return;
   // P2 : on n'affiche le bandeau QUE pour les erreurs ; succès/sync restent discrets
   // (le statique « Dernière synchro » suffit). Repositionné pour ne plus couvrir Suivant/Abandonner.
-  if(type !== 'err'){ el.classList.remove('show'); return; }
-  el.className = 'cloud-status show ' + type;
+  /* 'ok!' (v313) : succès affiché quand même — le retour à la normale après un incident. */
+  if(type !== 'err' && type !== 'ok!'){ el.classList.remove('show'); return; }
+  el.className = 'cloud-status show ' + (type === 'ok!' ? 'ok' : type);
   el.textContent = msg;
   clearTimeout(_cloudStatusTimer);
   _cloudStatusTimer = setTimeout(()=>{ el.classList.remove('show'); }, 4000);
@@ -15794,12 +16090,17 @@ function fmtSyncAgo(){
   const d = new Date(lastSyncTs);
   return 'le '+d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})+' à '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 }
-function updateLastSyncLabel(){ const el=$('#lastSyncLabel'); if(el) el.textContent='Dernière synchro : '+fmtSyncAgo(); }
-function cloudOk(msg='☁️ Sauvegardé'){
+function updateLastSyncLabel(){
+  const el=$('#lastSyncLabel'); if(!el) return;
+  let t = 'Dernière synchro : '+fmtSyncAgo();
+  try{ if(typeof SRS!=='undefined' && SRS._echecs > 0 && SRS._raison) t += ' · ⚠️ en attente ('+SRS._raison+')'; }catch(e){}
+  el.textContent = t;
+}
+function cloudOk(msg='☁️ Sauvegardé', visible=false){
   lastSyncTs = Date.now();
   try{ localStorage.setItem('quiztsi_lastsync', String(lastSyncTs)); }catch(e){}
   updateLastSyncLabel();
-  cloudToast('ok', msg);
+  cloudToast(visible ? 'ok!' : 'ok', msg);
 }
 function cloudErr(msg='⚠️ Non sauvegardé — hors ligne ?'){ cloudToast('err', msg); }
 function cloudSync(msg='↑ Synchronisation…'){ cloudToast('sync', msg); }
@@ -15816,14 +16117,16 @@ async function manualSync(){
        paquet envoye ensuite contient deja la fusion.
        Meme paquet que la synchro automatique (allege + budgete) : envoyer `dd.cards` brut
        reinjectait les enonces et refaisait deborder le document. */
-    const cloud = await Cloud.loadSRS();
-    SRS._cloudRead = true;
-    if(cloud){ SRS.mergeCloud(cloud); SRS.gc(); }
-    await Cloud.saveSRS(SRS._paquetCloud());
-    cloudOk('☁️ Synchronisé');
-    updateSrsBar(); updateHeaderStats(); buildFamilyAccordion();
-    await renderStats();
-  }catch(e){ console.warn('manual sync', e); cloudErr('⚠️ Sync échouée'); }
+    /* v313 : passe par le gestionnaire de synchro — lecture + fusion (avec contrôle du propriétaire
+       local, qui manquait ici), réparation des jetons, diagnostic et reprises. */
+    SRS._relireAvant = true;
+    const ok = await SRS._pousser('manuel');
+    if(ok){
+      cloudOk('☁️ Synchronisé', true);
+      updateSrsBar(); updateHeaderStats(); buildFamilyAccordion();
+      await renderStats();
+    }
+  }catch(e){ console.warn('manual sync', e); cloudErr('⚠️ Sync échouée — ' + raisonSynchro(e)); }
   finally{ if(btn) btn.disabled = false; }
 }
 // Bloc d'accueil « Rejoindre la classe TSI Chaptal » (élève connecté, non-admin).
@@ -16695,18 +16998,26 @@ document.addEventListener('visibilitychange', ()=>{
         Leaderboard.publish(_lbPseudo()).catch(()=>{});
       }
     }catch(e){}
+    /* v313 : une note de moins de 1,5 s partait avec la minuterie, que iOS gèle en arrière-plan. */
+    try{ if(currentUser && typeof SRS!=='undefined' && SRS._cloudTimer) SRS._pousser('depart'); }catch(e){}
     return;
   }
   if(document.visibilityState !== 'visible') return;
   if(typeof currentUser === 'undefined' || !currentUser) return;
   if(Date.now() - _lastPull < 4000) return;   // throttle léger
   _lastPull = Date.now();
-  Cloud.loadSRS().then(cloud=>{
-    if(!cloud) return;
-    SRS.mergeCloud(cloud);
-    SRS._syncCloud();                          // re-pousse l'union fusionnée (anti-écrasement)
-    updateSrsBar(); updateHeaderStats(); buildFamilyAccordion();
-  }).catch(()=>{});
+  /* v313 : même chemin que tout le reste — lecture, fusion, re-poussée de l'union (anti-écrasement),
+     avec réparation des jetons et reprises. L'ancien .catch(()=>{}) avalait précisément le refus
+     App Check qui annonçait les échecs d'écriture ; et une lecture réussie ici n'ouvrait jamais le
+     verrou laissé fermé par un échec au chargement. */
+  SRS._relireAvant = true;
+  SRS._pousser('retour');
+});
+window.addEventListener('online', ()=>{
+  try{ if(currentUser && (SRS._echecs > 0 || !SRS._cloudRead)) SRS._pousser('reseau'); }catch(e){}
+});
+window.addEventListener('pageshow', ev=>{
+  try{ if(ev.persisted && currentUser){ SRS._relireAvant = true; SRS._pousser('retour'); } }catch(e){}
 });
 // Collecte best-effort si l'élève quitte la page en plein quiz (sans finir ni abandonner explicitement)
 window.addEventListener('pagehide', ()=>{ try{ flushSession('leave'); }catch(e){} });
