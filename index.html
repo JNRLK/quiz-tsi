@@ -9703,7 +9703,7 @@ const SRS = {
   _CLE_SALE: 'quiztsi_srs_dirty',
   _RELIRE_MS: 10*60*1000,
   _REPRISES: [15e3, 60e3, 5*60e3, 15*60e3, 30*60e3],
-  _enVol: null, _encore: false, _echecs: 0, _raison: null, _repriseTimer: null, _gen: 0,
+  _enVol: null, _encore: false, _echecs: 0, _raison: null, _repriseTimer: null, _gen: 0, _dernierEssai: 0,
   _relireAvant: false, _sansRelire: false, _lastReadAt: 0,
 
   _marquerSale(){
@@ -9788,8 +9788,12 @@ const SRS = {
   },
   _syncCloud(){
     if(typeof currentUser==='undefined' || !currentUser) return;
+    /* En panne (v315) : chaque note relançait lecture complète + écriture + réparation. L'envoi est
+       repoussé à une minute après le précédent essai : au plus un essai par minute, et la note part
+       quand même, même si aucune reprise n'est programmée (échec survenu hors ligne). */
+    const delai = this._echecs > 0 ? Math.max(1500, 60000 - (Date.now() - this._dernierEssai)) : 1500;
     clearTimeout(this._cloudTimer);
-    this._cloudTimer = setTimeout(()=>{ this._cloudTimer = null; this._pousser('note'); }, 1500);
+    this._cloudTimer = setTimeout(()=>{ this._cloudTimer = null; this._pousser('note'); }, delai);
   },
   async _ecrire(paquet, uid){
     try{ await Cloud.saveSRS(paquet, uid); }
@@ -9810,6 +9814,7 @@ const SRS = {
     if(this._enVol){ this._encore = true; return this._enVol; }
     clearTimeout(this._cloudTimer); this._cloudTimer = null;
     clearTimeout(this._repriseTimer); this._repriseTimer = null;
+    this._dernierEssai = Date.now();
     const uid = currentUser.uid, gen = this._gen;
     const actuel = () => gen === this._gen && currentUser && currentUser.uid === uid;
     const envoi = (async ()=>{
@@ -9829,6 +9834,7 @@ const SRS = {
         const relire = !this._cloudRead || this._relireAvant ||
                        (!this._sansRelire && Date.now() - this._lastReadAt > this._RELIRE_MS);
         if(relire){
+          this._relireAvant = false;           // consommée ici ; un échec la repose (_surEchec)
           const cloud = await avecReprise(()=>Cloud.loadSRS(uid), uid);
           if(!actuel()) return false;                                  // compte changé pendant la lecture
           this._ouvrirCompte(uid, cloud);
@@ -9841,7 +9847,7 @@ const SRS = {
         await avecReprise(()=>this._ecrire(paquet, uid), uid);
         if(!actuel()) return false;
         const retabli = this._echecs > 0;
-        this._echecs = 0; this._raison = null; this._relireAvant = false;
+        this._echecs = 0; this._raison = null;
         /* Le marqueur n'est effacé que si RIEN n'a changé pendant l'envoi ; sinon on repart. */
         try{
           if(localStorage.getItem(this._CLE_SALE) === marque) localStorage.removeItem(this._CLE_SALE);
@@ -9866,11 +9872,15 @@ const SRS = {
     }
   },
   _surEchec(e, motif){
+    const avant = this._raison;
     this._echecs++;
     this._relireAvant = true;
     this._raison = raisonSynchro(e);
     SyncDiag.noter('echec:' + motif, e, e && e._diag);
-    cloudErr('⚠️ Synchro en attente — ' + this._raison + '. Nouvel essai automatique ; ta progression est gardée sur cet appareil.');
+    /* Un bandeau par incident (v315) : au premier échec, ou si la cause change, ou sur demande
+       explicite. L'état reste lisible en permanence dans « Dernière synchro ». */
+    if(this._echecs === 1 || this._raison !== avant || motif === 'manuel')
+      cloudErr('⚠️ Synchro en attente — ' + this._raison + '. Nouvel essai automatique ; ta progression est gardée sur cet appareil.');
     try{ if(typeof updateLastSyncLabel === 'function') updateLastSyncLabel(); }catch(_){}
     this._planifierReprise();
   },
@@ -9892,7 +9902,7 @@ const SRS = {
     /* reCAPTCHA jamais chargé (bloqueur de contenu, appli ouverte hors ligne) : seul un
        rechargement relance le script — on le dit au lieu de laisser croire à une lenteur. */
     const bloque = n >= 3 && /delai-depasse/.test(String((r && r.code2) || s.code || ''));
-    if(n === 1) cloudErr('⏳ Synchro lente — nouvel essai en cours ; ta progression est gardée sur cet appareil.');
+    if(n === 2) cloudErr('⏳ Synchro lente — nouvel essai en cours ; ta progression est gardée sur cet appareil.');
     else if(bloque && n % 5 === 3) cloudErr('⚠️ Synchro bloquée — recharge la page quand tu auras fini ; ta progression est gardée sur cet appareil.');
   },
   // fusionne l'état cloud avec le local. Accepte le NOUVEAU format {cards, streak, daily}
@@ -9912,6 +9922,7 @@ const SRS = {
          PREMIERE des deux causes du « je revise une carte que j'ai deja revisee ». `last` est ecrit par
          review() a chaque note ; a egalite - cartes anciennes sans `last` - on retombe sur l'ancienne
          regle, donc aucune regression pour les paquets historiques. */
+      if(d.annulees && d.annulees[h] && (cc.last||0) === d.annulees[h]) continue;   // note annulée ici (v315)
       const ccLast = cc.last||0, lcLast = lc ? (lc.last||0) : -1;
       if(!lc || ccLast > lcLast || (ccLast === lcLast &&
          ((cc.reps||0) > (lc.reps||0) || ((cc.reps||0)===(lc.reps||0) && (cc.due||0) > (lc.due||0))))){
@@ -9950,7 +9961,8 @@ const SRS = {
       const avant = (d.reviewLog||[]).length;
       const seen = new Set((d.reviewLog||[]).map(r=>r.t));
       const merged = (d.reviewLog||[]).slice();
-      cloud.reviewLog.forEach(r=>{ if(r && typeof r.t==='number' && !seen.has(r.t)){ merged.push(r); seen.add(r.t); } });
+      const annLog = new Set(d.annuleesLog || []);   // lignes des notes annulées ici (v315)
+      cloud.reviewLog.forEach(r=>{ if(r && typeof r.t==='number' && !seen.has(r.t) && !annLog.has(r.t)){ merged.push(r); seen.add(r.t); } });
       merged.sort((a,b)=>a.t-b.t);
       d.reviewLog = merged.slice(-2000);
       /* On ne relance le comblement que si le journal s'est RÉELLEMENT élargi. L'ancien code posait
@@ -11370,12 +11382,21 @@ function undoLast(){
     const s = undoStack.pop();
     // 1) restaurer l'état SRS (chirurgical : uniquement les clés que review() modifie)
     const d = SRS._d();
+    /* PIERRE TOMBALE (v315). La note annulée est peut-être déjà au cloud ; toute relecture suivante
+       (reprise après échec, retour sur l'appli, lecture de plus de 10 min) la ferait revenir, car la
+       fusion garde la notation la plus récente. On retient donc sa date (`last`) et les lignes de
+       journal qu'elle a produites : mergeCloud les ignore. Gardées 3 jours, locales à l'appareil. */
+    { const cur = d.cards[s.h], lim = Date.now() - 3*86400000;
+      const an = d.annulees || (d.annulees = {});
+      for(const k in an){ if(!(an[k] > lim)) delete an[k]; }
+      if(cur && cur.last) an[s.h] = cur.last;
+      if(Array.isArray(d.reviewLog) && d.reviewLog.length > s.reviewLogLen){
+        d.annuleesLog = (d.annuleesLog || []).filter(t => t > lim).concat(d.reviewLog.slice(s.reviewLogLen).map(r => r && r.t)).slice(-200);
+      } }
     if(s.card) d.cards[s.h] = s.card; else delete d.cards[s.h];
     d.daily = s.daily; d.streak = s.streak;
     if(Array.isArray(d.reviewLog) && d.reviewLog.length > s.reviewLogLen) d.reviewLog.length = s.reviewLogLen;
-    /* _sansRelire (v313) : la note annulée est peut-être déjà au cloud ; relire avant d'écrire la
-       ferait revenir (la fusion garde la notation la plus récente). On écrit donc l'état annulé tel quel. */
-    SRS._save(d); SRS._sansRelire = true; SRS._syncCloud();   // le cloud reflète aussi l'annulation
+    SRS._save(d); SRS._syncCloud();           // le cloud reflète aussi l'annulation
     // 2) restaurer les compteurs de session
     score = s.score; streak = s.sStreak; bestStreak = s.best;
     if(reviewSession && s.rsCount != null) reviewSession.count = s.rsCount;
