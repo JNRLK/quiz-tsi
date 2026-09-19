@@ -1494,7 +1494,9 @@ const Cloud = {
     await setDoc(doc(db,'reports',id), { traite, traiteLe: serverTimestamp(), traitePar: currentUser.email }, {merge:true});
   },
   async getReports(n=500){ const qs = await getDocs(query(collection(db,'reports'), orderBy('date','desc'), limit(n))); return qs.docs.map(d=>({id:d.id, ...d.data()})); },
-  async loadSRS(){ if(!currentUser) return null; const snap = await getDoc(doc(db,'users',currentUser.uid)); return snap.exists()? (snap.data().srs||null) : null; },
+  /* `uid` explicite (v314) : une lecture ou une écriture reprise après réparation des jetons vise le
+     compte qui l'a lancée, jamais celui qui s'est connecté entre-temps. */
+  async loadSRS(uid){ uid = uid || (currentUser && currentUser.uid); if(!uid) return null; const snap = await getDoc(doc(db,'users',uid)); return snap.exists()? (snap.data().srs||null) : null; },
   /* `bundle` = {cards, streak, daily, reviewLog}, imbriqué sous la clé `srs`.
 
      ⚠️ REMPLACEMENT, ET NON FUSION. `setDoc(..., {merge:true})` fusionne les maps en
@@ -1507,9 +1509,10 @@ const Cloud = {
      paquet ne pouvait retirer. `updateDoc` sur le champ `srs` écrase la map entière et
      rend la suppression enfin possible. Le repli `setDoc` sert au tout premier écrit,
      quand le document de l'élève n'existe pas encore (updateDoc échoue en `not-found`). */
-  async saveSRS(bundle){
-    if(!currentUser) return;
-    const ref = doc(db,'users',currentUser.uid);
+  async saveSRS(bundle, uid){
+    uid = uid || (currentUser && currentUser.uid);
+    if(!uid) return;
+    const ref = doc(db,'users',uid);
     try{
       await updateDoc(ref, {srs:bundle, srsUpdated:serverTimestamp()});
     }catch(e){
@@ -1563,10 +1566,12 @@ const Jetons = {
      attend indéfiniment. */
   async sonder(){
     if(!fbAppCheck) return {couche:'appcheck', code:'appCheck/non-initialise', http:null};
+    const t0 = Date.now();
     try{
       const r = await Promise.race([acGetToken(fbAppCheck, false), _attendre(8000)]);
       if(r === _DELAI) return {couche:'appcheck', code:'appCheck/delai-depasse', http:null};
-      return {couche:'ok'};
+      /* Réponse lente = il n'y avait plus de jeton valide et la sonde vient d'en obtenir un. */
+      return Date.now() - t0 > 300 ? {couche:'ok', renouvele:true} : {couche:'ok'};
     }catch(e){
       return {couche:'appcheck', code:String((e && e.code) || e), http:this._etatVerrou()};
     }
@@ -1577,13 +1582,16 @@ const Jetons = {
      écouteur et rouvre ses flux avec lui. */
   async forcerAppCheck(s){
     if(!fbAppCheck) return {...s, repare:false};
-    const ecart = this._forces >= this._FORCES_MAX ? 3*this._FORCE_ECART_MS : this._FORCE_ECART_MS;
+    /* 20 min après trois essais : toujours plus court que la reprise de 30 min (±20 %), sinon une
+       reprise sur deux tombait dans l'intervalle interdit et le rétablissement prenait une heure. */
+    const ecart = this._forces >= this._FORCES_MAX ? 2*this._FORCE_ECART_MS : this._FORCE_ECART_MS;
     if(Date.now() - this._dernierForce < ecart) return {...s, repare:false, borne:true};
     this._forces++; this._dernierForce = Date.now();
     if(acProvider && ('_throttleData' in acProvider) && acProvider._throttleData) acProvider._throttleData = null;
     try{
       const r = await Promise.race([acGetToken(fbAppCheck, true), _attendre(10000)]);
       if(r === _DELAI) return {...s, repare:false, code2:'appCheck/delai-depasse'};
+      this._forces = 0;                       // réparé : le compteur d'essais repart de zéro
       return {...s, repare:true};
     }catch(e){
       return {...s, repare:false, code2:String((e && e.code) || e), http2:this._etatVerrou()};
@@ -1597,7 +1605,7 @@ const Jetons = {
     if(s.couche === 'appcheck'){
       res = await this.forcerAppCheck(s);
       if(!res.repare) return res;
-    } else {
+    } else if(!s.renouvele){
       /* Jeton valide côté client mais écriture refusée : le flux avait pu partir avec le jeton
          factice, ou le serveur refuse ce jeton. Un jeton neuf (borné) tranche les deux cas. */
       await this.forcerAppCheck(s);
@@ -1607,18 +1615,20 @@ const Jetons = {
       try{ await auth.currentUser.getIdToken(true); }
       catch(e){ return {couche:'auth', code:String((e && e.code) || e), repare:false}; }
     }
+    if(s.renouvele) return {couche:'appcheck', code:'appCheck/renouvele-par-la-sonde', repare:true};
     return s.couche === 'ok' ? {couche:'inconnue', repare:true} : res;
   }
 };
 /* Une tentative, puis réparation des jetons et UNE seconde tentative. Pas de boucle : les reprises
    espacées sont l'affaire du planificateur de SRS._pousser. */
-async function avecReprise(fn){
+async function avecReprise(fn, uid){
   try{ return await fn(); }
   catch(e){
     if(!estRefusJeton(e)) throw e;
     const diag = await Jetons.reparer();
     SyncDiag.noter('refus', e, diag);
     if(diag.repare === false){ e._diag = diag; throw e; }
+    if(uid && (!auth.currentUser || auth.currentUser.uid !== uid)){ e._diag = {couche:'session', code:'compte-change', repare:false}; throw e; }
     try{ return await fn(); }
     catch(e2){ e2._diag = diag; throw e2; }
   }
@@ -1678,16 +1688,22 @@ onAuthStateChanged(auth, async (user)=>{
          et plus rien nulle part. Désormais, si loadSRS() lève, on ne purge pas, on n'écrit pas le
          propriétaire local, et le verrou _cloudRead reste fermé : rien n'est perdu, rien n'est poussé. */
       if(typeof SRS!=='undefined') SRS._reclamerSiVide(user.uid);
-      const cloud = await avecReprise(()=>Cloud.loadSRS());
+      /* Lecture simple (v314) : réparer les jetons ici retardait jusqu'à ~20 s les écrans de
+         vérification et de profil. En cas d'échec, le planificateur répare et relit 15 s plus tard. */
+      const cloud = await Cloud.loadSRS(user.uid);
       /* La lecture a ABOUTI (un compte neuf renvoie légitimement null). _ouvrirCompte purge la
          progression d'un autre compte, déverrouille l'écriture, réintègre ce qui avait été mis de
          côté à la déconnexion, puis fusionne le cloud. Si loadSRS lève, rien de tout cela : le
          planificateur retentera la lecture (v313 — avant, le verrou restait fermé pour toute la page). */
-      if(typeof SRS!=='undefined'){
+      /* Garde (v314) : si ce compte s'est déconnecté pendant la lecture, on n'ouvre rien. */
+      if(typeof SRS!=='undefined' && auth.currentUser && auth.currentUser.uid === user.uid){
         SRS._ouvrirCompte(user.uid, cloud);
         if(cloud || SRS._etatSale()) SRS._syncCloud();
       }
-    }catch(e){ console.warn('SRS cloud load', e); if(typeof SRS!=='undefined') SRS._surEchec(e, 'connexion'); }
+    }catch(e){
+      console.warn('SRS cloud load', e);
+      if(typeof SRS!=='undefined' && auth.currentUser && auth.currentUser.uid === user.uid) SRS._surEchec(e, 'connexion');
+    }
     // Rafraîchit l'état serveur : emailVerified peut être périmé dans le token
     // mis en cache par le navigateur (Chrome surtout). Best-effort, non bloquant.
     try{ await user.reload(); if(auth.currentUser){ user = auth.currentUser; currentUser = user; } }
@@ -9687,7 +9703,7 @@ const SRS = {
   _CLE_SALE: 'quiztsi_srs_dirty',
   _RELIRE_MS: 10*60*1000,
   _REPRISES: [15e3, 60e3, 5*60e3, 15*60e3, 30*60e3],
-  _enVol: null, _encore: false, _echecs: 0, _raison: null, _repriseTimer: null,
+  _enVol: null, _encore: false, _echecs: 0, _raison: null, _repriseTimer: null, _gen: 0,
   _relireAvant: false, _sansRelire: false, _lastReadAt: 0,
 
   _marquerSale(){
@@ -9706,20 +9722,30 @@ const SRS = {
     if(!owner) return;
     const s = this._etatSale();
     if(!s || s.owner !== owner) return;
-    /* UNE seule mise de côté à la fois : le stockage du navigateur est compté (~5 Mo sur Safari) et la
-       progression VIVANTE du compte suivant passe avant. */
-    try{
-      for(let i = localStorage.length - 1; i >= 0; i--){
-        const k = localStorage.key(i);
-        if(k && k.indexOf(SRS_STASH_PREFIX) === 0 && k !== SRS_STASH_PREFIX + owner) localStorage.removeItem(k);
-      }
-      localStorage.setItem(SRS_STASH_PREFIX + owner, JSON.stringify(this._paquetCloud()));
-    }catch(e){ console.warn('SRS : mise de côté impossible', e); }
+    const cle = SRS_STASH_PREFIX + owner;
+    /* Une mise de côté précédente du MÊME compte (déconnecté deux fois sans synchro entre-temps) est
+       fusionnée d'abord : l'écraser perdait les notes de la première séance. */
+    try{ const ancien = JSON.parse(localStorage.getItem(cle) || 'null'); if(ancien && typeof ancien === 'object') this.mergeCloud(ancien); }catch(_){}
+    let json = null;
+    try{ json = JSON.stringify(this._paquetCloud()); }catch(e){ console.warn('SRS : mise de côté impossible', e); return; }
+    try{ localStorage.setItem(cle, json); }
+    catch(e){
+      /* Stockage plein (~5 Mo sur Safari) : on libère les mises de côté des AUTRES comptes, un essai. */
+      try{
+        for(let i = localStorage.length - 1; i >= 0; i--){
+          const k = localStorage.key(i);
+          if(k && k.indexOf(SRS_STASH_PREFIX) === 0 && k !== cle) localStorage.removeItem(k);
+        }
+        localStorage.setItem(cle, json);
+      }catch(e2){ console.warn('SRS : mise de côté impossible', e2); }
+    }
   },
   _reinitSynchro(){
     clearTimeout(this._cloudTimer); this._cloudTimer = null;
     clearTimeout(this._repriseTimer); this._repriseTimer = null;
     this._echecs = 0; this._raison = null; this._relireAvant = false; this._sansRelire = false; this._lastReadAt = 0;
+    /* Un envoi resté pendant (réseau, jeton qui n'arrive pas) ne doit pas bloquer le compte suivant. */
+    this._gen++; this._enVol = null; this._encore = false;
   },
   /* Connexion : un stockage local VIDE et sans propriétaire (appareil neuf, ou purgé à la déconnexion)
      est attribué tout de suite au compte qui se connecte. Sans cela, les notes prises avant que la
@@ -9729,7 +9755,7 @@ const SRS = {
     try{
       if(localStorage.getItem(SRS_OWNER_KEY)) return;
       const d = this._d();
-      const vide = !Object.keys(d.cards || {}).length && !(d.sessions || []).length && !(d.reviewLog || []).length
+      const vide = !Object.keys(d.cards || {}).length && !(d.reviewLog || []).length
                 && !(d.colleLog || []).length && !(d.dsLog || []).length && !Object.keys(d.colleEx || {}).length;
       if(vide) localStorage.setItem(SRS_OWNER_KEY, uid);
     }catch(_){}
@@ -9765,8 +9791,8 @@ const SRS = {
     clearTimeout(this._cloudTimer);
     this._cloudTimer = setTimeout(()=>{ this._cloudTimer = null; this._pousser('note'); }, 1500);
   },
-  async _ecrire(paquet){
-    try{ await Cloud.saveSRS(paquet); }
+  async _ecrire(paquet, uid){
+    try{ await Cloud.saveSRS(paquet, uid); }
     catch(e1){
       /* Dernier filet : si le document déborde ENCORE, on retente sans le journal —
          la PROGRESSION passe avant tout, le journal ne sert qu'aux stats de rétention. */
@@ -9774,7 +9800,7 @@ const SRS = {
       if(/invalid-argument/i.test(c1) && paquet.reviewLog && paquet.reviewLog.length){
         console.warn('SRS : refus Firestore malgré le budget — nouvel essai sans le journal');
         paquet.reviewLog = [];
-        await Cloud.saveSRS(paquet);
+        await Cloud.saveSRS(paquet, uid);
       } else throw e1;
     }
   },
@@ -9784,28 +9810,36 @@ const SRS = {
     if(this._enVol){ this._encore = true; return this._enVol; }
     clearTimeout(this._cloudTimer); this._cloudTimer = null;
     clearTimeout(this._repriseTimer); this._repriseTimer = null;
-    const uid = currentUser.uid;
+    const uid = currentUser.uid, gen = this._gen;
+    const actuel = () => gen === this._gen && currentUser && currentUser.uid === uid;
     const envoi = (async ()=>{
       /* Veille : un envoi qui ne se termine pas (jeton App Check qui n'arrive jamais, réseau
          mourant) ne lève aucune erreur — le SDK retente en silence. On sonde et on répare quand
          même, sans libérer le créneau : une seconde écriture lancée en parallèle pourrait passer
-         AVANT la première et être écrasée par elle. */
-      let veille = setTimeout(()=>{ veille = null; this._surLenteur(); }, 25000);
+         AVANT la première et être écrasée par elle. Réarmée chaque minute tant que ça dure. */
+      let fini = false, veille = null, n = 0;
+      const armer = ms => { veille = setTimeout(async ()=>{
+        veille = null; n++;
+        try{ await this._surLenteur(n); }catch(_){}
+        if(!fini && n < 30) armer(60000);
+      }, ms); };
+      armer(25000);
       try{
         cloudSync('↑ Synchronisation…');
         const relire = !this._cloudRead || this._relireAvant ||
                        (!this._sansRelire && Date.now() - this._lastReadAt > this._RELIRE_MS);
         if(relire){
-          const cloud = await avecReprise(()=>Cloud.loadSRS());
-          if(!currentUser || currentUser.uid !== uid) return false;   // compte changé pendant la lecture
+          const cloud = await avecReprise(()=>Cloud.loadSRS(uid), uid);
+          if(!actuel()) return false;                                  // compte changé pendant la lecture
           this._ouvrirCompte(uid, cloud);
           this._rafraichirUI();
         }
         this._sansRelire = false;
+        if(!actuel()) return false;
         let marque = null; try{ marque = localStorage.getItem(this._CLE_SALE); }catch(_){}
         const paquet = this._paquetCloud();
-        await avecReprise(()=>this._ecrire(paquet));
-        if(!currentUser || currentUser.uid !== uid) return false;
+        await avecReprise(()=>this._ecrire(paquet, uid), uid);
+        if(!actuel()) return false;
         const retabli = this._echecs > 0;
         this._echecs = 0; this._raison = null; this._relireAvant = false;
         /* Le marqueur n'est effacé que si RIEN n'a changé pendant l'envoi ; sinon on repart. */
@@ -9817,17 +9851,18 @@ const SRS = {
         cloudOk(retabli ? '☁️ Synchro rétablie' : '☁️ SRS sauvegardé', retabli);
         return true;
       }catch(e){
-        this._surEchec(e, motif);
+        if(actuel()) this._surEchec(e, motif);
         return false;
       }finally{
+        fini = true;
         if(veille) clearTimeout(veille);
       }
     })();
     this._enVol = envoi;
     try{ return await envoi; }
     finally{
-      this._enVol = null;
-      if(this._encore){ this._encore = false; if(this._echecs === 0) this._syncCloud(); }
+      if(this._enVol === envoi) this._enVol = null;
+      if(gen === this._gen && this._encore){ this._encore = false; if(this._echecs === 0) this._syncCloud(); }
     }
   },
   _surEchec(e, motif){
@@ -9849,11 +9884,16 @@ const SRS = {
     const delai = Math.round(this._REPRISES[i] * (0.8 + 0.4*Math.random()));
     this._repriseTimer = setTimeout(()=>{ this._repriseTimer = null; this._pousser('reprise'); }, delai);
   },
-  async _surLenteur(){
-    cloudErr('⏳ Synchro lente — nouvel essai en cours ; ta progression est gardée sur cet appareil.');
+  async _surLenteur(n){
     const s = await Jetons.sonder();
-    SyncDiag.noter('lent', null, s);
-    if(s.couche === 'appcheck') SyncDiag.noter('lent:reparation', null, await Jetons.forcerAppCheck(s));
+    if(n === 1 || n % 5 === 0) SyncDiag.noter('lent', null, s);
+    let r = null;
+    if(s.couche === 'appcheck'){ r = await Jetons.forcerAppCheck(s); if(!r.borne) SyncDiag.noter('lent:reparation', null, r); }
+    /* reCAPTCHA jamais chargé (bloqueur de contenu, appli ouverte hors ligne) : seul un
+       rechargement relance le script — on le dit au lieu de laisser croire à une lenteur. */
+    const bloque = n >= 3 && /delai-depasse/.test(String((r && r.code2) || s.code || ''));
+    if(n === 1) cloudErr('⏳ Synchro lente — nouvel essai en cours ; ta progression est gardée sur cet appareil.');
+    else if(bloque && n % 5 === 3) cloudErr('⚠️ Synchro bloquée — recharge la page quand tu auras fini ; ta progression est gardée sur cet appareil.');
   },
   // fusionne l'état cloud avec le local. Accepte le NOUVEAU format {cards, streak, daily}
   // comme l'ANCIEN (map de cartes brute). Cartes : on garde la plus avancée.
@@ -16120,8 +16160,9 @@ async function manualSync(){
     /* v313 : passe par le gestionnaire de synchro — lecture + fusion (avec contrôle du propriétaire
        local, qui manquait ici), réparation des jetons, diagnostic et reprises. */
     SRS._relireAvant = true;
-    const ok = await SRS._pousser('manuel');
-    if(ok){
+    const ok = await Promise.race([SRS._pousser('manuel'), new Promise(r=>setTimeout(()=>r('lent'), 30000))]);
+    if(ok === 'lent'){ cloudErr('⏳ Synchro toujours en cours — elle se poursuit en arrière-plan.'); }
+    else if(ok){
       cloudOk('☁️ Synchronisé', true);
       updateSrsBar(); updateHeaderStats(); buildFamilyAccordion();
       await renderStats();
