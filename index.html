@@ -617,7 +617,7 @@ window.MathJax = {
        statique, et non en JavaScript en fin de module : sinon la barre s'affiche entière pendant
        plusieurs secondes puis s'effondre, et la page saute sous le doigt. Les boutons restent dans
        le DOM et cliquables : c'est le menu qui les déclenche. */
-    #coursIconBtn, #dsIconBtn, #statsBtn, #lbIconBtn, #histoIconBtn, #juryBtn, #edtIconBtn{display:none}
+    #coursIconBtn, #dsIconBtn, #demoIconBtn, #statsBtn, #lbIconBtn, #histoIconBtn, #juryBtn, #edtIconBtn{display:none}
 
     /* boutons d'action : icône seule sur mobile (avant : display:none → inaccessibles) */
     #statsBtn .bl, #juryBtn .bl, #adminBtn .bl, #advBtn .bl{display:none}
@@ -774,7 +774,7 @@ window.MathJax = {
   .cloud-banner a{color:var(--accent-bright); cursor:pointer; text-decoration:underline}
   /* overlay défilable : un formulaire long (inscription) ne doit jamais rogner le bouton de validation.
      margin:auto sur l'enfant centre sans rogner le haut/bas quand le contenu dépasse (le parent défile). */
-  #coursIconBtn, #dsIconBtn, #statsBtn, #lbIconBtn, #histoIconBtn, #juryBtn, #edtIconBtn{display:none}
+  #coursIconBtn, #dsIconBtn, #demoIconBtn, #statsBtn, #lbIconBtn, #histoIconBtn, #juryBtn, #edtIconBtn{display:none}
   .modal-overlay{position:fixed; inset:0; z-index:50; background:var(--scrim); backdrop-filter:blur(5px); display:flex; padding:20px; padding-bottom:max(20px, env(safe-area-inset-bottom)); overflow-y:auto; -webkit-overflow-scrolling:touch; animation:rise .2s both}
   .modal{position:relative; width:100%; max-width:380px; margin:auto; background:var(--modal-bg); border:1px solid var(--line); border-radius:20px; padding:26px; box-shadow:0 30px 70px -20px rgba(0,0,0,.85)}
   .modal-close{position:absolute; top:14px; right:14px; background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; line-height:1}
@@ -964,6 +964,53 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
     .modal-close,.obj-btn,#goalEdit,.sel-all-btn{min-height:44px; min-width:44px;
       display:inline-flex; align-items:center; justify-content:center}
   }
+  /* ═══ DÉMONSTRATIONS ═══════════════════════════════════════════════════════════
+     Mise en page des polycopiés de colle : une chaîne d'égalités alignées sur le « = »,
+     la justification de chaque passage à droite. L'alignement ne vient PAS d'une grille
+     CSS (les largeurs MathJax sont inconnues d'avance) mais d'un \phantom de la tête de
+     chaîne répété sur chaque ligne : chaque ligne est une formule autonome, donc on peut
+     la masquer, la dévoiler et la faire défiler seule, sans perdre l'alignement. */
+  .dm-badge{display:inline-block; font-size:10.5px; letter-spacing:.04em; text-transform:uppercase;
+    border:1px solid color-mix(in srgb,var(--accent) 45%,var(--line)); color:var(--accent-soft);
+    background:color-mix(in srgb,var(--accent) 10%,transparent); border-radius:999px; padding:2px 8px; white-space:nowrap; flex:none}
+  .dm-avenir{flex:none; font-size:11.5px; color:var(--muted); white-space:nowrap;
+    border:1px solid var(--line); border-radius:999px; padding:2px 9px; background:var(--panel)}
+  .dm-lab{display:block; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); margin-bottom:6px}
+  .dm-enonce{background:var(--block-bg); border:1px solid var(--line); border-left:3px solid var(--accent);
+    border-radius:12px; padding:13px 16px; margin:4px 0 12px; font-size:14.5px; line-height:1.7}
+  .dm-outils{margin:0 0 12px}
+  .dm-chip{display:inline-block; border:1px solid var(--line); background:var(--panel-2); color:var(--muted);
+    border-radius:999px; padding:3px 10px; font-size:12px; margin:0 6px 6px 0}
+  .dm-bar{border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:10px 0; margin:0 0 14px}
+  .dm-consigne{margin:0 0 9px; font-size:13px; color:var(--muted); line-height:1.5}
+  .dm-btns{display:flex; gap:8px; flex-wrap:wrap}
+  .dm-part{font-size:14px; font-weight:600; margin:18px 0 8px; color:var(--ink)}
+  .dm-sep{border-top:1px dashed var(--line); margin:22px 0 4px}
+  .dm-ctx{margin:0 0 6px}
+  .dm-p{margin:8px 0; font-size:14px; line-height:1.65}
+  .dm-ul{margin:6px 0 10px; padding-left:20px; font-size:14px; line-height:1.65}
+  .dm-ul li{margin:3px 0}
+  .dm-s[hidden]{display:none}
+  .dm-l{display:flex; align-items:flex-start; gap:14px; padding:1px 0}
+  .dm-x{flex:1 1 auto; min-width:0; max-width:100%}
+  .dm-x mjx-container[display="true"]{margin:0 !important; text-align:left !important}
+  .dm-just{flex:0 0 clamp(140px,31%,270px); color:var(--muted); font-size:12.5px; line-height:1.45; padding-top:7px}
+  .dm-eq{flex:none; width:100%; margin:8px 0}
+  .dm-eq mjx-container[display="true"]{text-align:center !important}
+  .dm-just-bas{flex:0 0 auto; width:100%; text-align:center; padding-top:0; margin-bottom:8px}
+  .dm-res{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:12px 0 4px}
+  .dm-box{border:1px solid var(--ink); border-radius:8px; padding:7px 15px; background:var(--block-bg); font-size:15px}
+  .dm-tab{border-collapse:collapse; margin:6px 0 12px; font-size:14px}
+  .dm-tab th,.dm-tab td{border:1px solid var(--line); padding:6px 16px; text-align:center; font-weight:400}
+  .dm-tab th{background:var(--panel-2); text-align:left}
+  .dm-foot{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:22px; padding-top:14px; border-top:1px solid var(--line)}
+  .dm-note{color:var(--muted); font-size:11.5px; line-height:1.45; flex:1 1 160px}
+  /* Mobile : la justification passe SOUS la formule (la colonne de droite écraserait la chaîne). */
+  @media (max-width:640px){
+    .dm-l{flex-direction:column; align-items:stretch; gap:0; padding:3px 0}
+    .dm-just{flex:0 0 auto; padding-top:2px; padding-left:2px}
+    .dm-enonce{font-size:14px; padding:12px 13px}
+  }
 </style>
 </head>
 <body>
@@ -1004,6 +1051,7 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
           <button class="btn ghost mini icon-only" id="juryBtn" aria-label="Mot du jury" title="Mot du jury"><span class="bi" aria-hidden="true">📋</span><span class="bl">Mot du jury</span></button>
           <button class="btn ghost mini icon-only" id="coursIconBtn" aria-label="Cours" title="Lire le cours chapitre par chapitre"><span class="bi" aria-hidden="true">📚</span><span class="bl">Cours</span></button>
           <button class="btn ghost mini icon-only" id="dsIconBtn" aria-label="Révision de DS" title="DS blancs : cours à maîtriser et exercices corrigés"><span class="bi" aria-hidden="true">📝</span><span class="bl">DS blancs</span></button>
+          <button class="btn ghost mini icon-only" id="demoIconBtn" aria-label="Démonstrations" title="Les démonstrations du cours, étape par étape"><span class="bi" aria-hidden="true">📐</span><span class="bl">Démonstrations</span></button>
           <button class="btn ghost mini icon-only" id="edtIconBtn" aria-label="Emploi du temps" title="Emploi du temps : colles, TP, DS de la semaine"><span class="bi" aria-hidden="true">📅</span><span class="bl">Emploi du temps</span></button>
           <button class="btn ghost mini icon-only" id="lbIconBtn" aria-label="Classement" title="Classement de ma classe"><span class="bi" aria-hidden="true">🏅</span><span class="bl">Classement</span></button>
           <button class="btn ghost mini icon-only" id="histoIconBtn" aria-label="Mes oraux" title="Mes oraux : notes, temps et sujets traités"><span class="bi" aria-hidden="true">📋</span><span class="bl">Mes oraux</span></button>
@@ -9224,7 +9272,7 @@ const QUESTIONS = [
 /* Bascule d'écran : une seule liste, pour qu'un écran ajouté plus tard ne soit pas oublié
    dans l'une des vues (c'était le cas de coursScreen, absent de toutes les listes). */
 const ALL_SCREENS = ['startScreen','quizScreen','resultScreen','statsScreen','adminScreen','juryScreen',
-                     'examScreen','leaderboardScreen','coursScreen','colleScreen','colleHistoScreen','oralScreen','dsScreen','edtScreen'];
+                     'examScreen','leaderboardScreen','coursScreen','colleScreen','colleHistoScreen','oralScreen','dsScreen','edtScreen','demoScreen'];
 function hideScreens(){ ALL_SCREENS.forEach(id=>{ const e=$('#'+id); if(e) e.classList.add('hidden'); }); }
 let selected = new Set(); // P1 : opt-in — aucun chapitre coché par défaut
 let selectedMode = 'all';
@@ -14055,6 +14103,442 @@ function dsUpdateScore(){
   }
   const b=$('#dsIconBtn'); if(b) b.onclick=()=>showDS();
 })();
+/* ═══════════════════════════ DÉMONSTRATIONS ═══════════════════════════════════════
+   Une démonstration n'est pas une flashcard : on ne la « reconnaît » pas, on la REFAIT.
+   D'où un écran à part, hors SRS (comme la banque de colle), calé sur les MÊMES chapitres
+   que la révision — chaque chapitre du programme a sa section, vide tant qu'aucune
+   démonstration n'y est écrite : le cadre est posé une fois, on le remplit au fil des colles
+   et des DS.
+   Rendu : une ligne = une étape, et l'alignement des « = » est celui d'un \begin{aligned}
+   parce que la tête de la chaîne est répétée en \phantom sur les lignes suivantes (largeurs
+   identiques au pixel). Chaque étape est injectée et typesetée AU MOMENT où on la dévoile :
+   rien n'est passé à MathJax pendant qu'il est display:none, donc aucune métrique fausse.
+   Les justifications (colonne de droite des polycopiés) vivent à côté, en HTML.
+   ───────────────────────────────────────────────────────────────────────────────────
+   AJOUTER UNE DÉMONSTRATION — une entrée dans DEMOS :
+     { id, topics:[clés de TOPICS], titre, sous, niveau:'exigible'|'classique', source,
+       enonce:"…$LaTeX$…", outils:["binôme de Newton", …],
+       parties:[ { nom:"1<sup>re</sup> méthode : …", blocs:[ … ] } ] }
+   Blocs disponibles (ctx:true ⇒ affiché d'emblée, sinon c'est une étape à dévoiler) :
+     {t:'p',    x:"texte HTML avec $LaTeX$"}
+     {t:'ul',   x:["item", …]}
+     {t:'eq',   x:"formule centrée", j:"justification"}
+     {t:'calc', tete:"E(X)", l:[{e:"membre de droite", j:"justification"}, …]}
+     {t:'res',  x:"résultat encadré", j:"justification"}
+     {t:'tab',  cap:"Loi de $X_k$", r:[["$x_i$","0","1"], ["$P(X_k=x_i)$","$1-p$","$p$"]]}
+   Le contenu passe par MathJax : écrire les LaTeX avec un DOUBLE antislash dans le source JS. */
+
+const DEMO_SUBJECTS = ['maths', 'physique', 'si', 'info'];   // les matières où « démontrer » veut dire quelque chose
+const DEMO_LS = 'quiztsi_demos_sues';                        // « je sais la refaire » — local, hors SRS et hors cloud
+
+const DEMOS = [
+
+  /* ── Variables aléatoires — TSI1 (32) et TSI2 (10) ─────────────────────────────── */
+  {
+    id: 'va-esperance-binomiale',
+    topics: ['va', 'm2_va_finies'],
+    titre: "Espérance de la loi binomiale",
+    sous: "Deux méthodes",
+    niveau: 'exigible',
+    source: "",
+    outils: ["Théorème du capitaine", "Binôme de Newton", "Linéarité de l'espérance"],
+    enonce: "Soit $n\\in\\mathbb{N}^{*}$ et $p\\in[0\\,;1]$. Soit $X$ une variable aléatoire qui suit la loi binomiale de paramètres $n$ et $p$ :"
+          + "$$X\\hookrightarrow\\mathcal{B}(n,p),\\qquad X(\\Omega)=[\\![0,n]\\!].$$"
+          + "Montrer que $E(X)=np$.",
+    parties: [
+      {
+        nom: "1<sup>re</sup> méthode : calcul direct",
+        blocs: [
+          { t:'calc', tete:"E(X)", l:[
+            { e:"\\displaystyle\\sum_{k=0}^{n} P(X=k)\\,k", j:"définition de l'espérance" },
+            { e:"\\displaystyle\\sum_{k=0}^{n} \\binom{n}{k}p^{k}(1-p)^{\\,n-k}\\times k", j:"loi de $X$ : $P(X=k)=\\binom{n}{k}p^{k}(1-p)^{n-k}$" },
+            { e:"\\displaystyle\\sum_{k=1}^{n} \\binom{n}{k}\\,k\\,p^{k}(1-p)^{\\,n-k}", j:"le terme $k=0$ est nul" },
+            { e:"\\displaystyle\\sum_{k=1}^{n} \\frac{n!}{k!\\,(n-k)!}\\,k\\,p^{k}(1-p)^{\\,n-k}", j:"$\\binom{n}{k}=\\dfrac{n!}{k!\\,(n-k)!}$" },
+            { e:"\\displaystyle\\sum_{k=1}^{n} \\frac{n\\times(n-1)!}{k\\times(k-1)!\\,(n-k)!}\\times k\\;p^{k}(1-p)^{\\,n-k}", j:"on isole $n$ dans $n!$ et $k$ dans $k!$" },
+            { e:"\\displaystyle\\sum_{k=1}^{n} n\\left(\\frac{(n-1)!}{(k-1)!\\,\\bigl(n-1-(k-1)\\bigr)!}\\right)p^{k}(1-p)^{\\,n-k}", j:"on simplifie par $k$, et $n-k=(n-1)-(k-1)$" },
+            { e:"\\displaystyle\\sum_{k=1}^{n} n\\binom{n-1}{k-1}p^{k}(1-p)^{\\,n-k}", j:"théorème du capitaine : $k\\binom{n}{k}=n\\binom{n-1}{k-1}$" },
+            { e:"n\\displaystyle\\sum_{k=1}^{n} \\binom{n-1}{k-1}p^{k}(1-p)^{\\,n-k}", j:"$n$ ne dépend pas de $k$" }
+          ]},
+          { t:'p', x:"Changement d'indice : $i=k-1$ (soit $k=i+1$)." },
+          { t:'calc', tete:"E(X)", l:[
+            { e:"n\\displaystyle\\sum_{i=0}^{n-1} \\binom{n-1}{i}p^{\\,i+1}(1-p)^{\\,n-1-i}", j:"quand $k$ va de $1$ à $n$, $i$ va de $0$ à $n-1$" },
+            { e:"n\\displaystyle\\sum_{i=0}^{n-1} \\binom{n-1}{i}p\\times p^{\\,i}(1-p)^{\\,n-1-i}", j:"$p^{\\,i+1}=p\\times p^{\\,i}$" },
+            { e:"np\\displaystyle\\sum_{i=0}^{n-1} \\binom{n-1}{i}p^{\\,i}(1-p)^{\\,n-1-i}", j:"$p$ ne dépend pas de $i$" },
+            { e:"np\\bigl(p+(1-p)\\bigr)^{\\,n-1}", j:"formule du binôme de Newton" }
+          ]},
+          { t:'res', x:"E(X)=np", j:"car $p+(1-p)=1$, donc $1^{\\,n-1}=1$" }
+        ]
+      },
+      {
+        nom: "2<sup>e</sup> méthode : décomposition en variables de Bernoulli",
+        blocs: [
+          { t:'p', ctx:true, x:"On répète $n$ fois, de manière indépendante, une expérience qui a deux issues possibles :" },
+          { t:'ul', ctx:true, x:["« succès » avec la probabilité $p$ ;", "« échec » avec la probabilité $1-p$."] },
+          { t:'p', ctx:true, x:"$X$ compte le nombre de succès au cours des $n$ expériences : $X\\hookrightarrow\\mathcal{B}(n,p)$." },
+          { t:'p', x:"Pour $k\\in[\\![1,n]\\!]$, on note $X_k$ la variable aléatoire qui vaut $1$ si la $k$-ième expérience est un succès, et $0$ sinon." },
+          { t:'tab', cap:"Loi de $X_k$", r:[["$x_i$", "$0$", "$1$"], ["$P(X_k=x_i)$", "$1-p$", "$p$"]] },
+          { t:'eq', x:"E(X_k)=(1\\times p)+\\bigl(0\\times(1-p)\\bigr)=p", j:"chaque $X_k$ suit la loi de Bernoulli de paramètre $p$" },
+          { t:'p', x:"Or $X=X_1+X_2+\\cdots+X_n$, donc :" },
+          { t:'calc', tete:"E(X)", l:[
+            { e:"E(X_1+\\cdots+X_n)", j:"" },
+            { e:"E(X_1)+\\cdots+E(X_n)", j:"linéarité de l'espérance" },
+            { e:"\\underbrace{p+p+\\cdots+p}_{n\\ \\text{termes}}", j:"on remplace chaque $E(X_k)$ par sa valeur $p$" }
+          ]},
+          { t:'res', x:"E(X)=np", j:"" }
+        ]
+      }
+    ]
+  },
+
+  {
+    id: 'va-esperance-variance-uniforme',
+    topics: ['va', 'm2_va_finies'],
+    titre: "Espérance et variance de la loi uniforme",
+    sous: "",
+    niveau: 'exigible',
+    source: "Colle n°2 — 14/09",
+    outils: ["Sommes usuelles $\\sum k$ et $\\sum k^{2}$", "Formule de König–Huygens", "Théorème de transfert"],
+    enonce: "Soit $n\\in\\mathbb{N}^{*}$. Soit $X$ une variable aléatoire qui suit la loi uniforme sur $[\\![1,n]\\!]$, c'est-à-dire"
+          + "$$X(\\Omega)=[\\![1,n]\\!]\\qquad\\text{et}\\qquad \\forall k\\in[\\![1,n]\\!],\\quad P(X=k)=\\frac{1}{n}.$$"
+          + "Calculer $E(X)$ et $V(X)$.",
+    parties: [
+      {
+        nom: "Espérance de $X$",
+        blocs: [
+          { t:'calc', tete:"E(X)", l:[
+            { e:"\\displaystyle\\sum_{k=1}^{n} k\\,P(X=k)", j:"définition de l'espérance" },
+            { e:"\\displaystyle\\sum_{k=1}^{n} k\\cdot\\frac{1}{n}", j:"loi uniforme : $P(X=k)=\\frac{1}{n}$" },
+            { e:"\\displaystyle\\frac{1}{n}\\sum_{k=1}^{n} k", j:"$\\frac{1}{n}$ ne dépend pas de $k$" },
+            { e:"\\displaystyle\\frac{1}{n}\\times\\frac{n(n+1)}{2}", j:"$\\displaystyle\\sum_{k=1}^{n}k=\\frac{n(n+1)}{2}$" }
+          ]},
+          { t:'res', x:"E(X)=\\dfrac{n+1}{2}", j:"on simplifie par $n$" }
+        ]
+      },
+      {
+        nom: "Variance de $X$",
+        blocs: [
+          { t:'p', ctx:true, x:"D'après la formule de König–Huygens : $V(X)=E(X^{2})-\\bigl(E(X)\\bigr)^{2}$." },
+          { t:'calc', tete:"V(X)", l:[
+            { e:"\\displaystyle\\sum_{k=1}^{n} k^{2}P(X=k)-\\left(\\frac{n+1}{2}\\right)^{2}", j:"théorème de transfert pour $E(X^{2})$, et $E(X)=\\frac{n+1}{2}$" },
+            { e:"\\displaystyle\\frac{1}{n}\\sum_{k=1}^{n} k^{2}-\\left(\\frac{n+1}{2}\\right)^{2}", j:"$P(X=k)=\\frac{1}{n}$" },
+            { e:"\\displaystyle\\frac{1}{n}\\times\\frac{n(n+1)(2n+1)}{6}-\\frac{(n+1)^{2}}{4}", j:"$\\displaystyle\\sum_{k=1}^{n}k^{2}=\\frac{n(n+1)(2n+1)}{6}$" },
+            { e:"(n+1)\\left(\\frac{2n+1}{6}-\\frac{n+1}{4}\\right)", j:"on simplifie par $n$, puis on factorise par $(n+1)$" },
+            { e:"(n+1)\\left(\\frac{2(2n+1)-3(n+1)}{12}\\right)", j:"même dénominateur" },
+            { e:"(n+1)\\left(\\frac{4n+2-3n-3}{12}\\right)", j:"" },
+            { e:"(n+1)\\left(\\frac{n-1}{12}\\right)", j:"" }
+          ]},
+          { t:'res', x:"V(X)=\\dfrac{n^{2}-1}{12}", j:"$(n+1)(n-1)=n^{2}-1$" }
+        ]
+      }
+    ]
+  }
+
+];
+
+/* ── Index, état, mémoire locale ──────────────────────────────────────────────── */
+let _dmIdx = null;                 // { clé de chapitre : [démonstrations] }
+let _dmSubject = null;             // matière affichée dans l'écran (indépendante de l'accueil)
+let _dmLevel = null;               // année affichée
+let _dmState = null;               // { demo, n, total, steps:[html] } pendant la lecture d'une démonstration
+
+function dmIndex(){
+  if(_dmIdx) return _dmIdx;
+  const idx = {};
+  for(const d of DEMOS) for(const t of (d.topics || [])){ (idx[t] = idx[t] || []).push(d); }
+  return (_dmIdx = idx);
+}
+function dmSues(){ try{ return JSON.parse(localStorage.getItem(DEMO_LS) || '{}') || {}; }catch(e){ return {}; } }
+function dmEstSue(id){ return !!dmSues()[id]; }
+function dmBasculeSue(id){
+  const o = dmSues();
+  if(o[id]) delete o[id]; else o[id] = 1;
+  try{ localStorage.setItem(DEMO_LS, JSON.stringify(o)); }catch(e){}
+  return !!o[id];
+}
+
+/* Matières et années proposées par l'écran. Les années suivent allowedLevels() : un élève
+   ne se voit jamais proposer l'année au-dessus de sa classe. */
+function dmMatieres(){ return DEMO_SUBJECTS.filter(s => SUBJECTS[s]); }
+function dmAnnees(){
+  const AL = (typeof allowedLevels === 'function') ? allowedLevels() : ['tsi1', 'tsi2'];
+  return ['tsi1', 'tsi2'].filter(l => AL.includes(l));
+}
+function dmScope(){
+  const M = dmMatieres(), A = dmAnnees();
+  if(!M.includes(_dmSubject)) _dmSubject = M.includes(activeSubject) ? activeSubject : M[0];
+  if(!A.includes(_dmLevel)) _dmLevel = A.includes(activeLevel) ? activeLevel : A[A.length - 1];
+  /* Toutes les matières n'ont pas les deux années (l'informatique n'a que du TSI1) : rester sur
+     une année vide afficherait « aucun chapitre » au lieu du programme de la matière choisie.
+     Ce repli est LOCAL au rendu : l'écrire dans _dmLevel renverrait un élève de TSI2 en TSI1
+     pour toutes les matières suivantes, sans qu'il l'ait demandé ni puisse s'en apercevoir. */
+  let l = _dmLevel;
+  if(!dmChapitresDe(_dmSubject, l).length){
+    const repli = A.find(x => dmChapitresDe(_dmSubject, x).length);
+    if(repli) l = repli;
+  }
+  return { s:_dmSubject, l };
+}
+function dmChapitresDe(subject, level){
+  const idx = dmIndex();
+  return Object.keys(TOPICS)
+    .filter(k => TOPICS[k].subject === subject && TOPICS[k].level === level)
+    .map(k => ({ k, n:(idx[k] || []).length }));
+}
+
+/* ── Barre matière × année ────────────────────────────────────────────────────── */
+function dmBarreHTML(){
+  const { s, l } = dmScope();
+  const chip = (on) => 'display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;'
+    + 'padding:6px 13px;font-size:12.5px;cursor:pointer;font-family:inherit;margin:0 6px 8px 0;'
+    + 'background:' + (on ? 'color-mix(in srgb,var(--accent) 18%,transparent)' : 'transparent')
+    + ';color:' + (on ? 'var(--ink)' : 'var(--muted)');
+  let h = '<div style="display:flex;flex-wrap:wrap;margin-bottom:4px">'
+    + dmMatieres().map(k => '<button type="button" data-dsub="' + k + '" style="' + chip(k === s) + '">' + SUBJECTS[k].name + '</button>').join('')
+    + '</div>';
+  const A = dmAnnees().filter(k => dmChapitresDe(s, k).length);   // pas de pastille vers une année sans chapitre
+  if(A.length > 1){
+    h += '<div style="display:flex;flex-wrap:wrap;margin-bottom:4px">'
+      + A.map(k => '<button type="button" data-dlev="' + k + '" style="' + chip(k === l) + '">' + LEVELS[k].name + '</button>').join('')
+      + '</div>';
+  }
+  return h;
+}
+function dmBarreWire(host){
+  host.querySelectorAll('[data-dsub]').forEach(b => b.onclick = () => { _dmSubject = b.dataset.dsub; dmRenderChapitres(); });
+  host.querySelectorAll('[data-dlev]').forEach(b => b.onclick = () => { _dmLevel = b.dataset.dlev; dmRenderChapitres(); });
+}
+
+/* ── Écran 1 : les chapitres ──────────────────────────────────────────────────── */
+function dmRenderChapitres(){
+  const body = $('#demoBody'); if(!body) return;
+  _dmState = null;
+  const { s, l } = dmScope();
+  const chaps = dmChapitresDe(s, l);
+  const nDemos = chaps.reduce((a, c) => a + c.n, 0);
+  const sues = chaps.reduce((a, c) => a + (dmIndex()[c.k] || []).filter(d => dmEstSue(d.id)).length, 0);
+  let html = dmBarreHTML();
+  if(!chaps.length){ body.innerHTML = html + '<div class="empty-state">Aucun chapitre pour cette matière.</div>'; dmBarreWire(body); return; }
+  html += '<p style="font-size:12.5px;color:var(--muted);margin:8px 0 14px;line-height:1.55">'
+    + (nDemos
+        ? '<b style="color:var(--ink)">' + nDemos + '</b> démonstration' + (nDemos > 1 ? 's' : '') + ' écrite' + (nDemos > 1 ? 's' : '')
+          + (sues ? ' · <b style="color:var(--ink)">' + sues + '</b> que tu sais refaire' : '')
+          + ' · les autres chapitres attendent les leurs.'
+        : 'Aucune démonstration écrite dans cette matière pour l’instant : les chapitres sont prêts à en accueillir.')
+    + '</p>';
+  for(const { k, n } of chaps){
+    const info = TOPICS[k] || { name:k, raw:'#888' };
+    const ok = (dmIndex()[k] || []).filter(d => dmEstSue(d.id)).length;
+    html += '<button type="button" data-dtopic="' + k + '" style="display:flex;align-items:center;gap:11px;width:100%;text-align:left;'
+      + 'background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;'
+      + 'font-family:inherit;color:var(--ink)">'
+      + '<span style="width:10px;height:10px;border-radius:3px;background:' + info.raw + ';flex:none'
+      + (n ? '' : ';opacity:.35') + '"></span>'
+      + '<span style="flex:1;font-size:14.5px;font-weight:600">' + info.name + '</span>'
+      + (n ? '<span style="font-size:12px;color:var(--muted);white-space:nowrap">'
+             + n + ' démo' + (n > 1 ? 's' : '') + (ok ? ' · ' + ok + ' ✓' : '') + '</span>'
+           : '<span class="dm-avenir">à venir</span>')
+      + '<span style="color:var(--muted)">›</span></button>';
+  }
+  body.innerHTML = html;
+  dmBarreWire(body);
+  body.querySelectorAll('[data-dtopic]').forEach(b => b.onclick = () => dmRenderListe(b.dataset.dtopic));
+  const bk = $('#demoBack'); if(bk) bk.style.display = 'none';
+  typeset(body);
+}
+
+/* ── Écran 2 : les démonstrations d'un chapitre ───────────────────────────────── */
+function dmRenderListe(topic){
+  const body = $('#demoBody'); if(!body) return;
+  _dmState = null;
+  const info = TOPICS[topic] || { name:topic, raw:'#888' };
+  const list = dmIndex()[topic] || [];
+  let html = '<div style="display:flex;align-items:center;gap:9px;margin-bottom:12px">'
+    + '<span style="width:10px;height:10px;border-radius:3px;background:' + info.raw + '"></span>'
+    + '<b style="font-size:15px">' + info.name + '</b>'
+    + '<span style="font-size:12px;color:var(--muted);margin-left:auto">' + (list.length ? list.length + ' démonstration' + (list.length > 1 ? 's' : '') : '') + '</span></div>';
+  if(!list.length){
+    html += '<div class="empty-state">Aucune démonstration écrite dans ce chapitre pour l’instant.<br>'
+      + '<span style="font-size:12.5px">La section existe déjà : elle se remplira au fil des colles et des DS.</span></div>';
+  }
+  list.forEach((d, i) => {
+    const sue = dmEstSue(d.id);
+    html += '<button type="button" data-ddemo="' + d.id + '" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;'
+      + 'background:var(--panel-2);border:1px solid var(--line);border-radius:11px;padding:11px 13px;margin-bottom:7px;cursor:pointer;font-family:inherit;color:var(--ink)">'
+      + '<span style="width:22px;height:22px;border-radius:50%;background:color-mix(in srgb,' + info.raw + ' 22%,transparent);'
+      + 'display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;flex:none">' + (sue ? '✓' : (i + 1)) + '</span>'
+      + '<span style="flex:1;min-width:0"><b style="font-size:14px;font-weight:600">' + d.titre + '</b>'
+      + (d.sous || d.source ? '<span style="display:block;color:var(--muted);font-size:12px;margin-top:2px">' + [d.sous, d.source].filter(Boolean).join(' · ') + '</span>' : '')
+      + '</span>'
+      + (d.niveau === 'exigible' ? '<span class="dm-badge">à savoir refaire</span>' : '')
+      + '<span style="color:var(--muted)">›</span></button>';
+  });
+  body.innerHTML = html;
+  body.querySelectorAll('[data-ddemo]').forEach(b => b.onclick = () => {
+    const d = DEMOS.find(x => x.id === b.dataset.ddemo); if(d) dmRenderDemo(d, topic);
+  });
+  const bk = $('#demoBack'); if(bk){ bk.style.display = ''; bk.textContent = '← Chapitres'; bk.onclick = dmRenderChapitres; }
+  typeset(body);
+  const sc = $('#demoScreen'); if(sc) sc.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+/* ── Écran 3 : une démonstration, étape par étape ─────────────────────────────── */
+/* Une étape = un fragment HTML gardé de côté ; il n'entre dans le DOM (et dans MathJax)
+   qu'au moment où on le dévoile. Tant qu'il attend, MathJax ne le voit pas : pas de
+   formule mesurée dans un conteneur display:none, donc pas de rendu tassé. */
+function dmLigneHTML(tete, rhs, j, premiere){
+  const gauche = premiere ? tete : '\\phantom{' + tete + '}';
+  return '<div class="dm-x">$$' + gauche + ' = ' + rhs + '$$</div>'
+    + '<div class="dm-just">' + (j || '') + '</div>';
+}
+function dmBlocHTML(b){
+  if(b.t === 'p')  return '<p class="dm-p">' + b.x + '</p>';
+  if(b.t === 'ul') return '<ul class="dm-ul">' + b.x.map(x => '<li>' + x + '</li>').join('') + '</ul>';
+  if(b.t === 'eq') return '<div class="dm-x dm-eq">$$' + b.x + '$$</div>'
+    + (b.j ? '<div class="dm-just dm-just-bas">' + b.j + '</div>' : '');
+  if(b.t === 'res') return '<div class="dm-res"><span class="dm-box">$' + b.x + '$</span>'
+    + (b.j ? '<span class="dm-just">' + b.j + '</span>' : '') + '</div>';
+  if(b.t === 'tab') return (b.cap ? '<p class="dm-p"><b>' + b.cap + '</b></p>' : '')
+    + '<table class="dm-tab"><tbody>' + b.r.map(row => '<tr>' + row.map((c, i) =>
+        (i === 0 ? '<th>' + c + '</th>' : '<td>' + c + '</td>')).join('') + '</tr>').join('') + '</tbody></table>';
+  return '';
+}
+function dmRenderDemo(d, topic){
+  const body = $('#demoBody'); if(!body) return;
+  const info = TOPICS[topic] || { name:topic, raw:'#888' };
+
+  /* Le titre d'une partie et ses blocs de contexte n'apparaissent qu'avec la PREMIÈRE étape
+     de cette partie : sinon « Variance de X » et la formule de König–Huygens s'affichent
+     pendant qu'on cherche encore l'espérance. Ils portent donc l'indice de l'étape qui les
+     suit, et se dévoilent avec elle. */
+  const slots = [];                                   // { st, html, cls } — st = étape qui le fait apparaître
+  let st = 0, attente = [];
+  const flush = () => { if(attente.length){ slots.push({ st, html:attente.join(''), cls:'dm-s' }); attente = []; } };
+
+  d.parties.forEach((part, pi) => {
+    if(pi) attente.push('<div class="dm-sep"></div>');
+    attente.push('<p class="dm-part">' + part.nom + '</p>');
+    part.blocs.forEach(b => {
+      if(b.ctx){ attente.push(dmBlocHTML(b)); return; }
+      if(b.t === 'calc'){
+        b.l.forEach((ligne, i) => {
+          flush();
+          slots.push({ st, html:dmLigneHTML(b.tete, ligne.e, ligne.j, i === 0), cls:'dm-s dm-l' });
+          st++;
+        });
+      }else{
+        flush();
+        slots.push({ st, html:dmBlocHTML(b), cls:'dm-s' });
+        st++;
+      }
+    });
+  });
+  /* Rien après la dernière étape ne doit disparaître : on rattache le reliquat à cette étape. */
+  if(attente.length){ slots.push({ st:Math.max(0, st - 1), html:attente.join(''), cls:'dm-s' }); attente = []; }
+  const total = st;
+
+  let html = '<div style="font-size:12px;color:var(--muted);margin-bottom:6px">' + info.name + '</div>'
+    + '<h3 style="margin:0 0 2px;font-size:18px;font-family:\'Literata\',serif">' + d.titre + '</h3>'
+    + (d.sous || d.source
+        ? '<div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">' + [d.sous, d.source].filter(Boolean).join(' · ') + '</div>'
+        : '<div style="margin-bottom:10px"></div>')
+    + (d.niveau === 'exigible' ? '<span class="dm-badge" style="margin-bottom:10px">à savoir refaire</span>' : '')
+    + '<div class="dm-enonce"><span class="dm-lab">Énoncé</span>' + d.enonce + '</div>'
+    + (d.outils && d.outils.length
+        ? '<div class="dm-outils"><span class="dm-lab">Outils</span>' + d.outils.map(o => '<span class="dm-chip">' + o + '</span>').join('') + '</div>'
+        : '')
+    + '<div class="dm-bar" id="dmBar"></div>';
+  /* total = 0 : démonstration encore sans étape — on affiche ce qu'il y a, sans commandes. */
+  slots.forEach((sl, i) => {
+    html += '<div class="' + sl.cls + '" data-slot="' + i + '" data-st="' + sl.st + '"' + (total ? ' hidden' : '') + '>'
+          + (total ? '' : sl.html) + '</div>';
+  });
+  html += '<div class="dm-foot" id="dmFoot"></div>';
+
+  body.innerHTML = html;
+  _dmState = { demo:d, topic, n:0, total, slots };
+  dmMajBarre();
+  typeset(body);
+  const bk = $('#demoBack');
+  if(bk){ bk.style.display = ''; bk.textContent = '← ' + info.name.replace(/^\d+\.\s*/, ''); bk.onclick = () => dmRenderListe(topic); }
+  const sc = $('#demoScreen'); if(sc) sc.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+/* Dévoile jusqu'à l'étape `n` (exclue) et typesette CE QUI VIENT D'APPARAÎTRE : tant qu'une
+   étape attend, son LaTeX n'est pas dans le DOM, donc MathJax ne mesure jamais dans du vide. */
+function dmDevoiler(n){
+  if(!_dmState) return;
+  const body = $('#demoBody'); if(!body) return;
+  const cible = Math.max(0, Math.min(n, _dmState.total));
+  const nouveaux = [];
+  body.querySelectorAll('.dm-s[data-slot]').forEach(el => {
+    const st = +el.dataset.st, k = +el.dataset.slot;
+    if(st < cible){
+      if(el.hidden){ el.innerHTML = _dmState.slots[k].html; el.hidden = false; el.classList.add('card-in'); nouveaux.push(el); }
+    }else if(!el.hidden){ el.hidden = true; el.innerHTML = ''; el.classList.remove('card-in'); }
+  });
+  _dmState.n = cible;
+  dmMajBarre();
+  nouveaux.forEach(el => typeset(el));
+  if(nouveaux.length){
+    const dernier = nouveaux[nouveaux.length - 1];
+    if(dernier.scrollIntoView) dernier.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }
+}
+
+/* Barre de commandes (haut) + pied : boutons, compteur d'étapes, « je sais la refaire ». */
+function dmMajBarre(){
+  if(!_dmState) return;
+  const bar = $('#dmBar'), foot = $('#dmFoot');
+  const { n, total, demo } = _dmState;
+  const fini = n >= total;
+  if(bar && !total){ bar.innerHTML = ''; }
+  else if(bar){
+    bar.innerHTML =
+      (n === 0
+        ? '<p class="dm-consigne">Cherche d’abord au brouillon, puis dévoile la démonstration étape par étape.</p>'
+        : '<p class="dm-consigne">Étape <b>' + n + '</b> sur <b>' + total + '</b>.</p>')
+      + '<div class="dm-btns">'
+      + (fini ? '' : '<button type="button" class="btn" id="dmNext">' + (n === 0 ? 'Commencer →' : 'Étape suivante →') + '</button>')
+      + (fini ? '' : '<button type="button" class="btn ghost" id="dmAll">Tout afficher</button>')
+      + (n > 0 ? '<button type="button" class="btn ghost" id="dmReset">↺ Masquer</button>' : '')
+      + '</div>';
+    const nx = $('#dmNext'); if(nx) nx.onclick = () => dmDevoiler(_dmState.n + 1);
+    const al = $('#dmAll'); if(al) al.onclick = () => dmDevoiler(_dmState.total);
+    const rs = $('#dmReset'); if(rs) rs.onclick = () => { dmDevoiler(0); const sc = $('#demoScreen'); if(sc) sc.scrollIntoView({ behavior:'smooth', block:'start' }); };
+  }
+  if(foot){
+    const sue = dmEstSue(demo.id);
+    foot.innerHTML = '<button type="button" class="btn ' + (sue ? '' : 'ghost') + '" id="dmSue">' + (sue ? '✓ Je sais la refaire' : 'Je sais la refaire') + '</button>'
+      + (fini ? '<button type="button" class="btn ghost" id="dmAgain">↺ Refaire pas à pas</button>' : '')
+      + '<span class="dm-note">Repère local à ce navigateur — les démonstrations ne passent pas par la révision quotidienne.</span>';
+    const sb = $('#dmSue'); if(sb) sb.onclick = () => { dmBasculeSue(demo.id); dmMajBarre(); };
+    const ag = $('#dmAgain'); if(ag) ag.onclick = () => { dmDevoiler(0); const sc = $('#demoScreen'); if(sc) sc.scrollIntoView({ behavior:'smooth', block:'start' }); };
+  }
+}
+
+window.showDemos = function(){
+  hideScreens();
+  const sc = $('#demoScreen'); if(!sc) return;
+  sc.classList.remove('hidden'); sc.scrollIntoView({ behavior:'smooth', block:'start' });
+  dmRenderChapitres();
+};
+
+/* Écran injecté (même patron que Cours / DS blancs) + bouton d'en-tête. */
+(function(){
+  const anchor = document.getElementById('juryScreen') || document.getElementById('startScreen');
+  if(anchor && !document.getElementById('demoScreen')){
+    const scr = document.createElement('div'); scr.className = 'card hidden'; scr.id = 'demoScreen';
+    scr.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">'
+      + '<p class="section-label" style="margin:0">📐 Démonstrations</p>'
+      + '<button id="demoBack" class="btn ghost" style="padding:5px 12px;font-size:13px;display:none">← Chapitres</button>'
+      + '<button id="demoHome" class="btn ghost" style="margin-left:auto;padding:5px 12px;font-size:13px">🏠 Accueil</button></div>'
+      + '<div id="demoBody"></div>';
+    anchor.parentNode.appendChild(scr);
+    document.getElementById('demoHome').onclick = () => { scr.classList.add('hidden'); const st = $('#startScreen'); if(st){ st.classList.remove('hidden'); st.scrollIntoView({ behavior:'smooth', block:'start' }); } };
+  }
+  const b = $('#demoIconBtn'); if(b) b.onclick = () => showDemos();
+})();
+
 
 /* ═══════════════════ EMPLOI DU TEMPS — TSI 2 Chaptal 2026-2027 ═══════════════════
    Sources : EDT_TSI2_26-27.pdf · Colloscope_TSI2_26-27.pdf · Calendrier DS_TSI2_26-27.pdf
@@ -14730,7 +15214,8 @@ function showEDT(){
 const EDT_RUBRIQUES = [
   ['Réviser', [
     ['coursIconBtn', '📚', 'Cours',           'Le cours, chapitre par chapitre'],
-    ['dsIconBtn',    '📝', 'DS blancs',       'Sujets de DS et exercices corrigés']
+    ['dsIconBtn',    '📝', 'DS blancs',       'Sujets de DS et exercices corrigés'],
+    ['demoIconBtn',  '📐', 'Démonstrations',  'Les démonstrations du cours, étape par étape']
   ]],
   ['Mon suivi', [
     ['statsBtn',     '📊', 'Ma progression',  'Cartes maîtrisées, rétention vraie'],
