@@ -15024,9 +15024,12 @@ const EDT = (function(){
 
   /* Les 8 blocs de colles. Un bloc « haut » porte 3 matières, un bloc « bas » 2.
      Cinquième champ : LA SALLE, relevée sur le colloscope 2026-27. Elle n'était pas stockée
-     jusqu'ici — l'élève avait l'heure et le nom du khôlleur, mais devait chercher où aller. */
+     jusqu'ici — l'élève avait l'heure et le nom du khôlleur, mais devait chercher où aller.
+     v346 : la salle de Mme CREUSE (maths, bloc H1) passe de C45 à L26 — changement annoncé
+     par Arthur, PAS ENCORE répercuté sur le colloscope PDF. Ne pas la « corriger » en relisant
+     le PDF : c'est la salle du PDF qui est périmée. */
   const BLOCS = [
-    {id:'H1', c:[['Maths',2,'16h','Mme CREUSE','C45'],           ['Anglais',2,'18h','Mme YOUSFI','And 1.0'],   ['SI',1,'17h','M. DIDIER','Labo SI L50']]},
+    {id:'H1', c:[['Maths',2,'16h','Mme CREUSE','L26'],           ['Anglais',2,'18h','Mme YOUSFI','And 1.0'],   ['SI',1,'17h','M. DIDIER','Labo SI L50']]},
     {id:'H2', c:[['Maths',0,'15h','Mme RASKINE','Batignolles 3'],['Anglais',3,'17h','Mme WHITELEY','L56'],     ['SI',2,'17h','M. GERGADIER','Labo SI L52']]},
     {id:'H3', c:[['Maths',2,'15h','M. KARAGOZ','Batignolles 7'], ['Anglais',2,'17h','Mme YOUSFI','And 1.0'],   ['SI',3,'18h','M. DIJON','Atelier']]},
     {id:'H4', c:[['Maths',0,'16h','Mme RASKINE','Batignolles 3'],['Anglais',3,'17h','M. LAURENT','L72'],       ['SI',2,'16h','M. GALOPIN','Labo SI L48']]},
