@@ -12179,17 +12179,31 @@ function makeReviewSource(){
   let pi = 0, lastH = null;
   const seen = new Set();                                 // cartes déjà servies cette session (pour la réinjection d'apprentissage)
   primary.forEach(q => seen.add(qHash(q.q)));
+  const served = new Set();                               // cartes RÉELLEMENT tirées (seen inclut d'avance tout le primaire)
   return {
     primaryCount: primary.length,
+    lastKind: null,                                       // origine de la dernière carte : 'work' (travail du jour / palier) ou 'free'
+    /* Travail RÉEL restant, relu à frais : cartes du jour pas encore tirées + cartes déjà vues encore en
+       apprentissage (ratées → elles reviendront). curH = carte affichée, comptée à part par l'appelant.
+       AVANT : la barre se calait sur primaryCount figé au lancement → pleine et « Libre » alors que les
+       cartes ratées restaient à revoir. */
+    remaining(curH){
+      const d = SRS._d(); let learn = 0;
+      served.forEach(h => { if(h === curH) return; const c = d.cards[h]; if(!c) return;
+        if(c.state==='learning' || c.state==='relearning' || ((c.interval||0)===0 && (c.reps||0)>0)) learn++; });
+      return { primary: primary.length - pi, learn };
+    },
     next(){
+      this.lastKind = 'work';
       // 1) travail du jour (cartes dues + nouvelles), entrelacé
-      if(pi < primary.length){ const q = primary[pi++]; lastH = qHash(q.q); return q; }
+      if(pi < primary.length){ const q = primary[pi++]; lastH = qHash(q.q); served.add(lastH); return q; }
       // 2) RÉINJECTION des paliers : une carte vue cette session n'est re-servie que lorsqu'elle est
       //    RÉELLEMENT due (étape 1/10 min écoulée, à SRS_LEARN_COLLAPSE_MS près). Ainsi « Correct/10 min »
       //    n'enchaîne pas tout de suite : la carte attend son palier et on propose d'AUTRES cartes en
       //    attendant. L'état est relu à frais dans dueLearning(). On évite la répétition immédiate (lastH).
       const learn = SRS.dueLearning(seen, SRS_LEARN_COLLAPSE_MS).filter(h => h !== lastH);
       if(learn.length){ const h = learn[0]; lastH = h; return hMap[h] || null; }
+      this.lastKind = 'free';
       // 3) ENTRAÎNEMENT LIBRE : on recycle le programme, mais JAMAIS une carte planifiée dans le futur
       //    (due > maintenant). Sinon une carte notée « Correct, +2 j » reviendrait le jour même et serait
       //    re-planifiée en double, cassant le timing SRS. État relu À FRAIS à chaque rechargement du sac
@@ -12201,7 +12215,7 @@ function makeReviewSource(){
       }
       let q = freeBag.shift() || null;
       if(q && qHash(q.q) === lastH && freeBag.length){ freeBag.push(q); q = freeBag.shift(); } // pas deux fois de suite
-      if(q){ const h = qHash(q.q); seen.add(h); lastH = h; }
+      if(q){ const h = qHash(q.q); seen.add(h); served.add(h); lastH = h; }
       return q;
     }
   };
@@ -12219,7 +12233,7 @@ function startSrsReview(){
   lastSessionKind = 'review';
   restartSession = startSrsReview;
   reviewSession = { target: getReviewTarget(), count: 0, src, primaryCount: src.primaryCount };
-  pool = [ toFlashCard(first) ];
+  pool = [ {...toFlashCard(first), _rk: src.lastKind} ];
   idx = 0; score = 0; streak = 0; bestStreak = 0;
   updateHeaderStats();
   $('#startScreen').classList.add('hidden'); $('#resultScreen').classList.add('hidden');
@@ -12242,7 +12256,7 @@ function reviewAdvance(){
   if(isFinite(reviewSession.target) && reviewSession.count >= reviewSession.target){ finishReview(); return; }
   const card = reviewSession.src.next();
   if(!card){ finishReview(); return; }   // garde-fou (réservoir vide) ; en pratique l'entraînement libre ne tarit pas
-  pool.push(toFlashCard(card));
+  pool.push({...toFlashCard(card), _rk: reviewSession.src.lastKind});   // _rk : travail du jour ou entraînement libre (barre)
   idx = pool.length - 1;
   renderQuestion();
 }
@@ -12458,10 +12472,18 @@ function renderQuestion(){
   if(reviewSession){
     // compteur/progression pilotés par la session (file dynamique), pas par pool.length
     const tgt = reviewSession.target, cur = reviewSession.count + 1;
-    const free = reviewSession.count >= (reviewSession.primaryCount||0);   // au-delà du travail du jour → entraînement libre
-    $('#qCounter').textContent = isFinite(tgt) ? `${pad(cur)} / ${pad(tgt)}` : (free ? `Libre · ${cur}` : `Carte ${cur}`);
-    const denom = isFinite(tgt) ? tgt : (reviewSession.primaryCount || cur);
-    $('#progBar').style.width = Math.min(100, reviewSession.count/denom*100)+'%';
+    // reste = cartes du jour pas encore tirées + cartes ratées encore en apprentissage + la carte affichée si c'est du travail
+    const rem = reviewSession.src.remaining ? reviewSession.src.remaining(qHash(q.q)) : {primary:0, learn:0};
+    const isWork = q._rk !== 'free';
+    const left = rem.primary + rem.learn + (isWork ? 1 : 0);
+    const free = !isWork && left === 0;                    // plus rien à revoir aujourd'hui → entraînement libre
+    $('#qCounter').textContent = isFinite(tgt) ? `${pad(cur)} / ${pad(tgt)}`
+      : free ? `Libre · ${cur}`
+      : isWork ? `Carte ${cur} · reste ${left}`
+      : `Libre · ${cur} · ${left} en apprentissage`;
+    const pct = isFinite(tgt) ? reviewSession.count/tgt*100
+      : (left ? reviewSession.count/(reviewSession.count + left)*100 : 100);
+    $('#progBar').style.width = Math.min(100, pct)+'%';
   } else {
     $('#qCounter').textContent = `${pad(idx+1)} / ${pad(pool.length)}`;
     $('#progBar').style.width = ((idx)/pool.length*100)+'%';
