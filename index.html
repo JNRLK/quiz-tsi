@@ -275,6 +275,7 @@ window.MathJax = {
   .srs-cnt{display:flex; flex-direction:column; align-items:center; gap:2px; min-width:52px}
   .srs-cnt .n{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:22px; line-height:1}
   .srs-cnt .l{font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted)}
+  .srs-cnt .h{font-size:11px; color:#fb923c; white-space:nowrap}   /* compte à rebours des cartes à consolider */
   .srs-none{color:var(--muted); font-size:14px; text-align:center; padding:14px; background:var(--bg-deep); border:1px solid var(--line); border-radius:14px; margin-bottom:22px}
   /* ---- Objectif de session (sélecteur sur le tableau de bord) ---- */
   .rev-obj-row{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:12px}
@@ -576,6 +577,7 @@ window.MathJax = {
     .srs-counters{gap:10px}
     .srs-cnt{min-width:46px}
     .srs-cnt .n{font-size:17px}
+    .srs-cnt .h{white-space:normal; max-width:96px; text-align:center; line-height:1.25}   /* les 3 compteurs du jour tiennent sur une ligne à 375 px */
     #srsStartBtn{margin-left:0 !important; width:100%}
 
     /* quiz */
@@ -1374,6 +1376,7 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
       <li>Réponse réussie → la carte revient <b>plus tard</b> ; ratée → elle revient <b>vite</b>.</li>
       <li>Une carte passe de <b style="color:#60a5fa">Nouvelle</b> → <b style="color:#fbbf24">En apprentissage</b> → <b style="color:#84cc16">Jeune</b> → <b style="color:#4ade80">Maîtrisée</b> (ancrée ≥ 21 jours, comme Anki).</li>
       <li>Chaque jour, <b>« Révision du jour »</b> te montre les cartes à revoir. La régularité bat la quantité.</li>
+      <li>Trois compteurs : <b style="color:#a78bfa">À réviser</b> = cartes connues dont c'est le jour ; <b style="color:#60a5fa">À apprendre</b> = nouvelles cartes du jour ; <b style="color:#fb923c">À consolider</b> = cartes vues il y a quelques minutes (nouvelles ou ratées), qui reviennent après 1 puis 10 min — ce n'est pas du retard.</li>
     </ol>
     <p style="color:var(--muted); font-size:13px; margin:10px 0 0; line-height:1.5">📊 Dans <b>Ma progression</b>, la <b>rétention vraie</b> te dit si tu retiens bien : vise 85–95 % sur tes cartes maîtrisées.</p>
     <p style="color:var(--muted); font-size:13.5px; margin:14px 0 0">💡 Connecte-toi pour retrouver ta progression sur tous tes appareils.</p>
@@ -2193,7 +2196,35 @@ function scopeOkHash(h){ return reviewScopeOk({ topic: hashTopicMap()[h] }); }
 /* Cartes dues dans le périmètre courant, et celles que le périmètre met de côté (pour le dire à
    l'élève au lieu de les faire disparaître en silence). */
 function dueScoped(){ return SRS.due().filter(c => scopeOkHash(c.h)); }
-function dueHiddenCount(){ return SRS.due().length - dueScoped().length; }
+// Révisions du jour seules (sans les cartes à consolider) : c'est le compteur « À réviser ».
+function reviewsDueScoped(){ return dueScoped().filter(c => !c.learn); }
+function dueHiddenCount(){ return SRS.due().filter(c => !c.learn).length - reviewsDueScoped().length; }
+/* Cartes « À CONSOLIDER » du périmètre : vues il y a quelques minutes (découverte ou oubli) et en
+   cours de paliers (1 puis 10 min). Comptées À PART des révisions du jour : elles reviennent d'elles-
+   mêmes peu après la notation, et les mêler à « À réviser » faisait remonter ce compteur juste après
+   une session terminée. ready = palier écoulé (servies par « Réviser ») ; waiting = pas encore ;
+   next = échéance de la prochaine en attente. */
+function learningScoped(){
+  const d = SRS._d(), now = Date.now(), valid = hashTopicMap();
+  const L = { ready: 0, waiting: 0, total: 0, next: Infinity, waitingHs: [] };
+  for(const h in d.cards){
+    const c = d.cards[h];
+    if(!valid[h] || !SRS.isLearning(c) || !scopeOkHash(h)) continue;
+    if((c.due||0) <= now) L.ready++;
+    else { L.waiting++; L.waitingHs.push(h); if(c.due < L.next) L.next = c.due; }
+  }
+  L.total = L.ready + L.waiting;
+  return L;
+}
+// Délai lisible (« 1 min », « 8 min », « 2 h ») jusqu'à une échéance.
+function fmtWait(ms){ const m = Math.max(1, Math.ceil(ms / 60000)); return m < 60 ? m + ' min' : Math.round(m / 60) + ' h'; }
+// Sous-titre du compteur « À consolider ».
+function consolidHint(L){
+  if(!L.total) return '';
+  if(!L.waiting) return L.ready > 1 ? 'prêtes maintenant' : 'prête maintenant';
+  const w = 'dans ' + fmtWait(L.next - Date.now());
+  return L.ready ? `${L.ready} prête${L.ready>1?'s':''} · suite ${w}` : w;
+}
 function effLevel(){
   if(isTransversal(activeSubject)) return 'tr';           // transversale ⇒ 'tr'
   if(lockedLevel) return allowedLevels().includes(activeLevel) ? activeLevel : lockedLevel;  // élève : année choisie parmi celles autorisées
@@ -11223,13 +11254,30 @@ const SRS = {
   // orpheline (question dont le texte a changé → hash obsolète) n'est pas révisable,
   // donc elle ne doit pas gonfler le compteur « À réviser » (sinon le bouton propose
   // un nombre que le lancement ne peut pas honorer).
+  // Chaque entrée porte `learn` : true = carte à consolider (palier en minutes), false = révision du jour.
   due(){
     const d = this._d(), now = Date.now();
     const valid = new Set(allQuestionHashes());
     return Object.entries(d.cards)
-      .filter(([h,c]) => valid.has(h) && c.due <= now)
-      .sort(([,a],[,b]) => a.due - b.due)
-      .map(([h,c]) => ({h,...c}));
+      .filter(([h,c]) => valid.has(h) && this.isDue(c, now))
+      .sort(([,a],[,b]) => (a.due||0) - (b.due||0))
+      .map(([h,c]) => ({h,...c, learn: this.isLearning(c)}));
+  },
+
+  /* COUPURE QUOTIDIENNE (façon Anki). Une révision planifiée « dans N jours » est due pour TOUTE la
+     journée J, dès minuit — et non à l'heure exacte de la notation précédente. AVANT : une carte notée
+     la veille à 20 h ne devenait due qu'aujourd'hui à 20 h, donc des cartes « à réviser » réapparaissaient
+     au fil de la soirée alors que l'élève avait fini sa journée. Réviser quelques heures plus tôt ne
+     fausse pas FSRS, qui calcule sur le temps réellement écoulé. Minuit local = même jour que _today(). */
+  dayEnd(now){ const t = new Date(now || Date.now()); t.setHours(24, 0, 0, 0); return t.getTime(); },
+  // Carte « à consolider » : entre deux paliers en minutes (découverte ou oubli). Même critère que la
+  // réinjection intra-session (les cartes de l'ancien format sans `state` : intervalle nul déjà vu).
+  isLearning(c){ return !!c && (c.state==='learning' || c.state==='relearning' || ((c.interval||0)===0 && (c.reps||0)>0)); },
+  // À faire maintenant ? Palier : seulement une fois écoulé (à la minute). Révision : dès le jour J.
+  isDue(c, now){
+    if(!c) return false;
+    now = now || Date.now();
+    return this.isLearning(c) ? (c.due||0) <= now : (c.due||0) < this.dayEnd(now);
   },
 
   // Cartes d'apprentissage/réapprentissage de la session en cours qui sont RÉELLEMENT redevenues dues
@@ -11240,8 +11288,7 @@ const SRS = {
     const out = [];
     seenSet.forEach(h=>{
       const c = d.cards[h]; if(!c) return;
-      const learning = c.state==='learning' || c.state==='relearning' || ((c.interval||0)===0 && (c.reps||0)>0);
-      if(learning && c.due <= lim) out.push([h, c.due]);
+      if(this.isLearning(c) && (c.due||0) <= lim) out.push([h, c.due||0]);
     });
     out.sort((a,b)=>a[1]-b[1]);
     return out.map(x=>x[0]);
@@ -11281,7 +11328,7 @@ const SRS = {
     const reps=cards.reduce((s,c)=>s+(c.reps||0),0), lapses=cards.reduce((s,c)=>s+(c.lapses||0),0);
     const byLvl=[0,0,0,0,0,0]; cards.forEach(c=>byLvl[c.lvl||0]++);
     const now=Date.now();
-    const due=cards.filter(c=>c.due<=now).length;
+    const due=cards.filter(c=>this.isDue(c,now) && !this.isLearning(c)).length;   // révisions du jour (les cartes à consolider sont comptées à part)
     const dueIn7=cards.filter(c=>c.due<=now+7*86400000).length;
     const leeches=cards.filter(c=>c.leech).length;
     return {total,learned,reps,lapses,due,dueIn7,leeches,byLvl, sessions:d.sessions};
@@ -11747,7 +11794,8 @@ function updateHeaderStats(){
   const total = QUESTIONS.length || 1;
   // « À réviser » = travail réel du jour = révisions dues + nouvelles cartes du jour
   // (identique au bouton « Réviser (N) ») ; les nouvelles cartes n'étaient pas comptées avant.
-  const totalDue = Math.min(dueScoped().length, MAX_REVIEWS_PER_DAY);   // #5 plafond/jour ; périmètre de l'année sélectionnée, comme la session
+  // Les cartes à consolider (paliers en minutes) n'y entrent pas : elles ont leur compteur sur l'accueil.
+  const totalDue = Math.min(reviewsDueScoped().length, MAX_REVIEWS_PER_DAY);   // #5 plafond/jour ; périmètre de l'année sélectionnée, comme la session
   const newRemaining = Math.max(0, NEW_PER_DAY - SRS.dailyNewCount());
   const newAvail = Math.min(newRemaining, counts.new);
   const sessionSize = totalDue + newAvail;
@@ -11792,16 +11840,17 @@ function srsStatsForTopic(key, d, now){
   let due=0, learned=0, seen=0;
   qs.forEach(q=>{
     const h=qHash(q.q), c=d.cards[h];
-    if(c){ seen++; if(c.lvl>0) learned++; if(c.due<=now) due++; }
+    if(c){ seen++; if(c.lvl>0) learned++; if(SRS.isDue(c, now)) due++; }
   });
   return {total:qs.length, seen, due, learned, newCards:qs.length-seen};
 }
 
 function updateSrsBar(){
   const bar = $('#srsBar'); if(!bar) return;
-  const allCards = Object.values(SRS._d().cards);
-  const dueReal = dueScoped().length;
+  const dueReal = reviewsDueScoped().length;                   // révisions du jour (coupure à minuit), sans les cartes à consolider
   const totalDue = Math.min(dueReal, MAX_REVIEWS_PER_DAY);     // #5 plafond/jour servi (lissage du backlog)
+  const L = learningScoped();                                  // cartes à consolider (paliers 1/10 min) — compteur séparé
+  _srsBarSig = srsBarSig(L);
   const backlog = Math.max(0, dueReal - totalDue);             // reste du backlog → affiché en « +N en attente »
   const totalCards = QUESTIONS.length;
   const counts = SRS.maturityCounts(allQuestionHashes());  // {new,learning,young,mature}
@@ -11818,7 +11867,7 @@ function updateSrsBar(){
   const streak = SRS.streakCount();
   const newRemaining = Math.max(0, NEW_PER_DAY - SRS.dailyNewCount());
   const newAvail = Math.min(newRemaining, counts.new);       // nouvelles cartes que la session peut introduire
-  const sessionSize = totalDue + newAvail;
+  const sessionSize = totalDue + newAvail + L.ready;          // travail faisable MAINTENANT (les paliers prêts en font partie)
   const streakChip = streak>0
     ? `<span class="due-chip" style="margin:0">🔥 ${streak} jour${streak>1?'s':''} d'affilée</span>` : '';
   // Bouton + sélecteur d'objectif : toujours visibles. Le bouton reflète l'OBJECTIF choisi (cohérence
@@ -11835,13 +11884,14 @@ function updateSrsBar(){
     </div>
     <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap">
       <div class="srs-counters">
-        <div class="srs-cnt"><span class="n" style="color:${dueColor}">${totalDue}</span><span class="l">À réviser${backlog>0?` <span style="opacity:.7" title="${backlog} carte(s) de plus en attente — lissées sur les jours suivants">+${backlog}</span>`:''}</span></div>
-        <div class="srs-cnt"><span class="n" style="color:#60a5fa">${newAvail}</span><span class="l">Nouvelles / jour</span></div>
-        <div class="srs-cnt"><span class="n" style="color:#fbbf24">${counts.learning+counts.young}</span><span class="l">En cours</span></div>
-        <div class="srs-cnt"><span class="n" style="color:#4ade80">${counts.mature}</span><span class="l">Maîtrisées</span></div>
+        <div class="srs-cnt" title="Cartes déjà connues dont c'est le jour de révision (toutes celles du jour, dès le matin)."><span class="n" style="color:${dueColor}">${totalDue}</span><span class="l">À réviser${backlog>0?` <span style="opacity:.7" title="${backlog} carte(s) de plus en attente — lissées sur les jours suivants">+${backlog}</span>`:''}</span></div>
+        <div class="srs-cnt" title="Nouvelles cartes encore à découvrir aujourd'hui (${NEW_PER_DAY} au maximum par jour)."><span class="n" style="color:#60a5fa">${newAvail}</span><span class="l">À apprendre</span></div>
+        <div class="srs-cnt" title="Cartes vues il y a quelques minutes (nouvelles ou ratées) : elles reviennent après 1 puis 10 min pour être consolidées. Ce n'est pas du retard."><span class="n" style="color:${L.total?'#fb923c':'var(--muted)'}">${L.total}</span><span class="l">À consolider</span>${L.total?`<span class="h">${consolidHint(L)}</span>`:''}</div>
       </div>
       <div style="margin-left:auto; display:flex; flex-direction:column; align-items:flex-end; gap:4px">
-        ${sessionSize===0 ? `<span style="color:#4ade80;font-size:12px;font-weight:600">✓ Tout à jour !</span>` : ''}
+        ${sessionSize===0 ? (L.waiting
+          ? `<span style="color:#4ade80;font-size:12px;font-weight:600">✓ Révisions faites · reviens ${consolidHint(L)}</span>`
+          : `<span style="color:#4ade80;font-size:12px;font-weight:600">✓ Tout à jour !</span>`) : ''}
         <button class="btn" id="srsStartBtn">${_revStartLabel}</button>
       </div>
     </div>
@@ -11860,9 +11910,9 @@ function updateSrsBar(){
       <div style="width:${seg(counts.learning)}%;background:#fbbf24"></div>
       <div style="width:${seg(counts.new)}%;background:#3b4252"></div>
     </div>
-    <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:var(--muted)">
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:2px 12px;margin-top:4px;font-size:11px;color:var(--muted)">
       <span><b style="color:#4ade80">${pctMature}%</b> du programme maîtrisé</span>
-      <span>${counts.mature}/${totalCards} cartes ancrées</span>
+      <span><b style="color:#fbbf24">${counts.learning+counts.young}</b> en cours · <b style="color:#4ade80">${counts.mature}</b>/${totalCards} cartes ancrées</span>
     </div>
   </div>`;
 
@@ -11877,6 +11927,22 @@ function updateSrsBar(){
   });
   try{ renderDailyWidget(); }catch(e){}
 }
+
+/* RAFRAÎCHISSEMENT DU TABLEAU DE BORD SANS RECHARGER. Les cartes à consolider changent d'état toutes
+   seules (palier écoulé), le compte à rebours « dans N min » avance, et minuit fait entrer les révisions
+   du lendemain : on relit cet état toutes les 15 s tant que l'accueil est affiché, et on ne redessine
+   que s'il a changé (signature : jour, prêtes, en attente, minutes restantes). */
+var _srsBarSig = '';   // var (hissée) : updateSrsBar() peut être appelée avant cette ligne au chargement
+function srsBarSig(L){
+  L = L || learningScoped();
+  const mins = L.waiting ? Math.ceil((L.next - Date.now()) / 60000) : 0;
+  return [SRS._today(), L.ready, L.waiting, mins].join('|');
+}
+setInterval(()=>{
+  if(document.hidden) return;
+  const ss = $('#startScreen'); if(!ss || ss.classList.contains('hidden')) return;
+  try{ if(srsBarSig() !== _srsBarSig){ updateSrsBar(); updateHeaderStats(); } }catch(e){}
+}, 15000);
 
 /* ====================== OBJECTIF QUOTIDIEN + SÉRIE (assiduité) ======================
    La série de jours consécutifs est déjà tenue par le SRS (d.streak, via SRS.review → SRS.streakCount()).
@@ -12235,7 +12301,7 @@ function startSrsReviewForTopic(topicKey){
   const d=SRS._d(), now=Date.now();
   const hMap={}; QUESTIONS.forEach(q=>{ hMap[qHash(q.q)]=q; });
   const dueForTopic=Object.entries(d.cards)
-    .filter(([h,c])=>c.due<=now && c.topic===topicKey)
+    .filter(([h,c])=>SRS.isDue(c, now) && c.topic===topicKey)
     .sort(([,a],[,b])=>a.due-b.due)
     .map(([h])=>hMap[h]).filter(Boolean);
   if(!dueForTopic.length){ alert('Aucune carte due pour ce chapitre.'); return; }
@@ -12292,7 +12358,13 @@ function makeReviewSource(){
   const hMap = {}; QUESTIONS.forEach(q => { hMap[qHash(q.q)] = q; });
   // #5 LISSAGE : on ne sert qu'un plafond de révisions dues par jour (les plus en retard d'abord, SRS.due() étant trié) ;
   // le reste du backlog attend le lendemain → pas de mur « 187 à réviser » inatteignable après une absence.
-  const due = dueScoped().slice(0, MAX_REVIEWS_PER_DAY).map(c => hMap[c.h]).filter(Boolean);
+  // Les cartes à consolider dont le palier est écoulé passent HORS plafond (quelques cartes, à valider
+  // tant qu'elles sont fraîches) ; le plafond ne porte que sur les révisions du jour.
+  const dueAll = dueScoped();
+  const due = [
+    ...dueAll.filter(c => c.learn),
+    ...dueAll.filter(c => !c.learn).slice(0, MAX_REVIEWS_PER_DAY)
+  ].map(c => hMap[c.h]).filter(Boolean);
   const remaining = Math.max(0, NEW_PER_DAY - SRS.dailyNewCount());
   let fresh = QUESTIONS.filter(q => !d.cards[qHash(q.q)] && advAllowed(q) && reviewScopeOk(q));
   /* RÉPARTITION ÉQUITABLE DES NOUVELLES : un tirage uniforme favorise mécaniquement la
@@ -12323,6 +12395,10 @@ function makeReviewSource(){
   const seen = new Set();                                 // cartes déjà servies cette session (pour la réinjection d'apprentissage)
   primary.forEach(q => seen.add(qHash(q.q)));
   const served = new Set();                               // cartes RÉELLEMENT tirées (seen inclut d'avance tout le primaire)
+  /* Cartes à consolider PAS ENCORE prêtes au lancement (palier en cours, ex. ratées juste avant) :
+     surveillées comme celles ratées pendant la session → réinjectées dès que leur palier est écoulé,
+     et comptées dans le « reste ». AVANT : ignorées jusqu'à la session suivante. */
+  learningScoped().waitingHs.forEach(h => { if(hMap[h]){ seen.add(h); served.add(h); } });
   return {
     primaryCount: primary.length,
     lastKind: null,                                       // origine de la dernière carte : 'work' (travail du jour / palier) ou 'free'
@@ -12333,7 +12409,7 @@ function makeReviewSource(){
     remaining(curH){
       const d = SRS._d(); let learn = 0;
       served.forEach(h => { if(h === curH) return; const c = d.cards[h]; if(!c) return;
-        if(c.state==='learning' || c.state==='relearning' || ((c.interval||0)===0 && (c.reps||0)>0)) learn++; });
+        if(SRS.isLearning(c)) learn++; });
       return { primary: primary.length - pi, learn };
     },
     next(){
@@ -12354,7 +12430,7 @@ function makeReviewSource(){
       //    réviser ni à pratiquer aujourd'hui → la session se termine sur le bilan « à jour ».
       if(!freeBag.length){
         const dd = SRS._d(), nowT = Date.now();
-        freeBag = shuffle(freeAll.filter(q => { const c = dd.cards[qHash(q.q)]; return !c || (c.due||0) <= nowT; }));
+        freeBag = shuffle(freeAll.filter(q => { const c = dd.cards[qHash(q.q)]; return !c || SRS.isDue(c, nowT); }));
       }
       let q = freeBag.shift() || null;
       if(q && qHash(q.q) === lastH && freeBag.length){ freeBag.push(q); q = freeBag.shift(); } // pas deux fois de suite
@@ -12623,7 +12699,7 @@ function renderQuestion(){
     $('#qCounter').textContent = isFinite(tgt) ? `${pad(cur)} / ${pad(tgt)}`
       : free ? `Libre · ${cur}`
       : isWork ? `Carte ${cur} · reste ${left}`
-      : `Libre · ${cur} · ${left} en apprentissage`;
+      : `Libre · ${cur} · ${left} à consolider`;
     const pct = isFinite(tgt) ? reviewSession.count/tgt*100
       : (left ? reviewSession.count/(reviewSession.count + left)*100 : 100);
     $('#progBar').style.width = Math.min(100, pct)+'%';
@@ -13388,6 +13464,21 @@ function showResults(){
       ? `<h3>Sans faute 🎯</h3><div class="miss" style="border-left-color:#22c55e">Tout était correct sur cette session. Beau travail !</div>`
       : `<h3>Sans faute 🎯</h3><div class="miss" style="border-left-color:#22c55e">Rien à revoir sur cette série. Augmente la longueur ou ajoute des chapitres.</div>`;
   }
+  /* FIN DE RÉVISION AVEC DES CARTES À CONSOLIDER : on le dit au lieu de laisser l'élève découvrir
+     sur l'accueil des cartes « qui reviennent » alors qu'il pensait avoir fini. */
+  if(lastSessionKind === 'review'){
+    try{
+      const L = learningScoped();
+      if(L.total){
+        const s = L.total > 1 ? 's' : '';
+        const quand = L.waiting
+          ? (L.ready ? `${L.ready} ${L.ready>1?'sont':'est'} déjà prête${L.ready>1?'s':''}, la suite revient <b>${consolidHint({...L, ready:0})}</b>`
+                     : `${L.total>1?'elles reviennent':'elle revient'} <b>${consolidHint(L)}</b>`)
+          : `${L.total>1?'elles sont':'elle est'} <b>déjà prête${s}</b>`;
+        rv = `<div class="miss" style="border-left-color:#fb923c">⏳ <b>${L.total} carte${s} à consolider</b> (vue${s} il y a quelques minutes, nouvelle${s} ou ratée${s}) : ${quand}. Ce n'est pas du retard : c'est le palier de 1 puis 10 min. Relance la révision à ce moment-là pour ${L.total>1?'les':'la'} valider.</div>` + rv;
+      }
+    }catch(e){}
+  }
   $('#review').innerHTML = rv;
 
   // Bouton principal du bilan : contextuel.
@@ -13421,7 +13512,9 @@ $('#abandonBtn').onclick = ()=>{
   if(reviewSession){
     const answered = pool.filter(q=>q._answered).length;
     if(answered === 0){ goHomeFromQuiz(); return; }   // rien de fait → simple retour accueil
-    if(confirm('Terminer la révision et voir le bilan ?')){
+    let enAttente = '';
+    try{ const L = learningScoped(); if(L.waiting) enAttente = `\n\n${L.waiting} carte${L.waiting>1?'s':''} à consolider reviendr${L.waiting>1?'ont':'a'} ${consolidHint({...L, ready:0})} (palier 1 puis 10 min).`; }catch(e){}
+    if(confirm('Terminer la révision et voir le bilan ?' + enAttente)){
       pool = pool.filter(q=>q._answered);   // le bilan ne porte que sur les cartes traitées
       finishReview();
     }
@@ -16897,10 +16990,10 @@ async function renderStats(){
        TOUT le paquet, sans filtre d'année ni de matière, alors que la barre d'accueil affiche
        dueScoped() : l'élève lisait deux nombres différents pour la même question. On prend ici le
        même compte que l'accueil, et on nomme séparément l'arriéré hors périmètre au lieu de le mêler. */
-    let dueVu = g.due, horsPerimetre = 0;
-    try{ dueVu = dueScoped().length; horsPerimetre = Math.max(0, dueHiddenCount()); }catch(e){}
+    let dueVu = g.due, horsPerimetre = 0, aConsolider = 0;
+    try{ dueVu = reviewsDueScoped().length; horsPerimetre = Math.max(0, dueHiddenCount()); aConsolider = learningScoped().total; }catch(e){}
     const dueCap = Math.min(dueVu, MAX_REVIEWS_PER_DAY), backlog = Math.max(0, dueVu - dueCap);
-    html += `<div class="due-chip">📅 ${dueCap} carte${dueCap!==1?'s':''} à réviser aujourd'hui${backlog>0?` <span style="opacity:.85">(+${backlog} en attente — lissé)</span>`:''} · ${g.dueIn7} d'ici 7 jours</div>`;
+    html += `<div class="due-chip">📅 ${dueCap} carte${dueCap!==1?'s':''} à réviser aujourd'hui${backlog>0?` <span style="opacity:.85">(+${backlog} en attente — lissé)</span>`:''}${aConsolider?` · ${aConsolider} à consolider`:''} · ${g.dueIn7} d'ici 7 jours</div>`;
     if(g.leeches>0){
       html += `<div class="due-chip" style="background:rgba(248,113,113,.13);color:#f87171">🪤 ${g.leeches} carte${g.leeches!==1?'s':''}-problème — oubliée${g.leeches!==1?'s':''} ≥ ${SRS_LEECH_THRESHOLD}× : à retravailler autrement (relire la fiche, reformuler) ou signaler</div>`;
     }
@@ -17835,7 +17928,7 @@ function startReviewForTopics(keys){
     queue = QUESTIONS.filter(q=>{
       if(!set.has(q.topic) || !advAllowed(q)) return false;
       const c = d.cards[qHash(q.q)];
-      return !c || (c.due||0) <= maintenant;
+      return !c || SRS.isDue(c, maintenant);
     });
     shuffle(queue);
   }
