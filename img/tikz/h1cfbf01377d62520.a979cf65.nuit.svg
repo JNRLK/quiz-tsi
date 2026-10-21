@@ -1,0 +1,95 @@
+<svg version='1.1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='273' height='37' fill='#f9fafb' viewBox='-72 -72 204.55 27.89'>
+<defs>
+<path id='g0-63' d='M4.87-6.79C4.87-7.52 4.36-8.42 2.64-8.42C1.35-8.42 .65-7.58 .65-6.81C.65-6.38 .97-6.29 1.15-6.29C1.35-6.29 1.64-6.43 1.64-6.79C1.64-7.07 1.43-7.28 1.14-7.28C1.06-7.28 1.04-7.28 1.02-7.27C1.28-7.89 1.97-8.18 2.61-8.18C3.96-8.18 3.96-7.3 3.96-6.85C3.96-6.14 3.74-5.92 3.54-5.7C2.73-4.83 2.46-3.72 2.46-2.99V-2.41C2.46-2.2 2.46-2.15 2.59-2.15S2.73-2.24 2.73-2.45V-2.89C2.73-3.6 3.01-4.65 4.22-5.55C4.55-5.8 4.87-6.17 4.87-6.79ZM3.17-.59C3.17-.9 2.91-1.16 2.59-1.16C2.24-1.16 2.01-.87 2.01-.59C2.01-.23 2.3 0 2.58 0C2.92 0 3.17-.26 3.17-.59Z'/>
+</defs>
+<g id='page1'>
+<g stroke-miterlimit='10' transform='translate(-47.59,-58.05)scale(0.996264,-0.996264)'>
+<g fill='#f9fafb' stroke='#f9fafb'>
+<g stroke-width='0.4'>
+<g fill='#f9fafb' stroke='#f9fafb'>
+<g stroke-linecap='round'>
+<g stroke-linejoin='round'>
+<g stroke-width='1.0'>
+<g fill='#60a5fa' stroke='#60a5fa'>
+<path d='M0-10.5V10.5H35V-10.5ZM35 10.5' fill='none'/>
+</g>
+<g transform='translate(14.72435,-4.13324)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-47.59,-58.05)scale(-1,-1)'>
+<g fill='#f9fafb'>
+<g stroke='none'>
+<g fill='#f9fafb'>
+<use x='-47.59' y='-58.05' xlink:href='#g0-63' stroke='#f9fafb' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g fill='#60a5fa' stroke='#60a5fa'>
+<path d='M60.66-10.5V10.5H95.66V-10.5ZM95.66 10.5' fill='none'/>
+</g>
+<g transform='translate(75.3863,-4.13324)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-47.59,-58.05)scale(-1,-1)'>
+<g fill='#f9fafb'>
+<g stroke='none'>
+<g fill='#f9fafb'>
+<use x='-47.59' y='-58.05' xlink:href='#g0-63' stroke='#f9fafb' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g fill='#60a5fa' stroke='#60a5fa'>
+<path d='M121.32-10.5V10.5H156.32V-10.5ZM156.32 10.5' fill='none'/>
+</g>
+<g transform='translate(136.0479,-4.13324)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-47.59,-58.05)scale(-1,-1)'>
+<g fill='#f9fafb'>
+<g stroke='none'>
+<g fill='#f9fafb'>
+<use x='-47.59' y='-58.05' xlink:href='#g0-63' stroke='#f9fafb' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<path d='M-21 0H-4.56' fill='none'/>
+<g transform='translate(-7.39772,0.0)'>
+<g stroke-dasharray='none' stroke-dashoffset='0.0'>
+ <g stroke-linejoin='miter'>
+ <path d='M5.87 0L1.7 1.46L3.09 0L1.7-1.46Z'/>
+ </g>
+ </g>
+</g>
+<path d='M35 0H56.1' fill='none'/>
+<g transform='translate(53.26422,0.0)'>
+<g stroke-dasharray='none' stroke-dashoffset='0.0'>
+ <g stroke-linejoin='miter'>
+ <path d='M5.87 0L1.7 1.46L3.09 0L1.7-1.46Z'/>
+ </g>
+ </g>
+</g>
+<path d='M95.66 0H116.77' fill='none'/>
+<g transform='translate(113.92583,0.0)'>
+<g stroke-dasharray='none' stroke-dashoffset='0.0'>
+ <g stroke-linejoin='miter'>
+ <path d='M5.87 0L1.7 1.46L3.09 0L1.7-1.46Z'/>
+ </g>
+ </g>
+</g>
+<path d='M156.32 0H172.76' fill='none'/>
+<g transform='translate(169.92155,0.0)'>
+<g stroke-dasharray='none' stroke-dashoffset='0.0'>
+ <g stroke-linejoin='miter'>
+ <path d='M5.87 0L1.7 1.46L3.09 0L1.7-1.46Z'/>
+ </g>
+ </g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</svg>
