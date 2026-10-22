@@ -5,13 +5,17 @@
    il pesait 345 Ko et chaque élève le retéléchargeait à chaque vérification de mise à jour.
 
    Stratégies :
-   - page et fichiers locaux : network-first (toujours la dernière version en ligne), repli sur le cache hors ligne ;
+   - page et fichiers locaux : cache d'abord + mise à jour en arrière-plan (stale-while-revalidate).
+     La page s'ouvre instantanément depuis le cache, même sur un réseau lent ; la copie est rafraîchie
+     dans la foulée. Une NOUVELLE VERSION ne passe pas par là : chaque déploiement change CACHE, donc
+     sw.js, donc le navigateur installe un nouveau SW qui pré-cache la page fraîche (install), et la
+     page recharge au premier moment sûr (appliquerMaj, dans index.html) ;
    - CDN (MathJax, polices) : cache-first (gros fichiers externes qui ne changent pas) ;
    - images img/… : cache-first dans un cache À PART, « quiz-tsi-img », que l'activation ne vide pas.
      Leur nom contient l'empreinte du contenu, donc elles sont immuables : un déploiement ne les fait
      pas retélécharger. La page les précharge au repos (prechargerImages) pour le hors-ligne.
    - Firebase / Google : jamais en cache. */
-const CACHE = 'quiz-tsi-v389';
+const CACHE = 'quiz-tsi-v390';
 const IMG_CACHE = 'quiz-tsi-img';
 
 const CORE = [
@@ -23,7 +27,9 @@ const CORE = [
 // Installation : pré-cache le cœur de l'app
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(CORE)).catch(() => {})
+    // cache:'reload' : contourne le cache HTTP (max-age 600 s de GitHub Pages), sinon le nouveau SW
+    // pourrait pré-cacher l'ancienne page.
+    caches.open(CACHE).then((c) => c.addAll(CORE.map((u) => new Request(u, { cache: 'reload' })))).catch(() => {})
   );
   self.skipWaiting();
 });
@@ -84,12 +90,21 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Page et ressources locales : network-first, repli sur cache hors ligne
-  e.respondWith(
-    fetch(req).then((res) => {
+  // Page et ressources locales : cache d'abord, rafraîchi en arrière-plan ; sans cache, réseau,
+  // et hors ligne sans cache, repli sur la page.
+  const reseau = fetch(req).then((res) => {
+    if (res.ok) {
       const copy = res.clone();
-      caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
-      return res;
-    }).catch(() => caches.match(req).then((hit) => hit || caches.match('./index.html')))
+      return caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {}).then(() => res);
+    }
+    return res;
+  });
+  e.waitUntil(reseau.catch(() => {}));
+  e.respondWith(
+    // Recherche limitée au cache de CETTE version : caches.match() seul fouillerait aussi les
+    // caches d'une version précédente et pourrait resservir l'ancienne page.
+    caches.open(CACHE).then((c) => c.match(req)).then((hit) =>
+      hit || reseau.catch(() => caches.open(CACHE).then((c) => c.match('./index.html')))
+    )
   );
 });
