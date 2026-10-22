@@ -767,6 +767,36 @@ window.MathJax = {
   .spark .col{flex:1; min-width:8px; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:5px; height:100%}
   .spark .col i{display:block; width:100%; border-radius:6px 6px 0 0; transition:height .5s cubic-bezier(.2,.8,.2,1)}
   .spark .col span{font-size:9.5px; color:var(--muted); font-family:'JetBrains Mono',monospace}
+  /* ---- Révisions à venir (prévision de charge, Ma progression) ---- */
+  .fc-tools{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:-4px 0 12px}
+  .fc-tools .adm-sel{flex:1 1 140px; min-width:0; padding:7px 10px; font-size:12.5px}
+  @media (pointer:coarse){ .fc-tools .adm-sel{font-size:16px} }   /* < 16 px : iOS zoome sur la page au toucher */
+  .fc-span{display:inline-flex; gap:4px}
+  .fc-span button{padding:5px 11px; border-radius:20px; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:500; border:1px solid var(--line); background:transparent; color:var(--muted)}
+  .fc-span button[aria-pressed="true"]{font-weight:700; border-color:var(--accent); background:color-mix(in srgb,var(--accent) 18%,transparent); color:var(--ink)}
+  .fc-chart{display:flex; align-items:flex-end; gap:6px; height:132px; border-bottom:1px solid var(--line)}
+  .fc-col{flex:1; min-width:0; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:3px}
+  .fc-n{font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; line-height:1; color:var(--ink)}
+  .fc-n.z{font-weight:400; color:var(--muted)}
+  .fc-b{display:flex; flex-direction:column; justify-content:flex-end; width:100%; border-radius:5px 5px 0 0; background:var(--accent-bright); overflow:hidden}
+  .fc-late, .fc-key{background:repeating-linear-gradient(-45deg,var(--warn-text) 0 3px,color-mix(in srgb,var(--warn-text) 30%,var(--panel)) 3px 6px)}
+  .fc-late{display:block; border-top:2px solid var(--panel)}
+  .fc-key{display:inline-block; width:11px; height:11px; border-radius:2px; vertical-align:-1px; margin-right:5px}
+  .fc-axis{display:flex; gap:6px; margin-top:4px}
+  .fc-axis span{flex:1; min-width:0; text-align:center; font-size:10px; line-height:1.3; color:var(--muted); white-space:nowrap}
+  .fc-axis b{color:var(--ink)}
+  .fc-chart.m30, .fc-axis.m30{gap:2px}
+  .m30 .fc-b{border-radius:2px 2px 0 0}
+  .fc-axis.m30{height:14px}
+  .fc-axis.m30 span{position:relative}
+  .fc-axis.m30 em{position:absolute; left:50%; transform:translateX(-50%); font-style:normal}
+  .fc-axis.m30 span:first-child em{left:0; transform:none}
+  .fc-sum{font-size:13px; line-height:1.55; margin:10px 0 0; color:var(--muted)}
+  .fc-sum b, .fc-note b{font-family:'JetBrains Mono',monospace; color:var(--ink)}
+  .fc-note{font-size:11.5px; line-height:1.5; margin:4px 0 0; color:var(--muted)}
+  .fc-tab{width:100%; border-collapse:collapse; font-size:12.5px}
+  .fc-tab th, .fc-tab td{padding:5px 2px; border-bottom:1px solid var(--line); font-weight:400; text-align:left; color:var(--muted)}
+  .fc-tab td{text-align:right; font-family:'JetBrains Mono',monospace; color:var(--ink)}
   .hist{display:flex; flex-direction:column; gap:8px}
   .hist .h-row{display:flex; align-items:center; gap:12px; background:var(--bg-deep); border:1px solid var(--line); border-radius:10px; padding:10px 13px; font-size:13.5px}
   .hist .h-row .d{color:var(--muted); font-family:'JetBrains Mono',monospace; font-size:12px}
@@ -2237,6 +2267,33 @@ function consolidHint(L){
   if(!L.waiting) return L.ready > 1 ? 'prêtes maintenant' : 'prête maintenant';
   const w = 'dans ' + fmtWait(L.next - Date.now());
   return L.ready ? `${L.ready} prête${L.ready>1?'s':''} · suite ${w}` : w;
+}
+/* PRÉVISION DE CHARGE (« Révisions à venir » de Ma progression, façon Anki). Lecture seule, même
+   périmètre que « Réviser » et même règle de date : chaque carte de révision est rangée au PREMIER jour
+   où SRS.isDue() la dit due, interrogé à un instant de ce jour (maintenant, puis chaque minuit donné par
+   SRS.dayEnd). Le jour 0 reprend donc exactement reviewsDueScoped() : retard compris, sans le plafond
+   quotidien. Les cartes à consolider (paliers 1/10 min) sont comptées à part, comme sur l'accueil.
+   filtre : '' = tout le périmètre, 's:<matière>' ou 't:<chapitre>'. */
+function reviewForecast(nDays, filtre){
+  const d = SRS._d(), now = Date.now(), topicOf = hashTopicMap();
+  const refs = [now];
+  for(let k = 1; k < nDays; k++) refs.push(SRS.dayEnd(refs[k-1]));
+  const veille = new Date(now).setHours(0, 0, 0, 0) - 1;     // un instant d'hier : due dès hier = en retard
+  const sub = /^s:/.test(filtre||'') ? filtre.slice(2) : null, top = /^t:/.test(filtre||'') ? filtre.slice(2) : null;
+  const F = { refs, days: new Array(nDays).fill(0), overdue: 0, learning: 0, later: 0, seen: {} };
+  for(const h in d.cards){
+    const c = d.cards[h], t = topicOf[h];
+    if(!t || !scopeOkHash(h)) continue;
+    F.seen[t] = (F.seen[t]||0) + 1;                           // chapitres travaillés (menu du filtre), avant filtrage
+    if(top ? t !== top : (sub && TOPICS[t].subject !== sub)) continue;
+    if(SRS.isLearning(c)){ F.learning++; continue; }
+    if(!SRS.isDue(c, refs[nDays-1])){ F.later++; continue; }
+    let k = 0; while(!SRS.isDue(c, refs[k])) k++;
+    F.days[k]++;
+    if(k === 0 && SRS.isDue(c, veille)) F.overdue++;
+  }
+  F.total = F.days.reduce((a, b) => a + b, 0);
+  return F;
 }
 function effLevel(){
   if(isTransversal(activeSubject)) return 'tr';           // transversale ⇒ 'tr'
@@ -17665,6 +17722,76 @@ window.shareProgress = function(){
   }, 'image/png');
 };
 
+/* ====================== RÉVISIONS À VENIR (prévision de charge) ======================
+   Histogramme des révisions programmées jour par jour (reviewForecast) : sur 7 jours, avec le nombre écrit
+   au-dessus de chaque barre, ou sur 30 jours, avec le détail dans un volet repliable. L'horizon et le
+   filtre ne vivent que le temps de la page (aucune clé localStorage) ; en changer ne redessine que ce
+   bloc, sans relancer renderStats() ni la lecture du cloud. */
+let _fcSpan = 7, _fcFiltre = '';
+function forecastFiltreOptions(seen){
+  const parSub = {};
+  Object.keys(TOPICS).forEach(t => { if(seen[t]) (parSub[TOPICS[t].subject] || (parSub[TOPICS[t].subject] = [])).push(t); });
+  const opt = (v, txt) => `<option value="${v}"${v===_fcFiltre?' selected':''}>${txt}</option>`;
+  return opt('', 'Toutes les matières') + Object.keys(parSub).sort((a,b) => SUBJECTS[a].order - SUBJECTS[b].order).map(s => {
+    const deux = new Set(parSub[s].map(t => TOPICS[t].level)).size > 1;   // deux années mêlées : on dit laquelle
+    return `<optgroup label="${SUBJECTS[s].name}">` + opt('s:'+s, SUBJECTS[s].name + ' — tout')
+      + parSub[s].map(t => opt('t:'+t, TOPICS[t].name + (deux ? ' · ' + LEVELS[TOPICS[t].level].short : ''))).join('') + '</optgroup>';
+  }).join('');
+}
+function forecastInner(ouvert){
+  let F = reviewForecast(_fcSpan, _fcFiltre);
+  const vus = Object.keys(F.seen);
+  if(!vus.length) return `<p class="fc-sum">Aucune carte de ce périmètre n'a encore été révisée : la prévision apparaîtra après tes premières révisions.</p>`;
+  // Filtre devenu sans objet (année changée entre-temps) : retour à « Toutes les matières ».
+  if(_fcFiltre && !vus.some(t => _fcFiltre === 't:'+t || _fcFiltre === 's:'+TOPICS[t].subject)){ _fcFiltre = ''; F = reviewForecast(_fcSpan, ''); }
+  const n = _fcSpan, m30 = n > 7 ? ' m30' : '', max = Math.max(1, ...F.days);
+  const jour = k => new Date(F.refs[k]);
+  const court = k => jour(k).toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short'});
+  const nom = k => k===0 ? `Aujourd'hui (${court(0)})` : k===1 ? `Demain (${court(1)})` : jour(k).toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
+  const cartes = v => `${v} carte${v!==1?'s':''}`;
+  const enRetard = k => k===0 && F.overdue ? `, dont ${F.overdue} en retard` : '';
+  let cols = '', axe = '', lignes = '';
+  F.days.forEach((v, k) => {
+    const lbl = `${nom(k)} : ${cartes(v)}${enRetard(k)}`;
+    const bh = v ? Math.max(2, Math.round(v / max * 112)) : 0;
+    const lh = k===0 && F.overdue ? Math.min(bh, Math.max(5, Math.round(F.overdue / max * 112))) : 0;   // part hachurée : le retard
+    cols += `<div class="fc-col" role="img" aria-label="${lbl}" title="${lbl}">` + (m30 ? '' : `<span class="fc-n${v?'':' z'}">${v}</span>`)
+      + `<i class="fc-b" style="height:${bh}px">` + (lh ? `<i class="fc-late" style="height:${lh}px${lh>=bh?';border-top:0':''}"></i>` : '') + `</i></div>`;
+    if(m30){
+      axe += `<span>${k===0 ? '<em><b>Auj.</b></em>' : k%7===0 ? `<em>+${k} j</em>` : ''}</span>`;
+      lignes += `<tr><th scope="row">${nom(k)}</th><td>${v}${enRetard(k) ? ` <span style="color:var(--muted)">(${F.overdue} en retard)</span>` : ''}</td></tr>`;
+    } else {
+      axe += `<span>${k===0 ? '<b>Auj.</b>' : k===1 ? 'Dem.' : jour(k).toLocaleDateString('fr-FR', {weekday:'short'})}<br>${jour(k).getDate()}</span>`;
+    }
+  });
+  const moy = (F.total / n).toLocaleString('fr-FR', {maximumFractionDigits: 1});
+  let h = `<div class="fc-tools"><select class="adm-sel" id="fcFiltre" aria-label="Filtrer la prévision par matière ou chapitre">${forecastFiltreOptions(F.seen)}</select>`
+    + `<div class="fc-span" role="group" aria-label="Horizon de la prévision">`
+    + [7, 30].map(j => `<button type="button" data-fspan="${j}" aria-pressed="${j===n}" aria-label="Sur ${j} jours">${j} j</button>`).join('') + `</div></div>`;
+  h += `<div class="fc-chart${m30}" role="group" aria-label="Révisions programmées, jour par jour">${cols}</div><div class="fc-axis${m30}" aria-hidden="true">${axe}</div>`;
+  h += `<p class="fc-sum">Demain : <b>${F.days[1]}</b> carte${F.days[1]!==1?'s':''} · sur ${n} jours : <b>${F.total}</b> · moyenne <b>${moy}</b> par jour</p>`;
+  if(F.overdue) h += `<p class="fc-note"><span class="fc-key" aria-hidden="true"></span>Hachuré : <b>${F.overdue}</b> en retard, dues avant aujourd'hui.</p>`;
+  if(F.days[0] > MAX_REVIEWS_PER_DAY) h += `<p class="fc-note">La révision en sert ${MAX_REVIEWS_PER_DAY} par jour : le surplus d'aujourd'hui attend les jours suivants.</p>`;
+  if(F.learning) h += `<p class="fc-note">En plus aujourd'hui : <b>${F.learning}</b> à consolider (paliers de 1 et 10 min), hors barres.</p>`;
+  if(m30 && F.total){ let p = 0; F.days.forEach((v, k) => { if(v > F.days[p]) p = k; }); h += `<p class="fc-note">Jour le plus chargé : ${court(p)} (${cartes(F.days[p])}).</p>`; }
+  h += `<p class="fc-note">${F.later ? `Au-delà de ${n} jours : <b>${F.later}</b> carte${F.later!==1?'s':''}. ` : ''}Nouvelles cartes non comptées (${NEW_PER_DAY} par jour au plus).</p>`;
+  if(m30) h += `<details class="stat-fold fc-detail"${ouvert?' open':''}><summary class="section-label" style="margin:14px 0 6px">Détail jour par jour <span class="stat-fold-n">${n}</span></summary>`
+    + `<table class="fc-tab"><thead><tr><th scope="col">Jour</th><th scope="col" style="text-align:right">Cartes</th></tr></thead><tbody>${lignes}</tbody></table></details>`;
+  return h;
+}
+function paintForecast(focus){
+  const host = $('#fcBlock'); if(!host) return;
+  const ouvert = !!host.querySelector('.fc-detail[open]');
+  host.innerHTML = forecastInner(ouvert); bindForecast();
+  const f = focus && host.querySelector(focus); if(f) f.focus();          // le focus clavier reste sur le contrôle utilisé
+}
+function bindForecast(){
+  const host = $('#fcBlock'); if(!host) return;
+  const sel = host.querySelector('#fcFiltre');
+  if(sel) sel.onchange = () => { _fcFiltre = sel.value; paintForecast('#fcFiltre'); };
+  host.querySelectorAll('[data-fspan]').forEach(b => b.onclick = () => { _fcSpan = +b.dataset.fspan; paintForecast(`[data-fspan="${b.dataset.fspan}"]`); });
+}
+
 /* ====================== TABLEAU DE BORD ====================== */
 async function renderStats(){
   const body = $('#statsBody');
@@ -17733,14 +17860,19 @@ async function renderStats(){
     /* MÊME PÉRIMÈTRE QUE L'ACCUEIL (correctif de l'audit). globalStats() compte les cartes dues sur
        TOUT le paquet, sans filtre d'année ni de matière, alors que la barre d'accueil affiche
        dueScoped() : l'élève lisait deux nombres différents pour la même question. On prend ici le
-       même compte que l'accueil, et on nomme séparément l'arriéré hors périmètre au lieu de le mêler. */
-    let dueVu = g.due, horsPerimetre = 0, aConsolider = 0;
-    try{ dueVu = reviewsDueScoped().length; horsPerimetre = Math.max(0, dueHiddenCount()); aConsolider = learningScoped().total; }catch(e){}
+       même compte que l'accueil, et on nomme séparément l'arriéré hors périmètre au lieu de le mêler.
+       « d'ici 7 jours » = total de la prévision affichée juste en dessous (même périmètre, coupure à
+       minuit). AVANT : g.dueIn7, tout le paquet et les cartes à consolider sur 7 × 24 h glissantes. */
+    let dueVu = g.due, horsPerimetre = 0, aConsolider = 0, dans7 = g.dueIn7;
+    try{ dueVu = reviewsDueScoped().length; horsPerimetre = Math.max(0, dueHiddenCount()); aConsolider = learningScoped().total; dans7 = reviewForecast(7, '').total; }catch(e){}
     const dueCap = Math.min(dueVu, MAX_REVIEWS_PER_DAY), backlog = Math.max(0, dueVu - dueCap);
-    html += `<div class="due-chip">📅 ${dueCap} carte${dueCap!==1?'s':''} à réviser aujourd'hui${backlog>0?` <span style="opacity:.85">(+${backlog} en attente — lissé)</span>`:''}${aConsolider?` · ${aConsolider} à consolider`:''} · ${g.dueIn7} d'ici 7 jours</div>`;
+    html += `<div class="due-chip">📅 ${dueCap} carte${dueCap!==1?'s':''} à réviser aujourd'hui${backlog>0?` <span style="opacity:.85">(+${backlog} en attente — lissé)</span>`:''}${aConsolider?` · ${aConsolider} à consolider`:''} · ${dans7} d'ici 7 jours</div>`;
     if(g.leeches>0){
       html += `<div class="due-chip" style="background:rgba(248,113,113,.13);color:#f87171">🪤 ${g.leeches} carte${g.leeches!==1?'s':''}-problème — oubliée${g.leeches!==1?'s':''} ≥ ${SRS_LEECH_THRESHOLD}× : à retravailler autrement (relire la fiche, reformuler) ou signaler</div>`;
     }
+    // Révisions à venir : la charge des prochains jours (même accès que la révision SRS).
+    try{ if(revisionAllowed()) html += `<p class="section-label">Révisions à venir</p><div id="fcBlock" style="margin-bottom:22px">${forecastInner(false)}</div>`; }
+    catch(e){ console.warn('prévision des révisions', e); }
 
     // Rétention vraie — l'indicateur de santé de l'apprentissage
     html += `<p class="section-label">Rétention vraie <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">(30 derniers jours)</span></p>`;
@@ -17848,6 +17980,7 @@ async function renderStats(){
   const spb=$('#shareProgBtn'); if(spb) spb.onclick=()=>window.shareProgress&&window.shareProgress();
   const scl=$('#statsColleLink'); if(scl) scl.onclick=(e)=>{ e.preventDefault(); if(typeof showColleHisto==='function') showColleHisto(); };
   body.querySelectorAll('[data-rsub]').forEach(b => b.onclick = () => { _radarSubject = b.dataset.rsub; renderStats(); });
+  bindForecast();
   typeset(body);
 }
 function showStats(){
