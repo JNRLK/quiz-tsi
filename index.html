@@ -1364,23 +1364,118 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
   @keyframes aurSpin{to{--aur-ang:360deg}}
   [data-theme="contraste"] .aur-hero::before{display:none}
 
-  /* ---- Écran de carte : lueur du chapitre, réponse qui se retourne, notes colorées ---- */
-  #quizScreen.card{border-color:color-mix(in srgb,var(--qc,var(--accent)) 36%,var(--tile-line));
-    box-shadow:0 40px 90px -54px color-mix(in srgb,var(--qc,var(--accent)) 85%,transparent), var(--sh-card)}
-  #quizScreen::before{content:""; position:absolute; left:28px; right:28px; top:-1px; height:2px; border-radius:2px; pointer-events:none;
-    background:linear-gradient(90deg,transparent,var(--qc,var(--accent)),transparent); box-shadow:0 0 16px var(--qc,var(--accent))}
-  #quizScreen.fs-active::before{display:none}
-  #quizScreen:not(.fs-active), #resultScreen{max-width:880px; margin-left:auto; margin-right:auto}
-  .bar{background:var(--panel-2); border:0; height:6px}
+  /* ═══ SÉANCE EN MODE FOCUS (v404) ═════════════════════════════════════════════════════
+     Pendant une séance et sur son bilan, l'en-tête, la barre latérale et le pied de page s'effacent
+     (body.aur-focus, posé par aurSyncNav). La carte (#aurCard) porte la couleur du chapitre (--qc),
+     se retourne pour montrer la réponse (aurFlipCard), s'incline sous la souris et s'envole quand on
+     la note (aurFly). Aucune perspective permanente sur les ancêtres de la carte : perspective() ne
+     vit que dans les transformations, pour ne jamais créer de bloc conteneur à un élément fixe. */
+  body.aur-focus{padding-left:0}
+  body.aur-focus .aur-side, body.aur-focus .top, body.aur-focus #legalFooter{display:none}
+  body.aur-focus .wrap{max-width:1320px; padding-top:18px}
+  #quizScreen.card, #resultScreen.card{background:none; border:0; box-shadow:none; padding:0; border-radius:0}
+  #quizScreen{overflow-x:clip}
+  #quizScreen:not(.fs-active) .fs-toggle{top:0; right:0; width:40px; height:40px; border-radius:50%}
+  .aur-ses-top{display:flex; align-items:center; gap:14px; margin:0 0 22px; padding-right:54px; min-height:40px}
+  .aur-quit{display:inline-flex; align-items:center; gap:8px; height:40px; padding:0 16px; flex:none; border-radius:999px; cursor:pointer;
+    border:1px solid var(--tile-line); background:var(--tile); color:var(--ink); font:500 13.5px 'Lexend',sans-serif; transition:.18s}
+  .aur-quit:hover{border-color:var(--accent)}
+  .aur-quit svg.i{width:17px; height:17px}
+  #quizScreen .progress-wrap{flex:1; min-width:0; margin:0; display:flex; align-items:center; gap:14px}
+  #quizScreen .progress-meta{margin:0; padding:0; flex:none; font-size:12.5px; letter-spacing:.04em; color:var(--muted)}
+  #quizScreen #qTopicTag{display:none}
+  #quizScreen .bar{flex:1; background:var(--panel-2); border:0; height:6px}
+  #quizScreen.aur-has-segs .bar{display:none}
   .bar > i{background:var(--grad-accent-h); box-shadow:0 0 12px color-mix(in srgb,var(--a1) 65%,transparent)}
+  .aur-segs{flex:1; display:flex; gap:5px; min-width:0}
+  .aur-segs[hidden]{display:none}
+  .aur-segs i{flex:1; min-width:0; height:6px; border-radius:99px; background:var(--panel-2); transition:background .4s, box-shadow .4s}
+  .aur-segs i.cur{background:color-mix(in srgb,var(--ink) 45%,transparent); animation:aurPulse 1.4s ease-in-out infinite}
+  .aur-segs i.s-g0, .aur-segs i.s-ko{background:var(--analyse); box-shadow:0 0 8px color-mix(in srgb,var(--analyse) 70%,transparent)}
+  .aur-segs i.s-g1{background:var(--integ); box-shadow:0 0 8px color-mix(in srgb,var(--integ) 70%,transparent)}
+  .aur-segs i.s-g2, .aur-segs i.s-ok{background:var(--poly); box-shadow:0 0 8px color-mix(in srgb,var(--poly) 70%,transparent)}
+  .aur-segs i.s-g3{background:var(--accent-2); box-shadow:0 0 8px color-mix(in srgb,var(--accent-2) 70%,transparent)}
+  @keyframes aurPulse{50%{opacity:.4}}
+
+  .aur-ses-body{display:grid; grid-template-columns:minmax(0,1fr); gap:28px; align-items:start}
+  .aur-rail, .aur-aside{display:none; flex-direction:column; gap:14px; position:sticky; top:18px; min-width:0}
+  .aur-center{min-width:0; width:100%; max-width:780px; justify-self:center}
+  @media (min-width:1024px){
+    .aur-ses-body{grid-template-columns:minmax(0,1fr) 290px}
+    .aur-aside{display:flex}
+  }
+  @media (min-width:1280px){
+    .aur-ses-body{grid-template-columns:232px minmax(0,1fr) 290px}
+    .aur-rail{display:flex}
+    #quizScreen .kbd-hint{display:none}
+  }
+  #quizScreen.fs-active .aur-rail, #quizScreen.fs-active .aur-aside{display:none}
+  #quizScreen.fs-active .aur-ses-body{grid-template-columns:minmax(0,1fr)}
+  #quizScreen.fs-active .aur-center{max-width:none}
+  .aur-rail-card, .aur-side-card{padding:18px 20px; border-radius:22px; background:var(--tile); border:1px solid var(--tile-line); box-shadow:var(--sh-card); min-width:0}
+  .aur-line{display:flex; align-items:baseline; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); font-size:13px; color:var(--muted)}
+  .aur-line:last-child{border-bottom:0; padding-bottom:0}
+  .aur-line b{font:700 18px 'JetBrains Mono',monospace; color:var(--ink)}
+  .aur-keys{display:grid; grid-template-columns:auto 1fr; gap:10px 12px; align-items:center; margin-top:12px; font-size:12.5px; color:var(--muted)}
+  .aur-keys kbd{font:600 10.5px 'JetBrains Mono',monospace; padding:2px 7px; border-radius:6px; border:1px solid var(--line); background:var(--panel-2); color:var(--ink); justify-self:start; white-space:nowrap}
+  .aur-side-card{animation:aurSideIn .4s cubic-bezier(.2,.8,.2,1) backwards}
+  @keyframes aurSideIn{from{opacity:0; transform:translateY(8px)}}
+  .aur-side-card .aur-k{margin-bottom:10px}
+  .aur-side-chap{display:flex; align-items:center; gap:12px}
+  .aur-side-chap .aur-ring{width:46px; height:46px; flex:none}
+  .aur-side-chap .aur-ring circle{stroke-width:12}
+  .aur-side-chap .aur-ring .rf{stroke:var(--c); filter:drop-shadow(0 0 4px color-mix(in srgb,var(--c) 70%,transparent))}
+  .aur-side-chap .aur-ring-in{font:700 10.5px 'JetBrains Mono',monospace}
+  .aur-side-chap b{display:block; font-family:'Literata',serif; font-size:16.5px; line-height:1.25}
+  .aur-side-chap span{font-size:12px; color:var(--muted)}
+  .aur-side-meta{margin-top:12px; font-size:12.5px; color:var(--muted)}
+  .aur-side-meta b{color:var(--ink); font-family:'JetBrains Mono',monospace}
+  .aur-side-card .annales-line{margin-top:10px !important}
+  .aur-side-card.aur-vigc{border-color:color-mix(in srgb,var(--integ) 45%,var(--tile-line)); background:linear-gradient(160deg,color-mix(in srgb,var(--integ) 12%,transparent),transparent 70%),var(--tile)}
+  .aur-side-card.aur-vigc .aur-k{color:var(--warn-text)}
+  .aur-side-card .vig{margin:0; padding:0; background:none; border:0; font-size:14px}
+  .aur-side-card .vig .ic{display:none}
+  .aur-side-card .course-links{margin-top:0}
+
+  #quizScreen #badge{display:flex; justify-content:center; flex-wrap:wrap; gap:7px; margin-bottom:16px}
+  #quizScreen #badge .badge, #quizScreen #badge .mtag{margin:0}
   .mtag{background:var(--panel-2); border-color:transparent}
   .card-in{animation-fill-mode:backwards}
+  .aur-tilt{transition:transform .3s ease-out}
+  .aur-card{position:relative; display:flex; flex-direction:column; min-height:360px; padding:30px 34px 26px; border-radius:30px;
+    background:linear-gradient(180deg,color-mix(in srgb,var(--qc,var(--accent)) 10%,transparent),transparent 90px) padding-box,
+               linear-gradient(var(--panel),var(--panel)) padding-box,
+               linear-gradient(150deg,var(--qc,var(--accent)),transparent 42%,color-mix(in srgb,var(--qc,var(--accent)) 50%,transparent)) border-box;
+    border:1.5px solid transparent;
+    box-shadow:0 44px 90px -50px color-mix(in srgb,var(--qc,var(--accent)) 80%,transparent), var(--sh-card)}
+  [data-theme="contraste"] .aur-card{background:var(--panel); border:2px solid #000; box-shadow:none}
+  .aur-card .question{font-size:clamp(21px,2.3vw,28px); line-height:1.38; margin-bottom:22px}
+  .aur-card.aur-m-flash:not(.aur-back) #qText{margin-top:auto; margin-bottom:auto; padding:14px 0}
+  .aur-card.aur-m-flash:not(.aur-back) #qText:not(:has(.qctx,.qcode,pre,ul,ol,table,figure,img,svg,.qfig-row,.tkz-box,.consigne)){text-align:center}
+  .aur-card.aur-m-flash:not(.aur-back) .flash-hint{text-align:center}
+  .aur-card.aur-m-flash:not(.aur-back) #answerZone > div:last-child{justify-content:center}
+  .aur-card #revealBtn{padding:15px 30px}
+  @media (hover:hover) and (pointer:fine){
+    .aur-card #revealBtn::after{content:"Espace"; margin-left:10px; padding:2px 7px; border-radius:6px; border:1px solid currentColor; font:600 10.5px 'JetBrains Mono',monospace; opacity:.6; vertical-align:2px}
+    .aur-card .srs-grade .sg2::before{position:absolute; top:6px; right:9px; font:600 9.5px 'JetBrains Mono',monospace; color:var(--muted)}
+    .aur-card .srs-grade .sg2:nth-child(1)::before{content:"1"}
+    .aur-card .srs-grade .sg2:nth-child(2)::before{content:"2"}
+    .aur-card .srs-grade .sg2:nth-child(3)::before{content:"3"}
+    .aur-card .srs-grade .sg2:nth-child(4)::before{content:"4"}
+  }
+  /* Verso : la question reste en rappel, plus petite ; l'invite et les boutons du recto disparaissent */
+  .aur-card.aur-back #qText{font-size:clamp(15px,1.5vw,17.5px); color:var(--muted); margin:0 0 12px; padding-bottom:12px; border-bottom:1px solid var(--line)}
+  .aur-card.aur-back .flash-hint{display:none}
+  .aur-card.aur-back #answerZone > div:has(#revealBtn){display:none !important}   /* !important : la rangée porte un style en ligne */
+  .aur-card .feedback:not(.hidden){animation:aurReveal .45s cubic-bezier(.2,.8,.25,1) backwards; transform-origin:50% 0}
+  .aur-card.aur-m-flash .feedback:not(.hidden){margin-top:4px; animation:none}   /* la carte entière se retourne déjà */
+  @keyframes aurReveal{from{opacity:0; transform:perspective(1100px) rotateX(-55deg) translateY(-4px)}}
   #quizScreen .reveal-ans{background:linear-gradient(135deg,color-mix(in srgb,var(--qc,var(--accent)) 12%,var(--panel-2)),var(--panel-2) 70%);
-    border-left:4px solid var(--qc,var(--accent)); border-radius:16px}
-  #quizScreen .feedback:not(.hidden){animation:aurFlip .5s cubic-bezier(.2,.8,.25,1) backwards; transform-origin:50% 0}
-  @keyframes aurFlip{from{opacity:0; transform:perspective(1100px) rotateX(-62deg) translateY(-4px)}}
+    border-left:4px solid var(--qc,var(--accent)); border-radius:16px; font-size:clamp(17px,1.7vw,20px)}
   .choice{border-radius:16px; border-width:1px; background:var(--panel-2)}
   .choice:hover:not(:disabled){border-color:var(--qc,var(--accent)); background:color-mix(in srgb,var(--qc,var(--accent)) 8%,var(--panel-2))}
+  .aur-card .choice .key{display:inline-grid; place-items:center; width:26px; height:26px; border-radius:8px; background:var(--bg-deep); font-size:12px}
+  @media (min-width:700px){ .aur-card .choices{display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr)); gap:10px} }
   .srs-grade{gap:10px}
   .sg2{--gc:var(--accent); position:relative; overflow:hidden; border:1px solid var(--line); background:var(--panel); border-radius:18px; padding:12px 6px 14px}
   .sg2::after{content:""; position:absolute; left:0; right:0; bottom:0; height:3px; background:var(--gc); box-shadow:0 0 12px var(--gc)}
@@ -1388,11 +1483,59 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
   .sg2:hover{transform:translateY(-3px); border-color:var(--gc); box-shadow:0 14px 30px -16px var(--gc)}
   .sg2 .gl{font-size:13.5px}
   .sg2 .gd{background:none; padding:0; font-weight:500}
-  #quizScreen.aur-out-r #qText, #quizScreen.aur-out-r #answerZone, #quizScreen.aur-out-r #feedback{transform:translateX(30px); opacity:0; transition:transform .16s ease-in, opacity .16s ease-in}
-  #quizScreen.aur-out-l #qText, #quizScreen.aur-out-l #answerZone, #quizScreen.aur-out-l #feedback{transform:translateX(-30px); opacity:0; transition:transform .16s ease-in, opacity .16s ease-in}
+  /* Sur ordinateur, le piège, le renvoi au cours et la ligne « Au concours » passent dans le panneau latéral */
+  @media (min-width:1024px){
+    #quizScreen:not(.fs-active) #aurCard #feedback :is(.vig,.course-links,.annales-line){display:none}
+  }
+  #quizScreen #abandonBtn{display:none}
+  #quizScreen .next-row{margin-top:18px}
+  /* Mouvements de la carte : arrivée, retournement, envol */
+  .aur-card.aur-enter{animation:aurEnter .46s cubic-bezier(.2,.9,.3,1.12) backwards}
+  @keyframes aurEnter{from{opacity:0; transform:perspective(1400px) translateY(34px) scale(.96) rotateX(9deg)}}
+  .aur-card.aur-turn{transform:perspective(1600px) rotateY(88deg); transition:transform .17s cubic-bezier(.55,0,.8,.3)}
+  .aur-card.aur-turn #feedback{display:none !important}
+  .aur-card.aur-turn2{animation:aurTurnBack .34s cubic-bezier(.2,.9,.3,1.15)}
+  @keyframes aurTurnBack{from{transform:perspective(1600px) rotateY(-88deg)}}
+  .aur-card.aur-fly-r, .aur-card.aur-fly-l{opacity:0; transition:transform .23s cubic-bezier(.5,0,.8,.4), opacity .23s ease-in; pointer-events:none}
+  .aur-card.aur-fly-r{transform:translate(115%,26px) rotate(12deg)}
+  .aur-card.aur-fly-l{transform:translate(-115%,26px) rotate(-12deg)}
+
+  /* Bilan de séance */
+  #resultScreen > *{max-width:760px; margin-left:auto; margin-right:auto}
+  #resultScreen .score-hero{padding-top:26px}
+  #resultScreen .ring{width:200px; height:200px; margin-bottom:20px}
+  #resultScreen .ring svg{width:100%; height:100%}
+  #resultScreen .ring .pct b{font-family:'JetBrains Mono',monospace; font-size:48px}
   #ringFill{filter:drop-shadow(0 0 10px color-mix(in srgb,var(--a1) 55%,transparent))}
+  #resultScreen .verdict-line{font-family:'Literata',serif; font-style:normal; font-weight:600; font-size:clamp(26px,3.4vw,38px); line-height:1.15; margin:4px 0 6px}
+  .aur-end-note{color:var(--muted); font-size:14px; margin:0 0 22px}
+  .aur-end-note:empty{display:block; height:0; margin:0 0 16px}
+  .aur-end-stats{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:0 0 6px}
+  .aur-end-stats > div{padding:16px 10px; border-radius:20px; background:var(--tile); border:1px solid var(--tile-line); box-shadow:var(--sh-card)}
+  .aur-end-stats b{display:flex; align-items:center; justify-content:center; gap:4px; font:700 24px 'JetBrains Mono',monospace}
+  .aur-end-stats b svg.i{width:20px; height:20px}
+  .aur-end-stats span{display:block; font-size:12px; color:var(--muted); margin-top:2px}
+  .aur-end-actions .btn{display:inline-flex; align-items:center; gap:9px}
+  .aur-end-actions .btn svg.i{width:18px; height:18px}
+  #resultScreen .breakdown, #resultScreen .review{padding:20px 22px; border-radius:24px; background:var(--tile); border:1px solid var(--tile-line); box-shadow:var(--sh-card)}
+  #resultScreen .breakdown:empty, #resultScreen .review:empty{display:none}
+  #resultScreen .review{margin-top:16px}
+  #resultScreen .review h3{margin-top:0}
   .brk-row .track{background:var(--panel-2); border:0}
   .aur-confetti{position:fixed; inset:0; z-index:1200; pointer-events:none; width:100%; height:100%}
+
+  @media (max-width:600px){
+    body.aur-focus .wrap{padding-top:12px}
+    .aur-ses-top{gap:10px; margin-bottom:16px; padding-right:50px}
+    .aur-quit{width:40px; padding:0; justify-content:center}
+    .aur-quit span{display:none}
+    .aur-card{min-height:min(56vh,420px); padding:22px 18px 18px; border-radius:26px}
+    .aur-card .question{font-size:clamp(19px,5.2vw,23px)}
+    .aur-end-stats{grid-template-columns:1fr 1fr}
+    #resultScreen .ring{width:160px; height:160px}
+    #resultScreen .ring .pct b{font-size:38px}
+  }
+  @media (prefers-reduced-motion:reduce){ .aur-card.aur-fly-r, .aur-card.aur-fly-l{transform:none} }
 
   /* ---- Réglages ---- */
   .aur-settings .theme-switch{display:flex; width:100%}
@@ -1436,6 +1579,7 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
   <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4M12 17h.01"/></symbol>
   <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/></symbol>
   <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.5-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.5 4.5L20 16M20 20v-4h-4"/></symbol>
 </svg>
 <!-- Indicateur discret de chargement MathJax : disparaît dès que MathJax est prêt ;
      affiche un message d'erreur si le CDN reste injoignable (~10 s). -->
@@ -1599,24 +1743,47 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
     </blockquote>
   </div>
 
-  <!-- QUIZ -->
+  <!-- QUIZ — séance en MODE FOCUS (AURORA v404) : en-tête, barre latérale et pied de page s'effacent
+       (body.aur-focus). Tous les identifiants d'origine sont conservés ; seuls des conteneurs s'ajoutent :
+       barre du haut, colonne « Séance » (#aurRail), carte (#aurCard) et panneau latéral (#aurAside). -->
   <div class="card hidden" id="quizScreen">
     <button class="fs-toggle" id="fsBtn" type="button" aria-label="Mode plein écran" title="Mode plein écran — révision sans distraction"><span class="fs-ic" aria-hidden="true">⛶</span></button>
-    <div class="progress-wrap">
-      <div class="progress-meta"><span id="qCounter">01 / 10</span><span id="qTopicTag"></span></div>
-      <div class="bar"><i id="progBar"></i></div>
+    <div class="aur-ses-top">
+      <button type="button" class="aur-quit" id="aurQuitBtn" title="Terminer la séance" aria-label="Terminer la séance"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg><span>Quitter</span></button>
+      <div class="progress-wrap">
+        <div class="aur-segs" id="aurSegs" aria-hidden="true" hidden></div>
+        <div class="bar"><i id="progBar"></i></div>
+        <div class="progress-meta"><span id="qCounter">01 / 10</span><span id="qTopicTag"></span></div>
+      </div>
     </div>
-    <div id="badge"></div>
-    <div class="question" id="qText"></div>
-    <div id="answerZone"></div>
-    <div class="feedback hidden" id="feedback" role="status" aria-live="polite"></div>
-    <div class="next-row">
-      <button class="btn ghost" id="undoBtn" type="button" style="font-size:13px; padding:9px 14px; opacity:.4; cursor:default" title="Rien à annuler" disabled>↶ Annuler</button>
-      <button class="btn ghost" id="reportBtn" style="font-size:13px; padding:9px 14px" title="Signaler une erreur sur cette carte">⚐ Signaler</button>
-      <button class="btn ghost" id="abandonBtn" style="font-size:13px; padding:9px 14px">✕ Abandonner</button>
-      <button class="btn hidden" id="nextBtn">Suivant →</button>
+    <div class="aur-ses-body">
+      <aside class="aur-rail" aria-label="Séance en cours">
+        <div class="aur-rail-card"><span class="aur-k">Séance</span>
+          <div class="aur-line"><span>Temps</span><b id="aurSesTime">0:00</b></div>
+          <div class="aur-line"><span>Réussite</span><b id="aurSesRate">—</b></div>
+          <div class="aur-line"><span id="aurSesLeftLbl">Restantes</span><b id="aurSesLeft">—</b></div>
+        </div>
+        <div class="aur-rail-card"><span class="aur-k">Raccourcis</span>
+          <div class="aur-keys"><kbd>Espace</kbd><span>Retourner la carte</span><kbd>1 – 4</kbd><span>Répondre, noter</span><kbd>Entrée</kbd><span>Carte suivante</span><kbd>Ctrl Z</kbd><span>Annuler la note</span></div>
+        </div>
+      </aside>
+      <div class="aur-center">
+        <div id="badge"></div>
+        <div class="aur-stage"><div class="aur-tilt"><div class="aur-card" id="aurCard">
+          <div class="question" id="qText"></div>
+          <div id="answerZone"></div>
+          <div class="feedback hidden" id="feedback" role="status" aria-live="polite"></div>
+        </div></div></div>
+        <div class="next-row">
+          <button class="btn ghost" id="undoBtn" type="button" style="font-size:13px; padding:9px 14px; opacity:.4; cursor:default" title="Rien à annuler" disabled>↶ Annuler</button>
+          <button class="btn ghost" id="reportBtn" style="font-size:13px; padding:9px 14px" title="Signaler une erreur sur cette carte">⚐ Signaler</button>
+          <button class="btn ghost" id="abandonBtn" style="font-size:13px; padding:9px 14px">✕ Abandonner</button>
+          <button class="btn hidden" id="nextBtn">Suivant →</button>
+        </div>
+        <p class="kbd-hint">Raccourcis : <kbd>1</kbd>–<kbd>4</kbd> répondre / noter · <kbd>Espace</kbd> révéler · <kbd>Entrée</kbd> suivant · <kbd>Ctrl</kbd>+<kbd>Z</kbd> annuler</p>
+      </div>
+      <aside class="aur-aside" id="aurAside" aria-label="Pour aller plus loin"></aside>
     </div>
-    <p class="kbd-hint">Raccourcis : <kbd>1</kbd>–<kbd>4</kbd> répondre / noter · <kbd>Espace</kbd> révéler · <kbd>Entrée</kbd> suivant · <kbd>Ctrl</kbd>+<kbd>Z</kbd> annuler</p>
   </div>
 
   <!-- RESULTS -->
@@ -1632,16 +1799,18 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
         <div class="pct"><b id="rPct">0%</b><span id="rFrac">0 / 0</span></div>
       </div>
       <div class="verdict-line" id="rVerdict"></div>
+      <p class="aur-end-note" id="aurEndNote"></p>
+      <div class="aur-end-stats" id="aurEndStats"></div>
+    </div>
+
+    <div class="actions aur-end-actions" style="justify-content:center; flex-wrap:wrap">
+      <button class="btn" id="againBtn"><svg class="i" aria-hidden="true"><use href="#i-refresh"/></svg>Recommencer</button>
+      <button class="btn ghost" id="homeBtn"><svg class="i" aria-hidden="true"><use href="#i-home"/></svg>Retour à l'accueil</button>
+      <button class="btn ghost" id="resultStatsBtn"><svg class="i" aria-hidden="true"><use href="#i-chart"/></svg>Ma progression</button>
     </div>
 
     <div class="breakdown" id="breakdown"></div>
     <div class="review" id="review"></div>
-
-    <div class="actions" style="justify-content:center; flex-wrap:wrap">
-      <button class="btn" id="againBtn">Recommencer</button>
-      <button class="btn ghost" id="homeBtn">← Changer de réglages</button>
-      <button class="btn ghost" id="resultStatsBtn">📊 Ma progression</button>
-    </div>
 
     <blockquote class="prof-quote" style="margin-top:28px">
       <span class="pq-mark">❝</span>
@@ -2854,7 +3023,7 @@ function annalesLine(q){
   var det = i.sessions > 5
     ? 'lors de <b style="color:var(--ink)">' + i.sessions + ' des ' + ANNALES_SESSIONS + ' sessions</b> analysées (' + ANNALES_RANGE + '), dont ' + i.years.slice(-3).join(', ')
     : 'en <b style="color:var(--ink)">' + i.years.join(', ') + '</b>';
-  return '<div style="margin-top:10px;font-size:12.5px;color:var(--muted);line-height:1.55">'
+  return '<div class="annales-line" style="margin-top:10px;font-size:12.5px;color:var(--muted);line-height:1.55">'
        + '<span style="color:'+col+';font-weight:700">'+(i.niveau===3?'🔥':'🎯')+' Au concours</span> — « '+nom+' » est tombé '
        + det
        + (i.concours.length ? ' ('+i.concours.join(', ')+')' : '')
@@ -14129,7 +14298,6 @@ function renderQuestion(){
   $('#qTopicTag').style.color = t.raw;
   // AURORA (v403) : la lueur de la carte et le halo du fond prennent la couleur du chapitre
   document.documentElement.style.setProperty('--qc', t.raw);
-  $('#quizScreen').classList.remove('aur-out-r','aur-out-l');
   const ab=$('#abandonBtn'); if(ab) ab.textContent = reviewSession ? '✓ Terminer' : '✕ Abandonner';
 
   /* PASTILLE TEINTÉE (v291). `.badge` imposait color:#fff sur un fond plein pris dans TOPICS.raw :
@@ -14156,6 +14324,7 @@ function renderQuestion(){
   scrollQuizTop();
   _entrySnap = _srsSnap();        // instantané « avant notation » de cette carte (base de l'annulation)
   updateUndoBtn();
+  try{ aurSesRender(); }catch(e){}   // AURORA : carte, barre segmentée, colonne « Séance », panneau latéral
 }
 
 /* Certains énoncés portent des balises de gras ÉCHAPPÉES — on lit littéralement
@@ -14461,6 +14630,7 @@ function buildMathKeyboard(input, mount){
 /* P3 — « Je ne sais pas » (trou/saisie/flash) : révèle la réponse et compte comme Oubli, sans deviner */
 function revealUnknown(q){
   if(answeredFlag) return; answeredFlag=true;
+  if(q.mode==='flash') aurFlipCard();
   if(q._ms==null && q._shownAt) q._ms = Date.now()-q._shownAt; q._answered=true;   // temps avant abandon + marque « répondu »
   const inp=$('#ansInput'); if(inp) inp.disabled=true;
   const kb=$('#kbMount'); if(kb) kb.innerHTML='';
@@ -14543,6 +14713,7 @@ function renderFlash(zone, q){
   zone.querySelector('#dunnoBtn').onclick = ()=> revealUnknown(q);
   zone.querySelector('#revealBtn').onclick = ()=>{
     if(answeredFlag) return; answeredFlag=true;
+    aurFlipCard();   // AURORA : la carte se retourne ; le verso s'affiche quand elle est de profil
     const fb = $('#feedback');
     let html = `<div class="reveal-ans"><span class="rl">Réponse</span>${q.answer}</div>`;
     html += expHTML(q);
@@ -14610,9 +14781,10 @@ function srsGradeButtons(q, container){
       else { streak=0; q._missed=true; }
       updateHeaderStats();
       div.querySelectorAll('.sg2').forEach(x=>{x.disabled=true; x.style.opacity=x===b?'1':'.3';});
-      $('#quizScreen').classList.add(g >= 2 ? 'aur-out-r' : 'aur-out-l');   // la carte part à droite si elle est sue, à gauche sinon
-      // la note EST l'action finale : on enchaîne directement sur la carte suivante
-      setTimeout(advanceCard, 160);
+      q._aurG = g;   // AURORA : couleur du segment de cette carte dans la barre de progression
+      // la note EST l'action finale : on enchaîne sur la carte suivante, le temps que celle-ci
+      // s'envole (à droite si elle est sue, à gauche sinon ; 160 ms en mouvement réduit)
+      setTimeout(advanceCard, aurFly(g >= 2 ? 'r' : 'l'));
     };
     div.appendChild(b);
   });
@@ -14678,8 +14850,8 @@ function qcmConfidence(q, container){
       SRS.review(h, q.q, q.topic, g);
       updateHeaderStats();
       div.querySelectorAll('.sg2').forEach(x=>{ x.disabled=true; x.style.opacity = x===b?'1':'.3'; });
-      $('#quizScreen').classList.add('aur-out-r');
-      setTimeout(advanceCard, 160);
+      q._aurG = g;
+      setTimeout(advanceCard, aurFly('r'));
     };
     div.appendChild(b);
   });
@@ -14711,7 +14883,14 @@ function finalizeSelf(q, ok){
   scrollToAction(fb.lastElementChild);
 }
 
-$('#nextBtn').onclick = ()=> advanceCard();
+/* AURORA (v404) : la carte s'envole avant la suivante. Garde contre le double clic (et la touche
+   Entrée répétée) pendant l'envol : sans elle, deux cartes seraient passées d'un coup. */
+let _aurFlying = false;
+$('#nextBtn').onclick = ()=>{
+  if(_aurFlying) return; _aurFlying = true;
+  const cur = pool[idx];
+  setTimeout(()=>{ _aurFlying = false; advanceCard(); }, aurFly(cur && cur._missed ? 'l' : 'r'));
+};
 (function(){ const ub = document.getElementById('undoBtn'); if(ub) ub.onclick = ()=> undoLast(); })();
 
 /* ====================== MODE PLEIN ÉCRAN (révision sans distraction) ====================== */
@@ -14854,10 +15033,24 @@ function showResults(){
   const C = 2*Math.PI*74;
   const fill = $('#ringFill');
   const col = pct>=80?'#22c55e':pct>=50?'#f59e0b':'#ef4444';
-  fill.setAttribute('stroke', col);
-  $('#rPct').style.color = col;
+  // AURORA (v404) : anneau en dégradé pour une belle séance ; ambre ou rouge gardent leur sens
+  fill.setAttribute('stroke', pct>=80 ? 'url(#aurGrad)' : col);
+  $('#rPct').style.color = pct>=80 ? '' : col;
   requestAnimationFrame(()=> fill.style.strokeDashoffset = C*(1-pct/100));
   if(pct >= 80 && total >= 5) aurConfetti();   // AURORA (v403) : une belle session se fête
+  // AURORA (v404) : bilan chiffré de la séance (cartes, réussies, durée, série)
+  const _es = $('#aurEndStats');
+  if(_es){
+    const dur = sessionStartedAt ? Math.max(0, Math.round((Date.now()-sessionStartedAt)/1000)) : 0;
+    let serie = 0; try{ serie = SRS.streakCount()||0; }catch(e){}
+    _es.innerHTML = `<div><b>${total}</b><span>carte${total>1?'s':''}</span></div>`
+      + `<div><b>${score}</b><span>réussie${score>1?'s':''}</span></div>`
+      + `<div><b>${Math.floor(dur/60)}:${String(dur%60).padStart(2,'0')}</b><span>durée</span></div>`
+      + `<div><b>${serie}<svg class="i aur-flame" aria-hidden="true"><use href="#i-flame"/></svg></b><span>jour${serie>1?'s':''} de série</span></div>`;
+  }
+  const _en = $('#aurEndNote');
+  if(_en) _en.textContent = (lastSessionKind === 'review')
+    ? 'Les cartes ratées reviennent dans quelques minutes, les autres sont replanifiées.' : '';
 
   let verdict;
   if(pct>=90) verdict="Niveau concours. Solide.";
@@ -14913,7 +15106,8 @@ function showResults(){
   //    bouton qui appelait startBtn et échouait en silence quand aucun chapitre n'était coché.
   const again = $('#againBtn');
   if(again){
-    again.textContent = (lastSessionKind === 'review') ? 'Continuer la révision →' : 'Recommencer';
+    again.innerHTML = '<svg class="i" aria-hidden="true"><use href="#i-refresh"/></svg>'
+      + ((lastSessionKind === 'review') ? 'Continuer la révision' : 'Recommencer');
     again.onclick = ()=>{ if(typeof restartSession === 'function') restartSession(); else $('#startBtn').click(); };
   }
 
@@ -20514,6 +20708,7 @@ function aurSyncNav(){
   const cur = (ecran && AUR_SCREEN_NAV[ecran]) || 'home';
   document.querySelectorAll('.aur-nav[data-aurnav], .aur-tab[data-aurnav], .aur-tab-play').forEach(n => n.classList.toggle('on', n.dataset.aurnav === cur));
   document.body.classList.toggle('aur-quiz', AUR_SEANCE.some(visible));
+  document.body.classList.toggle('aur-focus', visible('quizScreen') || visible('resultScreen'));   // séance et bilan : plein cadre
   const adm = $('#adminBtn'), admOn = !!adm && !adm.classList.contains('hidden');
   document.querySelectorAll('[data-aurnav="admin"]').forEach(n => { n.hidden = !admOn; });
 }
@@ -20549,6 +20744,138 @@ function aurConfetti(){
     requestAnimationFrame(f);
   }catch(e){}
 }
+/* ═══ AURORA (v404) : SÉANCE EN MODE FOCUS ═══════════════════════════════════════════════
+   Pur affichage : rien ici ne note une carte ni ne touche au SRS. renderQuestion appelle
+   aurSesRender ; la révélation d'une flashcard appelle aurFlipCard ; une note ou « Suivant »
+   appelle aurFly, dont le retour est le délai avant la carte suivante. */
+const aurReduit = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+var _aurFlipTok = 0;   // jeton : un retournement en cours est abandonné si la carte change entre-temps
+function aurFly(dir){
+  const c = $('#aurCard'), qs = $('#quizScreen');
+  if(!c || !qs || qs.classList.contains('hidden') || aurReduit()) return 160;   // délai historique
+  _aurFlipTok++;
+  c.classList.remove('aur-enter', 'aur-turn', 'aur-turn2');
+  c.classList.add(dir === 'l' ? 'aur-fly-l' : 'aur-fly-r');
+  return 240;
+}
+function aurFlipCard(){
+  const c = $('#aurCard'); if(!c || c.classList.contains('aur-back')) return;
+  const tok = ++_aurFlipTok;
+  const montrerNotes = () => {
+    const g = c.querySelector('#feedback .srs-grade') || c.querySelector('#feedback');
+    if(g){ try{ g.scrollIntoView({block:'nearest', behavior:'smooth'}); }catch(e){} }
+  };
+  if(aurReduit()){ c.classList.add('aur-back'); setTimeout(montrerNotes, 60); return; }
+  c.classList.remove('aur-enter');
+  c.classList.add('aur-turn');                       // la carte pivote jusqu'à être de profil…
+  setTimeout(() => {
+    if(tok !== _aurFlipTok) return;
+    c.classList.remove('aur-turn');
+    c.classList.add('aur-back', 'aur-turn2');        // …le verso remplace le recto, puis elle revient de face
+    setTimeout(() => { if(tok !== _aurFlipTok) return; c.classList.remove('aur-turn2'); montrerNotes(); }, 360);
+  }, 175);
+}
+function aurSesTick(){
+  const qs = $('#quizScreen'), el = $('#aurSesTime');
+  if(!qs || !el || qs.classList.contains('hidden')) return;
+  const s = sessionStartedAt ? Math.max(0, Math.floor((Date.now() - sessionStartedAt) / 1000)) : 0;
+  el.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+setInterval(aurSesTick, 1000);
+function aurSesRender(){
+  const q = pool[idx]; if(!q) return;
+  const t = TOPICS[q.topic] || {};
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  _aurFlipTok++;
+  const c = $('#aurCard'), qs = $('#quizScreen');
+  if(c){
+    c.className = 'aur-card aur-m-' + (q.mode || 'qcm');
+    if(!aurReduit()){ void c.offsetWidth; c.classList.add('aur-enter'); }
+  }
+  const tl = document.querySelector('.aur-tilt'); if(tl) tl.style.transform = '';
+  // Barre segmentée : un segment par carte de la séance, coloré par la note donnée
+  let total, left;
+  if(reviewSession){
+    const rem = reviewSession.src.remaining ? reviewSession.src.remaining(qHash(q.q)) : {primary:0, learn:0};
+    left = (rem.primary || 0) + (rem.learn || 0);
+    total = isFinite(reviewSession.target) ? reviewSession.target : idx + 1 + left;
+  } else { total = pool.length; left = pool.length - idx - 1; }
+  const segs = $('#aurSegs');
+  if(segs && qs){
+    if(total > 1 && total <= 40){
+      let h = '';
+      for(let i = 0; i < total; i++){
+        let k = '';
+        if(i < idx){ const p = pool[i]; if(p && p._answered) k = p._aurG != null ? 's-g' + p._aurG : (p._missed ? 's-ko' : 's-ok'); }
+        else if(i === idx) k = 'cur';
+        h += k ? '<i class="' + k + '"></i>' : '<i></i>';
+      }
+      segs.innerHTML = h; segs.hidden = false; qs.classList.add('aur-has-segs');
+    } else { segs.innerHTML = ''; segs.hidden = true; qs.classList.remove('aur-has-segs'); }
+  }
+  // Colonne « Séance »
+  const faits = pool.slice(0, idx).filter(p => p && p._answered);
+  const reussis = faits.filter(p => !p._missed).length;
+  const rate = $('#aurSesRate'); if(rate) rate.textContent = faits.length ? Math.round(reussis / faits.length * 100) + ' %' : '—';
+  const lbl = $('#aurSesLeftLbl'), lv = $('#aurSesLeft');
+  if(lbl && lv){
+    if(reviewSession && isFinite(reviewSession.target)){ lbl.textContent = 'Restantes'; lv.textContent = Math.max(0, reviewSession.target - reviewSession.count); }
+    else if(reviewSession){ lbl.textContent = 'À revoir'; lv.textContent = left + (q._rk !== 'free' ? 1 : 0); }
+    else { lbl.textContent = 'Restantes'; lv.textContent = pool.length - idx; }
+  }
+  aurSesTick();
+  // Panneau latéral : le chapitre, avant la réponse (rien qui la dévoile)
+  const aside = $('#aurAside');
+  if(aside){
+    let st = {total:0, learned:0, due:0, newCards:0};
+    try{ st = srsStatsForTopic(q.topic, SRS._d(), Date.now()); }catch(e){}
+    const pct = st.total ? Math.round(st.learned / st.total * 100) : 0;
+    const fam = (FAMILIES[t.family] || {}).name || '';
+    aside.innerHTML = `<div class="aur-side-card" style="--c:${esc(t.raw || '#a78bfa')}"><span class="aur-k">Chapitre</span>
+        <div class="aur-side-chap"><span class="aur-ring${pct ? '' : ' zero'}" style="--p:${pct}"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="rb" cx="60" cy="60" r="52" pathLength="100"/><circle class="rf" cx="60" cy="60" r="52" pathLength="100"/></svg><span class="aur-ring-in">${pct}%</span></span>
+          <div><b>${esc(String(t.name || '').replace(/^\s*\d+[.)]\s*/, ''))}</b>${fam ? `<span>${esc(fam)}</span>` : ''}</div></div>
+        <div class="aur-side-meta"><b>${st.due}</b> à revoir · <b>${st.newCards}</b> nouvelle${st.newCards > 1 ? 's' : ''} dans ce chapitre</div>
+        ${annalesLine(q)}
+      </div><div id="aurAsideApres" style="display:contents"></div>`;
+  }
+}
+/* Après la réponse : le piège et le renvoi au cours rejoignent le panneau latéral (recopiés depuis
+   #feedback ; le lien de cours appelle openCourse, global, donc la copie fonctionne telle quelle). */
+function aurAsideApres(){
+  const host = $('#aurAsideApres'), fb = $('#feedback'); if(!host || !fb) return;
+  const vide = fb.classList.contains('hidden') || !fb.innerHTML.trim();
+  const vig = vide ? null : fb.querySelector('.vig'), cours = vide ? null : fb.querySelector('.course-links');
+  const sig = (vig ? vig.innerHTML : '') + '|' + (cours ? cours.innerHTML : '');
+  if(host.dataset.sig === sig) return;
+  host.dataset.sig = sig;
+  let h = '';
+  if(vig) h += `<div class="aur-side-card aur-vigc"><span class="aur-k"><svg class="i" aria-hidden="true"><use href="#i-alert"/></svg>Piège fréquent</span>${vig.outerHTML}</div>`;
+  if(cours) h += `<div class="aur-side-card"><span class="aur-k"><svg class="i" aria-hidden="true"><use href="#i-book"/></svg>Revoir le cours</span>${cours.outerHTML}</div>`;
+  host.innerHTML = h;
+  if(h) typeset(host);
+}
+(function aurSeanceInit(){
+  const fb = $('#feedback');
+  if(fb){
+    let raf = 0;
+    new MutationObserver(() => { if(raf) return; raf = setTimeout(() => { raf = 0; aurAsideApres(); }, 0); })
+      .observe(fb, {childList:true, subtree:true, characterData:true, attributes:true, attributeFilter:['class']});
+  }
+  const quit = $('#aurQuitBtn'); if(quit) quit.onclick = () => { const b = $('#abandonBtn'); if(b) b.click(); };
+  // La carte s'incline sous la souris (ordinateur ; flashcards et QCM, pas pendant une saisie)
+  const st = document.querySelector('.aur-stage'), tl = document.querySelector('.aur-tilt');
+  if(st && tl){
+    const fine = window.matchMedia ? matchMedia('(hover:hover) and (pointer:fine)') : null;
+    st.addEventListener('pointermove', e => {
+      if(!fine || !fine.matches || aurReduit()) return;
+      const c = $('#aurCard');
+      if(!c || !/aur-m-(flash|qcm)\b/.test(c.className) || /aur-(turn|fly)/.test(c.className)){ tl.style.transform = ''; return; }
+      const r = st.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
+      tl.style.transform = `perspective(1400px) rotateX(${(-y * 5).toFixed(2)}deg) rotateY(${(x * 6).toFixed(2)}deg)`;
+    }, {passive:true});
+    st.addEventListener('pointerleave', () => { tl.style.transform = ''; });
+  }
+})();
 (function aurInit(){
   document.addEventListener('click', e => {
     const n = e.target.closest && e.target.closest('[data-aurnav]'); if(!n) return;
@@ -20558,8 +20885,9 @@ function aurConfetti(){
     if((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('aur-logo')){ e.preventDefault(); aurNavGo('home'); }
     if(e.key === 'Escape') aurCloseSettings();
   });
+  // setTimeout plutôt que requestAnimationFrame : l'état suit l'écran même dans un onglet en arrière-plan
   let raf = 0;
-  const plan = () => { if(raf) return; raf = requestAnimationFrame(() => { raf = 0; aurSyncNav(); }); };
+  const plan = () => { if(raf) return; raf = setTimeout(() => { raf = 0; aurSyncNav(); }, 0); };
   const w = document.querySelector('.wrap');
   if(w) new MutationObserver(plan).observe(w, {subtree:true, childList:true, attributes:true, attributeFilter:['class']});
   aurSyncNav();
