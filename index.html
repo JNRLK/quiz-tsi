@@ -24443,6 +24443,16 @@ if ('serviceWorker' in navigator) {
       .then((reg) => {
         reg.update();                                    // cherche tout de suite
         setInterval(() => reg.update(), 60 * 60 * 1000); // puis toutes les heures
+        /* v411 : et à chaque RETOUR dans l'app. Sur iPhone, une app installée ressort de l'arrière-plan sans
+           nouvel événement load : elle ne vérifiait qu'une fois par heure et restait sur l'ancienne version
+           (02/11/2026 : correctif v409 en ligne, iPhone encore en v408 vingt minutes plus tard). Une
+           vérification par minute au plus ; la nouvelle version s'applique ensuite au premier moment sûr. */
+        let majVue = Date.now();
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState !== 'visible' || Date.now() - majVue < 60000) return;
+          majVue = Date.now();
+          try { const p = reg.update(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+        });
         // Quand une nouvelle version s'installe ALORS qu'un SW contrôle déjà la
         // page = vraie mise à jour → on recharge pour charger le HTML frais.
         // Évite que les élèves restent coincés sur une ancienne page en cache
