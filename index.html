@@ -13719,8 +13719,63 @@ function optimizeFsrsWeights(opts){
 try{ if(typeof window!=='undefined'){ window.optimizeFsrsWeights=optimizeFsrsWeights; window.clearFsrsW=clearFsrsW; window.getFsrsW=getFsrsW; } }catch(e){}
 
 const SRS = {
-  _d(){ try{ return JSON.parse(localStorage.getItem(STATS_KEY)) || {cards:{}, sessions:[]}; }catch(e){ return {cards:{},sessions:[]}; } },
-  _save(d){ try{ localStorage.setItem(STATS_KEY, JSON.stringify(d)); }catch(e){ console.warn('SRS : écriture locale impossible', e); } this._marquerSale(); },
+  _d(){ try{ return JSON.parse(this._secours != null ? this._secours : localStorage.getItem(STATS_KEY)) || {cards:{}, sessions:[]}; }catch(e){ return {cards:{},sessions:[]}; } },
+  /* STOCKAGE PLEIN (v409). Sur iPhone, le stockage local d'un site est borné à ~2,5 millions de caractères ;
+     l'historique des séances gardait le texte de chaque énoncé et un gros compte dépassait la borne. L'écriture
+     échouait alors en silence (simple console.warn) et TOUTES les notes suivantes étaient perdues — incident du
+     02/11/2026, notes d'Arthur figées à 13 h 01. Désormais : on allège (_allege) et on réessaie ; si la place
+     manque encore, l'état vit en mémoire (_secours, lu par _d) et part au cloud comme d'habitude, et un bandeau
+     le dit. La première écriture réussie ensuite rend la main au stockage local. */
+  _secours: null, _secoursDit: false,
+  _save(d){
+    let json = JSON.stringify(d);
+    try{ localStorage.setItem(STATS_KEY, json); this._secours = null; }
+    catch(e){
+      console.warn('SRS : écriture locale impossible, allègement', e);
+      for(let niveau = 1; niveau <= 3; niveau++){
+        this._allege(d, niveau); json = JSON.stringify(d);
+        try{ localStorage.setItem(STATS_KEY, json); this._secours = null; break; }
+        catch(e2){ if(niveau === 3){ this._secours = json; console.warn('SRS : stockage local plein, progression gardée en mémoire', e2); } }
+      }
+      if(this._secours != null && !this._secoursDit){
+        this._secoursDit = true;
+        try{ cloudErr('⚠️ Stockage de l\'appareil plein : la progression est envoyée au cloud' + (currentUser ? '' : ' — connecte-toi pour ne rien perdre')); }catch(_){}
+      }
+    }
+    this._marquerSale();
+  },
+  /* Allègement progressif, sans jamais toucher aux cartes (la progression) :
+     1) historique des séances réduit à ce que lisent les statistiques (chapitre, juste/faux) ;
+     2) 60 dernières séances et 500 dernières lignes du journal de rétention ;
+     3) mises de côté des AUTRES comptes de l'appareil. */
+  _allege(d, niveau){
+    this._compacteSessions(d);
+    if(niveau >= 2){
+      if(Array.isArray(d.sessions) && d.sessions.length > 60) d.sessions = d.sessions.slice(-60);
+      if(Array.isArray(d.reviewLog) && d.reviewLog.length > 500) d.reviewLog = d.reviewLog.slice(-500);
+    }
+    if(niveau >= 3){
+      try{
+        let owner = null; try{ owner = localStorage.getItem(SRS_OWNER_KEY); }catch(_){}
+        for(let i = localStorage.length - 1; i >= 0; i--){
+          const k = localStorage.key(i);
+          if(k && k.indexOf(SRS_STASH_PREFIX) === 0 && k !== SRS_STASH_PREFIX + owner) localStorage.removeItem(k);
+        }
+      }catch(_){}
+    }
+  },
+  /* Détail d'une séance tel que le gardent les statistiques locales (renderStats : chapitre, juste/faux) ;
+     le détail complet (énoncé, choix, temps) part au cloud par Cloud.saveSession, inchangé. */
+  _detailLocal(it){ return {h: it && it.h, topic: it && it.topic, correct: !!(it && it.correct)}; },
+  _compacteSessions(d){
+    let change = false;
+    (d.sessions || []).forEach(s => {
+      if(s && Array.isArray(s.details) && s.details.some(it => it && (it.q != null || it.chosen !== undefined || it.ms !== undefined || it.mode !== undefined))){
+        s.details = s.details.map(it => this._detailLocal(it)); change = true;
+      }
+    });
+    return change;
+  },
 
   // ---- Helpers de date (streak + quota quotidien de nouvelles cartes) ----
   // Jour courant en heure LOCALE (et non UTC) : sinon le « jour » bascule vers 2h du matin l'été (UTC+2) et casse des streaks pourtant continus.
@@ -14414,7 +14469,8 @@ const SRS = {
   // PAS de mise à jour ici, ce qui évitait un double comptage des reps et des pénalités d'ef.
   recordSession(s){
     const d = this._d();
-    d.sessions.push(s);
+    // copie allégée : `s` est aussi envoyé tel quel au cloud par Cloud.saveSession
+    d.sessions.push(Object.assign({}, s, {details: (s.details || []).map(it => this._detailLocal(it))}));
     if(d.sessions.length > 300) d.sessions = d.sessions.slice(-300);
     this._save(d);
     this._syncCloud();
@@ -14508,8 +14564,11 @@ const SRS = {
   // Historique des sessions
   sessions(){ return (this._d().sessions||[]).slice(-14); },
 
-  clear(){ try{ localStorage.removeItem(STATS_KEY); localStorage.removeItem(this._CLE_SALE); }catch(e){} }
+  clear(){ this._secours = null; try{ localStorage.removeItem(STATS_KEY); localStorage.removeItem(this._CLE_SALE); }catch(e){} }
 };
+/* v409 : l'historique local déjà écrit perd ses énoncés une fois pour toutes (≈ 2 millions de caractères sur un
+   gros compte), ce qui rend de la place avant même la première note. */
+try{ const d0 = SRS._d(); if(SRS._compacteSessions(d0)) SRS._save(d0); }catch(e){}
 
 /* Compatibilité ancienne clé v1 */
 const OLD_KEY = 'quiztsi_stats_v1';
