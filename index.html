@@ -19705,6 +19705,52 @@ const DEMOS = [
         ]
       }
     ]
+  },
+  {
+    id: 'm2-va-somme-bernoulli-binomiale',
+    topics: ['m2_va_finies'],
+    titre: "Somme de variables de Bernoulli indépendantes",
+    sous: "Elle suit la loi binomiale $\\mathcal{B}(n,p)$",
+    niveau: 'exigible',
+    source: "Cours TSI2",
+    outils: ["Lemme des coalitions (admis)", "Formule des probabilités totales", "Formule de Pascal", "Raisonnement par récurrence"],
+    enonce: "Soient $n\\in\\mathbb{N}^{*}$, $p\\in[0\\,;1]$ et $X_1,\\dots,X_n$ des variables aléatoires finies <b>mutuellement indépendantes</b>, suivant toutes la loi de Bernoulli de paramètre $p$."
+          + "$$X_1+\\cdots+X_n\\hookrightarrow\\mathcal{B}(n,p).$$"
+          + "Démontrer ce résultat.",
+    parties: [
+      {
+        nom: "Par récurrence sur $n$",
+        blocs: [
+          { t:'p', ctx:true, x:"On note $S_n=X_1+\\cdots+X_n$ et $q=1-p$. Rappel : $X\\hookrightarrow\\mathcal{B}(n,p)$ si $X(\\Omega)=[\\![0,n]\\!]$ et, pour tout $k\\in[\\![0,n]\\!]$, $P(X=k)=\\binom{n}{k}p^{k}q^{\\,n-k}$." },
+          { t:'p', x:"<b>Initialisation.</b> $S_1=X_1\\hookrightarrow\\mathcal{B}(p)$, c'est-à-dire $\\mathcal{B}(1,p)$." },
+          { t:'p', x:"<b>Hérédité.</b> Soit $n\\ge1$ tel que $S_n\\hookrightarrow\\mathcal{B}(n,p)$. Montrons que $S_{n+1}=S_n+X_{n+1}\\hookrightarrow\\mathcal{B}(n+1,p)$. Comme $S_n(\\Omega)=[\\![0,n]\\!]$ et $X_{n+1}(\\Omega)=\\{0,1\\}$, $S_{n+1}$ prend ses valeurs dans $[\\![0,n+1]\\!]$." },
+          { t:'eq', x:"S_n\\ \\text{et}\\ X_{n+1}\\ \\text{sont indépendantes}", j:"lemme des coalitions : $S_n$ est une fonction de $(X_1,\\dots,X_n)$, $X_{n+1}$ de la coalition $\\{n+1\\}$" },
+          { t:'p', x:"<b>Point clé :</b> l'hypothèse porte sur les $X_i$, elle ne dit rien directement de $S_n$ ; c'est le lemme des coalitions qui donne l'indépendance de $S_n$ et de $X_{n+1}$." },
+          { t:'p', x:"Soit $k\\in[\\![1,n]\\!]$. On décompose selon le système complet d'événements $\\bigl((X_{n+1}=0),(X_{n+1}=1)\\bigr)$ :" },
+          { t:'calc', tete:"P(S_{n+1}=k)", l:[
+            { e:"P\\bigl((S_n=k)\\cap(X_{n+1}=0)\\bigr)+P\\bigl((S_n=k-1)\\cap(X_{n+1}=1)\\bigr)", j:"formule des probabilités totales" },
+            { e:"P(S_n=k)\\,P(X_{n+1}=0)+P(S_n=k-1)\\,P(X_{n+1}=1)", j:"$S_n$ et $X_{n+1}$ sont indépendantes" },
+            { e:"\\binom{n}{k}p^{k}q^{\\,n-k}\\times q+\\binom{n}{k-1}p^{\\,k-1}q^{\\,n-k+1}\\times p", j:"hypothèse de récurrence ($k$ et $k-1$ sont dans $[\\![0,n]\\!]$), $P(X_{n+1}=0)=q$, $P(X_{n+1}=1)=p$" },
+            { e:"\\left[\\binom{n}{k}+\\binom{n}{k-1}\\right]p^{k}q^{\\,n+1-k}", j:"on factorise par $p^{k}q^{\\,n+1-k}$" },
+            { e:"\\binom{n+1}{k}p^{k}q^{\\,n+1-k}", j:"formule de Pascal" }
+          ]},
+          { t:'p', x:"Cas $k=0$ et $k=n+1$ : un seul des deux événements est possible." },
+          { t:'calc', tete:"P(S_{n+1}=0)", l:[
+            { e:"P\\bigl((S_n=0)\\cap(X_{n+1}=0)\\bigr)", j:"$S_n+X_{n+1}=0$ impose $S_n=0$ et $X_{n+1}=0$" },
+            { e:"q^{\\,n}\\times q", j:"indépendance, et $P(S_n=0)=\\binom{n}{0}q^{\\,n}$" },
+            { e:"\\binom{n+1}{0}p^{0}q^{\\,n+1}", j:"" }
+          ]},
+          { t:'calc', tete:"P(S_{n+1}=n+1)", l:[
+            { e:"P\\bigl((S_n=n)\\cap(X_{n+1}=1)\\bigr)", j:"$S_n\\le n$ et $X_{n+1}\\le1$" },
+            { e:"p^{\\,n}\\times p", j:"indépendance, et $P(S_n=n)=\\binom{n}{n}p^{\\,n}$" },
+            { e:"\\binom{n+1}{n+1}p^{\\,n+1}q^{0}", j:"" }
+          ]},
+          { t:'res', x:"S_{n+1}\\hookrightarrow\\mathcal{B}(n+1,p)", j:"la propriété est vraie au rang $n+1$" },
+          { t:'p', x:"<b>Conclusion.</b> Par récurrence, pour tout $n\\ge1$, $X_1+\\cdots+X_n\\hookrightarrow\\mathcal{B}(n,p)$." },
+          { t:'p', x:"<b>À retenir :</b> c'est la justification du modèle vu en TSI1. Dans un schéma de Bernoulli, si $X_i$ vaut $1$ en cas de succès à la $i$-ème épreuve (et $0$ sinon), les $X_i$ sont indépendantes, de loi $\\mathcal{B}(p)$, et leur somme compte les succès." }
+        ]
+      }
+    ]
   }
 ,
 
