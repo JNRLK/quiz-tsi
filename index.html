@@ -3113,6 +3113,43 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
   @media (max-width:430px){ .dm-next-long{display:none} .dm-next-court{display:inline} }
   @media (max-width:360px){ .dm-bar .dm-next svg.i{display:none} }
   @media (max-width:400px){ .dm-x{font-size:94%} }
+  /* Lisibilité : la couleur du chapitre (--c) sert de fil conducteur. Calculs dans un panneau teinté, justification
+     accrochée à sa ligne par un filet, étapes nommées en pastille, « Point clé » et « Piège » en encadrés, résultat
+     cerclé de la couleur du chapitre. --dm-t fond teinté, --dm-b bordure, --dm-k texte coloré lisible dans les 3 thèmes. */
+  #demoBody{--dm-t:color-mix(in srgb,var(--c,var(--accent)) 7%,var(--panel)); --dm-b:color-mix(in srgb,var(--c,var(--accent)) 32%,var(--line));
+    --dm-k:color-mix(in srgb,var(--c,var(--accent)) 72%,var(--ink))}
+  [data-theme="contraste"] #demoBody{--dm-t:#fff; --dm-b:#000; --dm-k:#000}
+  #demoBody .dm-enonce{border-left-color:var(--c,var(--accent))}
+  #demoBody .dm-chip{background:var(--dm-t); border-color:var(--dm-b); color:var(--ink)}
+  #demoBody .dm-part{display:flex; align-items:center; gap:10px; padding:10px 14px; border:1px solid var(--dm-b); border-radius:12px;
+    background:var(--dm-t); color:var(--dm-k)}
+  #demoBody .dm-part::before{content:""; flex:none; align-self:stretch; width:4px; border-radius:99px; background:var(--c,var(--accent))}
+  .dm-etape{margin-top:20px}
+  .dm-tag{display:inline-block; margin-right:7px; padding:1px 10px; border-radius:99px; vertical-align:1px;
+    font:600 .84em/1.65 'Lexend',sans-serif; color:var(--dm-k); background:color-mix(in srgb,var(--c,var(--accent)) 15%,var(--panel));
+    border:1px solid var(--dm-b)}
+  .dm-call{margin:16px 0; padding:11px 15px; border:1px solid; border-radius:12px; font-size:.9em; line-height:1.75}
+  .dm-call-lab{display:flex; align-items:center; gap:7px; margin-bottom:3px; font:600 11.5px/1.3 'Lexend',sans-serif; letter-spacing:.06em; text-transform:uppercase}
+  .dm-call-lab svg.i{width:15px; height:15px; flex:none}
+  .dm-cle{background:var(--dm-t); border-color:var(--dm-b)}
+  .dm-cle .dm-call-lab{color:var(--dm-k)}
+  .dm-piege{background:color-mix(in srgb,var(--warn-text) 8%,var(--panel)); border-color:color-mix(in srgb,var(--warn-text) 32%,var(--line))}
+  .dm-piege .dm-call-lab{color:var(--warn-text)}
+  [data-theme="contraste"] .dm-piege{background:#fff; border-color:#000}
+  #demoBody .dm-chain{padding:12px clamp(12px,3vw,22px); border:1px solid var(--dm-b); border-left:3px solid var(--c,var(--accent));
+    border-radius:12px; background:var(--dm-t)}
+  #demoBody .dm-chain .dm-just{align-self:stretch; margin:4px 0; padding:6px 0 6px 12px; border-left:2px solid var(--dm-b); color:var(--dm-k)}
+  #demoBody .dm-chain .dm-just:empty{border-left-color:transparent}
+  #demoBody .dm-just-bas, #demoBody .dm-res .dm-just{color:var(--dm-k)}
+  #demoBody .dm-box{border:2px solid var(--c,var(--accent)); border-radius:12px; padding:10px 18px; background:var(--dm-t);
+    box-shadow:0 6px 18px -10px var(--c,var(--accent))}
+  [data-theme="contraste"] #demoBody .dm-box{border-color:#000; box-shadow:none}
+  @media (max-width:640px){
+    #demoBody .dm-chain{padding:10px 12px}
+    #demoBody .dm-chain .dm-just{margin:0 0 10px 6px; padding:2px 0 2px 10px}
+    #demoBody .dm-chain .dm-just:empty{display:none}
+    #demoBody .dm-chain > .dm-l:not(:first-child) > .dm-x{padding-left:6px}
+  }
   /* plein écran : sans l'en-tête de la rubrique (seul le bouton de sortie reste), défilement confiné */
   #demoScreen.fs-active > .aur-head{margin:0 !important}
   #demoScreen.fs-active > .aur-head > :not(#demoFs){display:none !important}
@@ -19728,9 +19765,9 @@ const DEMOS = [
           { t:'p', x:"<b>Point clé :</b> l'hypothèse porte sur les $X_i$, elle ne dit rien directement de $S_n$ ; c'est le lemme des coalitions qui donne l'indépendance de $S_n$ et de $X_{n+1}$." },
           { t:'p', x:"Soit $k\\in[\\![1,n]\\!]$. On décompose selon le système complet d'événements $\\bigl((X_{n+1}=0),(X_{n+1}=1)\\bigr)$ :" },
           { t:'calc', tete:"P(S_{n+1}=k)", l:[
-            { e:"P\\bigl((S_n=k)\\cap(X_{n+1}=0)\\bigr)+P\\bigl((S_n=k-1)\\cap(X_{n+1}=1)\\bigr)", j:"formule des probabilités totales" },
-            { e:"P(S_n=k)\\,P(X_{n+1}=0)+P(S_n=k-1)\\,P(X_{n+1}=1)", j:"$S_n$ et $X_{n+1}$ sont indépendantes" },
-            { e:"\\binom{n}{k}p^{k}q^{\\,n-k}\\times q+\\binom{n}{k-1}p^{\\,k-1}q^{\\,n-k+1}\\times p", j:"hypothèse de récurrence ($k$ et $k-1$ sont dans $[\\![0,n]\\!]$), $P(X_{n+1}=0)=q$, $P(X_{n+1}=1)=p$" },
+            { e:"P(S_n=k,\\,X_{n+1}=0)+P(S_n=k-1,\\,X_{n+1}=1)", j:"formule des probabilités totales (la virgule note l'intersection)" },
+            { e:"P(S_n=k)\\,q+P(S_n=k-1)\\,p", j:"$S_n$ et $X_{n+1}$ sont indépendantes, $P(X_{n+1}=0)=q$, $P(X_{n+1}=1)=p$" },
+            { e:"\\binom{n}{k}p^{k}q^{\\,n-k}\\,q+\\binom{n}{k-1}p^{\\,k-1}q^{\\,n-k+1}\\,p", j:"hypothèse de récurrence ($k$ et $k-1$ sont dans $[\\![0,n]\\!]$)" },
             { e:"\\left[\\binom{n}{k}+\\binom{n}{k-1}\\right]p^{k}q^{\\,n+1-k}", j:"on factorise par $p^{k}q^{\\,n+1-k}$" },
             { e:"\\binom{n+1}{k}p^{k}q^{\\,n+1-k}", j:"formule de Pascal" }
           ]},
@@ -20022,8 +20059,22 @@ function dmLigneHTML(tete, rhs, j, premiere){
   return '<div class="dm-x">$$' + gauche + ' = ' + rhs + '$$</div>'
     + '<div class="dm-just">' + (j || '') + '</div>';
 }
+/* Un paragraphe qui s'ouvre sur « <b>Libellé.</b> » ou « <b>Libellé :</b> » : « Point clé », « À retenir »… deviennent
+   un encadré coloré, « Piège » un encadré d'alerte, tout autre libellé (Initialisation, Hérédité, Premier cas…) une
+   pastille d'étape. Un gras qui ne finit ni par « . » ni par « : » reste un simple gras. */
+const DM_CLE = /^(point clé|à retenir|règle pratique|remarque|interprétation|idée)$/i, DM_PIEGE = /^(piège|attention)$/i;
+function dmParaHTML(x){
+  const m = /^<b>([^<]{1,80}?)\s*[.:]\s*<\/b>\s*/.exec(x);
+  if(!m) return '<p class="dm-p">' + x + '</p>';
+  const lab = m[1].trim(), reste = x.slice(m[0].length);
+  const encadre = (cls, ic) => '<div class="dm-call ' + cls + '"><span class="dm-call-lab"><svg class="i" aria-hidden="true"><use href="#' + ic + '"/></svg>'
+    + lab + '</span>' + reste + '</div>';
+  if(DM_PIEGE.test(lab)) return encadre('dm-piege', 'i-alert');
+  if(DM_CLE.test(lab)) return encadre('dm-cle', 'i-bulb');
+  return '<p class="dm-p dm-etape"><span class="dm-tag">' + lab + '</span>' + reste + '</p>';
+}
 function dmBlocHTML(b){
-  if(b.t === 'p')  return '<p class="dm-p">' + b.x + '</p>';
+  if(b.t === 'p')  return dmParaHTML(b.x);
   if(b.t === 'ul') return '<ul class="dm-ul">' + b.x.map(x => '<li>' + x + '</li>').join('') + '</ul>';
   if(b.t === 'eq') return '<div class="dm-x dm-eq">$$' + b.x + '$$</div>'
     + (b.j ? '<div class="dm-just dm-just-bas">' + b.j + '</div>' : '');
@@ -20113,10 +20164,23 @@ function f6TypesetPuis(el, fn){
 }
 /* Ordinateur : une chaîne dont une formule déborde de sa colonne est empilée (justification dessous) */
 function f6DmLarge(el){
+  if(innerWidth <= 640){ f6DmResserrer(el); return; }
   const ch = el.closest && el.closest('.dm-chain');
   if(!ch || ch.classList.contains('dm-wide') || innerWidth <= 640) return;
   const trop = [...ch.querySelectorAll('.dm-x > mjx-container')].some(m => m.scrollWidth > m.clientWidth + 1);
   if(trop){ ch.classList.add('dm-wide'); aurWideMath(ch); }
+}
+/* Téléphone : une formule centrée trop large est d'abord resserrée (jusqu'à 78 % de sa taille), et ne défile que
+   si cela ne suffit pas. MathJax pose déjà une échelle en ligne (font-size) sur le conteneur : on la multiplie. */
+function f6DmResserrer(el){
+  const ms = [...el.querySelectorAll('mjx-container[display="true"]')];
+  const r = ms.map(m => (m.clientWidth && m.scrollWidth > m.clientWidth + 1) ? Math.max(.78, m.clientWidth / m.scrollWidth) : 0);
+  ms.forEach((m, i) => {
+    if(!r[i]) return;
+    const base = parseFloat(m.style.fontSize) || 100;
+    m.style.fontSize = (base * r[i]).toFixed(1) + '%';
+  });
+  if(r.some(Boolean)) aurWideMath(el);
 }
 /* Dévoile jusqu'à l'étape `n` (exclue) et typesette CE QUI VIENT D'APPARAÎTRE : tant qu'une
    étape attend, son LaTeX n'est pas dans le DOM, donc MathJax ne mesure jamais dans du vide. */
