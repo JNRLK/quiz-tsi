@@ -20602,7 +20602,7 @@ const EDT = (function(){
     13:{special:'Révision aux écrits', ferie:'Pâques — lundi 29/03', ferieJours:[0]},
     14:{special:'Révision autonome aux écrits', conge:'Congés de Pâques'},
     15:{special:'Révision autonome aux écrits', conge:'Congés de Pâques'},
-    16:{special:'Écrits CCINP', aconfirmer:true},
+    16:{special:'Écrits CCINP — 19 au 22 avril'},
     17:{special:'Écrits Centrale-Supélec — 26 au 29 avril', ferie:'Fête du travail — samedi 01/05', ferieJours:[5]},
     18:{note:"Le calendrier du lycée plaçait ici les écrits Centrale-Supélec. Le concours a publié le 26 au 29 avril, soit la semaine 17."},
     19:{special:'Préparation aux oraux'},
@@ -20611,8 +20611,8 @@ const EDT = (function(){
     22:{special:'Préparation aux oraux'},
     23:{special:'Préparation aux oraux'},
     24:{special:'Préparation aux oraux'},
-    25:{special:'Oraux de concours', aconfirmer:true},
-    26:{special:'Oraux de concours', aconfirmer:true}
+    25:{special:'Oraux de concours'},
+    26:{special:'Oraux de concours'}
   };
 
   /* Les inscrits, par groupe de colle. Un « groupe », pour l'élève, c'est 1, 2, 3… ;
@@ -20629,23 +20629,28 @@ const EDT = (function(){
     7:[['7.1','Killian VERGNENEGRE F.'], ['7.2','Lola ZAIRE'], ['7.3','Minyar MARAY']]
   };
 
-  /* Les concours, relevés sur les sites officiels le 12 septembre 2026.
+  /* Les concours, relevés sur les sites officiels le 12 septembre 2026, mis à jour le 6 novembre 2026.
      `confirme` distingue ce que l'organisateur a publié de ce que le lycée a seulement prévu :
      l'écran affiche un badge « à confirmer » plutôt que de laisser croire à une date ferme. */
   const CONCOURS = [
-    { sem:16, nom:'CCINP', titre:'Écrits CCINP', confirme:false,
-      quand:'semaine du 19 avril 2027',
-      repere:'20 → 23 avril en 2026, 5 → 9 mai en 2025',
-      note:"Prévision du lycée. Le CCINP n'a pas encore publié son calendrier 2027 — la bascule a lieu d'habitude entre octobre et décembre." },
+    { sem:50, nom:'SCEI', titre:'Inscriptions aux concours', confirme:true,
+      quand:'lundi 7 décembre 2026 → lundi 11 janvier 2027, 12 h',
+      source:'concours-mines-telecom.fr (dates clés)',
+      note:"Inscription unique sur scei-concours.fr, pour Centrale-Supélec, le CCINP et les autres banques. Vœux d'écoles du 1er mars au 23 juillet 2027, 12 h. Le SCEI n'a pas encore affiché ce calendrier sur son propre site." },
+    { sem:16, nom:'CCINP', titre:'Écrits CCINP', confirme:true,
+      quand:'lundi 19 → jeudi 22 avril 2027',
+      source:'concours-commun-inp.fr',
+      repere:'20 → 23 avril en 2026',
+      note:"Horaires par épreuve non publiés. Centres hors Paris annoncés courant février 2027 ; en Île-de-France, ce ne sera pas Villepinte, et le centre n'est pas encore connu." },
     { sem:17, nom:'Centrale-Supélec', titre:'Écrits Centrale-Supélec', confirme:true,
       quand:'lundi 26 → jeudi 29 avril 2027',
-      source:'concours-centrale-supelec.fr',
-      note:"Fenêtre annoncée toutes filières ; les horaires TSI épreuve par épreuve paraîtront avec la notice, début décembre. En TSI, cette banque porte aussi Mines-Ponts, Mines-Télécom, Polytechnique, Arts et Métiers et l'ESTP." },
-    { sem:25, nom:'oraux', titre:'Oraux', confirme:true,
-      quand:'21 juin → 18 juillet 2027',
-      source:'concours-centrale-supelec.fr',
-      repere:'en 2026 : Centrale 22 juin → 5 juillet, CCINP 24 juin → 4 juillet, TIPE dès le 22 juin',
-      note:"Période à bloquer, et non des dates de passage : le créneau TSI durera environ deux semaines à l'intérieur de cette fenêtre." }
+      source:'concours-centrale-supelec.fr (horaires 2027)',
+      note:"Horaires TSI (8 h → 12 h et 14 h → 18 h, 4 h chacune) : lundi 26 Maths 1 puis Rédaction ; mardi 27 Physique-chimie 1 puis S2I ; mercredi 28 Physique-chimie 2 puis Langue vivante ; jeudi 29 Maths 2 le matin. En TSI, cette banque porte aussi Mines-Ponts, Mines-Télécom, Polytechnique, Arts et Métiers et l'ESTP." },
+    { sem:25, nom:'oraux', titre:'Oraux TSI', confirme:true,
+      quand:'lundi 21 juin → dimanche 4 juillet 2027',
+      source:'concours-mines-telecom.fr · concours-centrale-supelec.fr',
+      repere:'dates Mines-Télécom (banque Centrale-Supélec en TSI) : admissibilité à partir du 3 juin 2027 (18 h, indicatif), choix des dates d’oral du 15 au 17 juin, admission le 21 juillet',
+      note:"Créneau TSI des oraux de la banque Centrale-Supélec, à l'intérieur de sa fenêtre toutes filières (21 juin → 18 juillet). Les dates d'oral du CCINP 2027 ne sont pas encore publiées." }
   ];
 
   /* Ce que la recherche a corrigé dans le calendrier distribué par le lycée. */
@@ -21165,9 +21170,9 @@ function _edtConcoursHTML(){
   }
 
   h += '<p class="aur-edt-foot">'
-    + 'Relevé sur les sites officiels le 12 septembre 2026. En cas d’informations discordantes, seule la notice du concours fait foi, '
-    + 'et le calendrier reste « sous réserve de l’arrêté à paraître ». À re-vérifier : le calendrier SCEI début novembre, '
-    + 'la notice Centrale TSI et l’ouverture des inscriptions début décembre, le calendrier CCINP d’ici décembre.</p>'
+    + 'Relevé sur les sites officiels le 6 novembre 2026. En cas d’informations discordantes, seule la notice du concours fait foi, '
+    + 'et le calendrier reste « sous réserve de l’arrêté à paraître ». Encore à paraître : la notice Centrale TSI, '
+    + 'les oraux du CCINP et les centres d’écrits (février 2027).</p>'
     + '<p class="aur-edt-foot">'
     + 'Ni e3a-Polytech ni la Banque PT n’ouvrent de voie TSI : leurs dates ne concernent pas cette classe.</p>';
   return h;
