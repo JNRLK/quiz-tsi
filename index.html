@@ -89,6 +89,7 @@ window.MathJax = {
     --a1:#7c3aed; --a2:#4f46e5; --a3:#db2777;
     --au1:rgba(167,139,250,.42); --au2:rgba(45,212,191,.26); --au3:rgba(244,114,182,.28);
     --tile:rgba(255,255,255,.7); --tile-line:rgba(60,40,140,.11);
+    --ce-kw:#6d28d9; --ce-fn:#1d5fbf; --ce-str:#157f3c; --ce-num:#b45309; --ce-com:#6a6690; --ce-bi:#0f766e; --ce-const:#b4235a;
     --due:#c2410c; --new:#6d28d9; --lrn:#0f766e;
     /* F1 : --c-mix = part de la couleur du chapitre dans un TEXTE coloré (le reste = l'encre du thème) ;
        --hot-text = orange lisible comme texte ; --modal-w = largeur commune des fenêtres */
@@ -115,6 +116,7 @@ window.MathJax = {
     --a1:#a78bfa; --a2:#60a5fa; --a3:#f472b6;
     --au1:rgba(124,58,237,.42); --au2:rgba(13,148,136,.3); --au3:rgba(219,39,119,.28);
     --tile:rgba(20,27,39,.66); --tile-line:rgba(255,255,255,.08);
+    --ce-kw:#c4b5fd; --ce-fn:#7cb7ff; --ce-str:#6ee7a0; --ce-num:#fbbf24; --ce-com:#8f98b3; --ce-bi:#5eead4; --ce-const:#f9a8d4;
     --due:#fb923c; --new:#a78bfa; --lrn:#2dd4bf;
     --c-mix:50%; --hot-text:#fb923c;   /* l'encre est claire : le mélange éclaircit la couleur */
   }
@@ -137,6 +139,7 @@ window.MathJax = {
     --a1:#3b1e9e; --a2:#1e3a8a; --a3:#3b1e9e;
     --au1:transparent; --au2:transparent; --au3:transparent;
     --tile:#ffffff; --tile-line:#000000;
+    --ce-kw:#3b1e9e; --ce-fn:#154fa0; --ce-str:#0b6b2e; --ce-num:#8a3d00; --ce-com:#1f2430; --ce-bi:#115e59; --ce-const:#8a1040;
     --due:#8a3d00; --new:#3b1e9e; --lrn:#115e59;   /* intégration F2-F7 (F2, F4) : --lrn valait --ok-text (#0b6b2e) ; sarcelle 800, 7,6:1 */
     --c-mix:0%; --hot-text:#8a3d00;
   }
@@ -3235,6 +3238,161 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
   @media (pointer:coarse){
     input, select, textarea, #authModal .ans-input, #profileModal .ans-input, .len-custom, #reportComment, .adm-search, .adm-sel, #adminBody select, .code-ed{font-size:16px !important}
   }
+  /* MODE CODE (console et éditeur) : tout est préfixé ce-. L'éditeur garde une police réelle de 16 px (iOS ne zoome pas)
+     et la réduit par --ce-s ; le texte du textarea est transparent, la couleur vient du miroir placé dessous. */
+  .ce-zone{display:grid; gap:12px; grid-template-columns:minmax(0,1fr)}
+  .ce-p{display:grid; gap:10px; min-width:0; grid-template-columns:minmax(0,1fr)}
+  .ce-p-enonce:empty{display:none}
+  .ce-tabs, .ce-go, .ce-rappel{display:none}
+  .ce-l{font-size:11px; letter-spacing:.08em; text-transform:uppercase; font-weight:600; color:var(--muted)}
+  .ce-ctx{border:1px solid var(--line); border-radius:12px; background:var(--bg-deep)}
+  .ce-ctx summary{cursor:pointer; padding:9px 12px; font-size:12.5px; color:var(--muted); font-weight:500}
+  .ce-ctx pre{margin:0; padding:2px 0 12px; overflow-x:auto; font:400 12.5px/1.5 'JetBrains Mono',monospace}
+  .ce-ctx .ce-ln{padding:0 12px}
+  .ce-head{display:flex; justify-content:space-between; align-items:center; gap:10px}
+  .ce-tries{display:flex; align-items:center; gap:5px; font-size:12.5px; color:var(--muted); white-space:nowrap}
+  .ce-tries:empty{display:none}
+  .ce-tries i{width:9px; height:9px; border-radius:50%; background:var(--line)}
+  .ce-tries i.ko{background:var(--no-text)}
+  .ce-tries i.ok{background:var(--ok-text)}
+  .ce-ed{--ce-s:.875; position:relative; border:1.5px solid var(--line); border-radius:14px; background:var(--bg-deep); overflow:hidden}
+  .ce-ed:focus-within{border-color:var(--accent)}
+  .ce-in{display:grid; grid-template-columns:auto minmax(0,1fr); width:calc(100% / var(--ce-s)); transform:scale(var(--ce-s)); transform-origin:0 0; font:400 16px/24px 'JetBrains Mono',ui-monospace,Menlo,monospace}
+  .ce-gut{padding:12px 8px 12px 12px; text-align:right; color:var(--muted); user-select:none; -webkit-user-select:none; font-variant-numeric:tabular-nums; opacity:.75; border-right:1px solid var(--line)}
+  .ce-gut span{display:block; height:24px}
+  .ce-gut span.act{color:var(--ink); opacity:1}
+  .ce-gut span.err{color:var(--no-text); font-weight:700}
+  .ce-code{position:relative; min-width:0; overflow:hidden}
+  .ce-miroir{position:absolute; inset:0; margin:0; padding:12px 0; overflow:hidden; white-space:pre; pointer-events:none; tab-size:4; font:inherit; color:var(--ink)}
+  .ce-ln{display:block; height:24px; padding:0 14px; width:max-content; min-width:100%}
+  .ce-ln.act{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+  .ce-ln.err{background:color-mix(in srgb,var(--no-text) 13%,transparent); text-decoration:underline wavy color-mix(in srgb,var(--no-text) 70%,transparent) 1px; text-underline-offset:4px}
+  .ce-ta{position:absolute; inset:0; width:100%; height:100%; margin:0; padding:12px 14px; border:0; outline:0; resize:none; background:transparent; color:transparent; -webkit-text-fill-color:transparent; caret-color:var(--ink); font:inherit; white-space:pre; overflow-x:auto; overflow-y:hidden; tab-size:4; scrollbar-width:thin}
+  .ce-ta::selection{background:color-mix(in srgb,var(--accent) 32%,transparent)}
+  .ce-ig{display:inline-block; height:24px; vertical-align:top; background:linear-gradient(var(--line),var(--line)) 0 0/1px 100% no-repeat}
+  .ce-t-k{color:var(--ce-kw); font-weight:600}
+  .ce-t-f{color:var(--ce-fn)}
+  .ce-t-b{color:var(--ce-bi)}
+  .ce-t-s{color:var(--ce-str)}
+  .ce-t-n{color:var(--ce-num)}
+  .ce-t-m{color:var(--ce-com); font-style:italic}
+  .ce-t-c{color:var(--ce-const); font-weight:600}
+  .ce-zone, .ce-zone *{font-variant-ligatures:none; font-feature-settings:"calt" 0,"liga" 0}
+  .ce-avis{font-size:13px; padding:8px 12px; border-radius:11px; background:color-mix(in srgb,var(--warn-text) 13%,transparent)}
+  .ce-avis b{font-weight:600}
+  .ce-keys{display:grid; gap:5px}
+  .ce-krow{display:flex; gap:5px; overflow-x:auto; scrollbar-width:none; overscroll-behavior-x:contain; min-height:40px}
+  .ce-krow::-webkit-scrollbar{display:none}
+  .ce-key{flex:none; cursor:pointer; min-width:40px; min-height:40px; padding:0 9px; border:1px solid var(--line); background:var(--key-bg); border-radius:9px; font:400 14px/1 'JetBrains Mono',monospace; color:var(--ink)}
+  .ce-key.w{background:color-mix(in srgb,var(--accent) 12%,var(--key-bg)); border-color:color-mix(in srgb,var(--accent) 34%,var(--line)); font-weight:600; font-size:13px}
+  .ce-key.a{color:var(--muted)}
+  @media (pointer:fine) and (min-width:761px){ .ce-keys{display:none} }
+  @media (min-width:761px){ #ceNote{display:none} }
+  .ce-acts{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:0}
+  .ce-acts .btn{display:inline-flex; align-items:center; justify-content:center; gap:9px; width:auto}
+  .ce-kbd{font:500 11px/1 'JetBrains Mono',monospace; opacity:.8}
+  @media (pointer:coarse){ .ce-kbd{display:none} }
+  .ce-out{display:grid; gap:11px; min-width:0; grid-template-columns:minmax(0,1fr)}
+  .ce-vide{margin:0; color:var(--muted); font-size:13.5px}
+  .ce-ban{display:grid; grid-template-columns:auto minmax(0,1fr); gap:2px 11px; align-items:center; padding:12px 14px; border-radius:14px}
+  .ce-bi{grid-row:1 / span 2; width:32px; height:32px; border-radius:50%; display:grid; place-items:center; color:var(--on-ink); font-size:16px}
+  .ce-ban b{font-size:15.5px; font-weight:600; line-height:1.3}
+  .ce-s{grid-column:2; font-size:13px; color:var(--muted)}
+  .ce-bar{grid-column:2; display:flex; gap:3px; margin-top:6px; max-width:260px}
+  .ce-bar i{flex:1; height:6px; border-radius:5px; background:var(--no-text)}
+  .ce-bar i.ok{background:var(--ok-text)}
+  .ce-ban.ok{background:color-mix(in srgb,var(--ok-text) 13%,transparent)}
+  .ce-ban.ok .ce-bi{background:var(--ok-text)}
+  .ce-ban.ko{background:color-mix(in srgb,var(--no-text) 11%,transparent)}
+  .ce-ban.ko .ce-bi{background:var(--no-text)}
+  .ce-ban.warn{background:color-mix(in srgb,var(--warn-text) 13%,transparent)}
+  .ce-ban.warn .ce-bi{background:var(--warn-text)}
+  .ce-term{border-radius:13px; background:var(--bg-deep); border:1px solid var(--line); overflow:hidden; font:400 12.5px/1.6 'JetBrains Mono',ui-monospace,Menlo,monospace}
+  .ce-term-h{display:flex; justify-content:space-between; gap:10px; padding:6px 12px; font:500 11px/1.4 'Lexend',sans-serif; color:var(--muted); border-bottom:1px solid var(--line)}
+  .ce-term-b{padding:8px 12px; overflow-x:auto}
+  .ce-t{display:block; width:100%; text-align:left; background:none; border:0; border-left:3px solid transparent; padding:7px 12px 7px 9px; cursor:pointer; font:inherit; color:var(--ink); box-shadow:0 1px 0 var(--line)}
+  .ce-t:last-child{box-shadow:none}
+  .ce-t:hover{background:var(--inset-soft)}
+  .ce-t.sel{background:color-mix(in srgb,var(--accent) 9%,transparent); border-left-color:var(--accent)}
+  .ce-tl{display:block; overflow-wrap:anywhere}
+  .ce-pr{color:var(--muted); user-select:none; -webkit-user-select:none}
+  .ce-tn{display:block; color:var(--ce-com); font-style:italic; overflow-wrap:anywhere}
+  .ce-to{display:flex; justify-content:space-between; align-items:baseline; gap:4px 12px; flex-wrap:wrap; overflow-wrap:anywhere}
+  .ce-to>span{min-width:0}
+  .ce-p-out{display:block; color:var(--muted); overflow-wrap:anywhere}
+  .ce-okb, .ce-kob{display:inline-flex; align-items:center; gap:4px; font-weight:600}
+  .ce-okb{color:var(--ok-text)}
+  .ce-kob{color:var(--no-text)}
+  .ce-mut{color:var(--muted)}
+  .ce-tb{display:block; white-space:pre-wrap; overflow-wrap:anywhere; color:var(--no-text)}
+  .ce-tb-g{color:var(--muted)}
+  .ce-tb-c{display:block; white-space:pre; color:var(--no-text); font-weight:700; line-height:1; overflow:hidden}
+  .ce-tb-f{font-weight:600}
+  .ce-xp{display:grid; gap:11px; padding:15px; border-radius:15px; border:1px solid var(--line); background:var(--panel); min-width:0; grid-template-columns:minmax(0,1fr)}
+  .ce-xp h4{margin:0; font:600 17px/1.3 'Literata',Georgia,serif}
+  .ce-lead{margin:0; font-size:14.5px; line-height:1.55}
+  .ce-lieu, .ce-bloc{display:grid; gap:5px; min-width:0}
+  .ce-lieu pre{margin:0; padding:9px 12px; border-radius:10px; background:var(--bg-deep); overflow-x:auto; font:400 13px/1.55 'JetBrains Mono',monospace}
+  mark.ce-mx{background:color-mix(in srgb,var(--no-text) 20%,transparent); color:inherit; border-radius:3px; text-decoration:underline wavy var(--no-text) 1px; text-underline-offset:3px; padding:1px 0}
+  mark.ce-mi{background:color-mix(in srgb,var(--ok-text) 26%,transparent); color:var(--ok-text); font-weight:700; border-radius:3px; padding:0 3px}
+  .ce-f{margin:0; padding-left:17px; display:grid; gap:5px; font-size:13.5px}
+  .ce-xp code{font:400 12.5px 'JetBrains Mono',monospace; background:var(--bg-deep); border-radius:5px; padding:1px 5px; overflow-wrap:anywhere}
+  .ce-val{font:500 12.5px/1 'JetBrains Mono',monospace; padding:2px 6px; border-radius:5px; background:var(--bg-deep); color:var(--ink)}
+  .ce-val.bad{color:var(--no-text)}
+  .ce-val.good{color:var(--ok-text)}
+  .ce-vars{display:flex; flex-wrap:wrap; gap:6px}
+  .ce-var{display:inline-flex; align-items:baseline; gap:5px; padding:3px 9px; border-radius:8px; background:var(--bg-deep); font:400 12.5px/1.5 'JetBrains Mono',monospace; max-width:100%; overflow-wrap:anywhere}
+  .ce-var b{font-weight:600}
+  .ce-diff{gap:8px}
+  .ce-dr{display:grid; gap:2px; min-width:0}
+  .ce-cells{display:flex; overflow-x:auto; padding-bottom:2px}
+  .ce-cell{flex:0 0 auto; min-width:31px; text-align:center; display:grid; grid-template-rows:14px 30px; font-family:'JetBrains Mono',monospace}
+  .ce-cell small{font-size:10px; color:var(--muted); line-height:14px}
+  .ce-cell b{font-weight:500; font-size:13px; line-height:28px; padding:0 5px; border:1px solid var(--line); margin-left:-1px; background:var(--panel)}
+  .ce-cell.kob b{background:color-mix(in srgb,var(--no-text) 22%,var(--panel)); font-weight:700}
+  .ce-cell.okb b{background:color-mix(in srgb,var(--ok-text) 22%,var(--panel)); font-weight:700}
+  .ce-piste{display:grid; gap:5px; padding:11px 13px; border-radius:11px; background:color-mix(in srgb,var(--accent) 9%,transparent); font-size:13.5px}
+  .ce-piste p{margin:0}
+  .ce-tw{overflow-x:auto}
+  .ce-suivi{border-collapse:collapse; font:400 12.5px/1.4 'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; min-width:100%}
+  .ce-suivi th{font:600 11.5px/1.3 'Lexend',sans-serif; color:var(--muted); text-align:center; padding:5px 9px; border-bottom:1px solid var(--line); white-space:nowrap}
+  .ce-suivi td{text-align:center; padding:4px 9px; border-bottom:1px solid var(--line); white-space:nowrap}
+  .ce-suivi tr:last-child td{border-bottom:0}
+  .ce-suivi tr.exit td{background:color-mix(in srgb,var(--accent) 12%,transparent); font-weight:600}
+  .ce-suivi tr.gap td{color:var(--muted); font-style:italic}
+  .ce-note2{margin:0; font-size:12.5px; color:var(--muted)}
+  .srs-grade .sg2.ce-propose{outline:2px solid var(--accent); outline-offset:1px}
+  /* Téléphone : trois onglets, éditeur bord à bord (environ 40 colonnes) */
+  @media (max-width:760px){
+    .ce-tabs{display:flex; gap:2px; padding:3px; margin-bottom:12px; border-radius:14px; background:var(--inset-soft)}
+    .ce-tabs button{flex:1; border:0; background:none; padding:9px 6px; border-radius:11px; font:500 13.5px 'Lexend',sans-serif; color:var(--muted); cursor:pointer; min-height:40px; display:flex; align-items:center; justify-content:center; gap:6px}
+    .ce-tabs button.on{background:var(--panel); color:var(--ink); font-weight:600; box-shadow:0 1px 3px rgba(30,20,90,.14)}
+    .ce-pastille{width:8px; height:8px; border-radius:50%; background:var(--muted)}
+    .ce-pastille.ok{background:var(--ok-text)}
+    .ce-pastille.ko{background:var(--no-text)}
+    .ce-pastille.warn{background:var(--warn-text)}
+    .ce-go{display:inline-flex; justify-content:center; width:100%}
+    .ce-rappel{display:block; width:100%; text-align:left; background:none; border:0; padding:0; color:var(--muted); font:400 13px/1.4 'Lexend',sans-serif; cursor:pointer; overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
+    #aurCard.aur-m-code[data-ce-tab="enonce"] :is(.ce-p-code, .ce-p-res, #feedback){display:none}
+    #aurCard.aur-m-code[data-ce-tab="code"] :is(#qText, .ce-p-enonce, .ce-p-res, #feedback){display:none}
+    #aurCard.aur-m-code[data-ce-tab="res"] :is(#qText, .ce-p-enonce, .ce-p-code){display:none}
+    .ce-ed{--ce-s:.8; margin-inline:-12px; border-radius:0; border-inline:0}
+    .ce-gut{padding:12px 5px 12px 6px}
+    .ce-ta{padding:12px 10px}
+    .ce-miroir .ce-ln{padding:0 10px}
+    .ce-acts .btn{flex:1 1 auto}
+  }
+  /* Grand écran : l'énoncé à gauche reste visible, le code et la console à droite */
+  @media (min-width:1100px){
+    .aur-ses-body:has(#aurCard.aur-m-code){grid-template-columns:minmax(0,1fr)}
+    .aur-ses-body:has(#aurCard.aur-m-code) :is(.aur-rail, .aur-aside){display:none}
+    .aur-ses-body:has(#aurCard.aur-m-code) .aur-center{max-width:1240px}
+    #aurCard.aur-m-code{display:grid; grid-template-columns:minmax(0,5fr) minmax(0,7fr); grid-template-areas:"q a" "q f"; column-gap:30px; align-items:start}
+    #aurCard.aur-m-code #qText{grid-area:q; position:sticky; top:16px; align-self:start}
+    #aurCard.aur-m-code #answerZone{grid-area:a; min-width:0}
+    #aurCard.aur-m-code #feedback{grid-area:f; min-width:0}
+    .ce-ln.err[data-msg]::after{content:attr(data-msg); margin-left:22px; font:500 12.5px/1 'Lexend',sans-serif; color:var(--no-text); background:color-mix(in srgb,var(--no-text) 12%,transparent); padding:3px 9px; border-radius:999px}
+  }
 </style>
 </head>
 <body>
@@ -5486,9 +5644,22 @@ function execBody(body, env, st){
 
 function execStmt(s, env, st){
   tick(st);
+  if(st.trace && s.line!=null && s.k!=='block' && s.k!=='def') st.trace(s, env);
   switch(s.k){
     case 'expr':   evalExpr(s.e, env, st); return;
-    case 'pass': case 'global': case 'import': return;
+    case 'import': {
+      if(s.names[0]==='from' && env.lookup(s.names[1]) && env.get(s.names[1]) instanceof Module){
+        var __m = env.get(s.names[1]), __n = s.names.slice(3);
+        if(!__n.length) for(var __k in __m.members) env.set(__k, __m.members[__k]);
+        for(var __i=0;__i<__n.length;__i++){
+          if(!(__n[__i] in __m.members)) continue;
+          if(__n[__i+1]==='as'){ env.set(__n[__i+2], __m.members[__n[__i]]); __i+=2; }
+          else env.set(__n[__i], __m.members[__n[__i]]);
+        }
+      }
+      return;
+    }
+    case 'pass': case 'global': return;
     case 'block':  execBody(s.body, env, st); return;
     case 'assign': {
       var val = evalExpr(s.value, env, st);
@@ -5501,12 +5672,21 @@ function execStmt(s, env, st){
       assignTo(s.target, nv, env, st);
       return;
     }
-    case 'if':
-      if(truth(evalExpr(s.cond, env, st))) execBody(s.body, env, st);
+    case 'if': {
+      var __ci = truth(evalExpr(s.cond, env, st));
+      if(st.traceCond) st.traceCond(__ci);
+      if(__ci) execBody(s.body, env, st);
       else if(s.orelse) execBody(s.orelse, env, st);
       return;
+    }
     case 'while':
-      while(truth(evalExpr(s.cond, env, st))){
+      var __first = true;
+      while(true){
+        if(!__first && st.trace && s.line!=null) st.trace(s, env);
+        __first = false;
+        var __cw = truth(evalExpr(s.cond, env, st));
+        if(st.traceCond) st.traceCond(__cw);
+        if(!__cw) break;
         tick(st);
         try{ execBody(s.body, env, st); }
         catch(e){ if(e===BREAK) break; if(e===CONT) continue; throw e; }
@@ -5516,6 +5696,7 @@ function execStmt(s, env, st){
       var seq = iterate(evalExpr(s.iter, env, st));
       for(var j=0;j<seq.length;j++){
         tick(st);
+        if(j>0 && st.trace && s.line!=null) st.trace(s, env);
         assignTo(s.target, seq[j], env, st);
         try{ execBody(s.body, env, st); }
         catch(e2){ if(e2===BREAK) break; if(e2===CONT) continue; throw e2; }
@@ -5525,7 +5706,7 @@ function execStmt(s, env, st){
     case 'def':
       env.set(s.name, new Fn(s.name, s.params, s.body, env));
       return;
-    case 'return': throw new Ret(s.e ? evalExpr(s.e, env, st) : null);
+    case 'return': { var __r = s.e ? evalExpr(s.e, env, st) : null; if(st.traceRet) st.traceRet(__r, s); throw new Ret(__r); }
     case 'break':  throw BREAK;
     case 'continue': throw CONT;
     case 'assert': {
@@ -5803,8 +5984,11 @@ function callValue(fn, args, kw, st){
       env.set(name, val);
     }
     if(++st.depth > 200){ st.depth--; err('RecursionError', 'trop d\u2019appels imbriqués (récursion infinie ?)'); }
+    if(st.frames) st.frames.push({name:fn.name, env:env, args:ps.map(function(p){return p.name;}), callLine:st.curLine});
     try{ execBody(fn.body, env, st); }
-    catch(e){ if(e instanceof Ret){ st.depth--; return e.v; } st.depth--; throw e; }
+    catch(e){ if(st.frames){ if(e instanceof PyErr && !e.tb) e.tb = {line:st.curLine, frames:st.frames.map(function(f){return {name:f.name, callLine:f.callLine};})}; st.frames.pop(); } if(e instanceof Ret){ st.depth--; return e.v; } st.depth--; throw e; }
+    if(st.traceEnd) st.traceEnd();
+    if(st.frames) st.frames.pop();
     st.depth--;
     return null;
   }
@@ -6144,11 +6328,744 @@ function check(spec, userSrc, opts){
   return report;
 }
 
+
+/* --- Déroulé d'un appel, pour la console du mode code : crochets inactifs tant que st.trace n'est pas posé --- */
+(function(){
+  function withLine(name){
+    var p0 = Parser.prototype[name];
+    Parser.prototype[name] = function(){ var l = this.tok().line, n = p0.call(this); if(n && !Array.isArray(n) && n.line==null) n.line = l; return n; };
+  }
+  ['parseStatement','parseSimple','parseIf2'].forEach(withLine);
+})();
+function __val(name, v){
+  if(Array.isArray(v)) return {name:name, t:'list', items:v.slice(0,40).map(repr), len:v.length, r:repr(v)};
+  if(v instanceof Dict) return {name:name, t:'dict', len:v.m.size, r:repr(v)};
+  return {name:name, t:'val', r:repr(v)};
+}
+function __snap(s, st){
+  var frames = [];
+  st.frames.forEach(function(f){
+    if(/lambda/.test(f.name||'')) return;
+    var vars = [];
+    for(var k in f.env.v){
+      var v = f.env.v[k];
+      if(v instanceof Fn || v instanceof Builtin || v instanceof Bound || v instanceof Module) continue;
+      vars.push(__val(k, v));
+    }
+    frames.push({name:f.name, vars:vars, args:f.args});
+  });
+  return {line:s.line, kind:s.k, frames:frames, _s:s};
+}
+function trace(spec, userSrc, call, opts){
+  opts = opts || {};
+  var res = {steps:[], got:null, gotV:undefined, wantV:undefined, error:null, capped:false, out:[], ticks:0, lastLine:null, lastEnv:null, tb:null};
+  var st = newState({timeout:opts.timeout||1200}), MAX = opts.max||500, steps = res.steps, user = false;
+  function limit(){ if(steps.length>=MAX){ res.capped = true; throw new PyErr('TraceLimit',''); } }
+  function real(){ return st.frames.filter(function(f){return !/lambda/.test(f.name||'');}).length; }
+  st.frames = [];
+  st.trace = function(s, env){
+    if(!user) return;
+    res.lastLine = s.line; res.lastEnv = env; st.curLine = s.line;
+    if(st.depth<1 || !real()) return;
+    limit(); steps.push(__snap(s, st));
+  };
+  st.traceCond = function(c){ var l = steps[steps.length-1]; if(l && l.cond===undefined && st.depth>=1) l.cond = !!c; };
+  st.traceRet = function(v, s){
+    if(st.depth<1 || s.line==null) return;
+    var l = steps[steps.length-1], r = repr(v), depth = real();
+    if(!depth) return;
+    if(l && l._s===s && l.frames.length===depth && l.ret===undefined){ l.ret = r; return; }
+    limit(); var n = __snap(s, st); n.ret = r; steps.push(n);
+  };
+  st.traceEnd = function(){
+    if(st.depth<1 || !real()) return;
+    limit(); var p = steps[steps.length-1], n = __snap({line:p?p.line:null, k:'end'}, st); n.ret = 'None'; n.end = true; steps.push(n);
+  };
+  try{
+    var env = newEnv(st);
+    if(spec.setup) execBody(parse(spec.setup), env, st);
+    user = true;
+    execBody(parse(userSrc), env, st);
+    res.lastLine = null; st.curLine = null;
+    var g = evalIn(call, env, st);
+    res.gotV = g; res.got = repr(g);
+    if(opts.eq!==undefined && opts.eq!==null) res.wantV = evalIn(opts.eq, env, st);
+  }catch(e){
+    if(!(e instanceof PyErr && e.type==='TraceLimit')){ res.error = fmtError(e); res.tb = e.tb || null; }
+  }
+  res.out = st.out.slice(0,20);
+  res.ticks = st.steps;
+  steps.forEach(function(x){ delete x._s; });
+  return res;
+}
+
 return {
-  run: run, check: check, parse: parse, evalIn: evalIn, repr: repr, str: pystr,
+  typeName: typeName, trace: trace, run: run, check: check, parse: parse, evalIn: evalIn, repr: repr, str: pystr,
   eq: pyEq, tokenize: tokenize, fmtError: fmtError, newState: newState, newEnv: newEnv,
   types: {Tuple:Tuple, Dict:Dict, PySet:PySet}
 };
+})();
+
+/* DIAG : transforme une exécution PYMINI en explication. Aucune dépendance au DOM.
+   Règle d'écriture : `facts` = ce qui a été mesuré pendant l'exécution (certain) ;
+   `hint` = hypothèse, affichée comme telle. Une hypothèse n'est produite que si son motif est présent. */
+var DIAG = (function(){
+'use strict';
+var TT = PYMINI.types, FAIL = {};
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function C(s){ return '<code>'+esc(s)+'</code>'; }
+function V(s,c){ return '<span class="ce-val'+(c?' '+c:'')+'">'+esc(s)+'</span>'; }
+function plural(n,s,p){ return n+' '+(n>1?(p||s+'s'):s); }
+var FR = {int:'un entier', float:'un flottant', str:'une chaîne', bool:'un booléen', list:'une liste', tuple:'un tuple', dict:'un dictionnaire', set:'un ensemble', NoneType:'None'};
+var PY_BUILTINS = {len:1,range:1,print:1,sum:1,min:1,max:1,sorted:1,enumerate:1,zip:1,abs:1,int:1,float:1,str:1,list:1,dict:1,set:1,tuple:1,round:1,any:1,all:1};
+var KW = {def:1,'return':1,'if':1,elif:1,'else':1,'for':1,'while':1,'in':1,not:1,and:1,or:1,is:1,pass:1,'break':1,'continue':1,lambda:1,assert:1,'import':1,from:1,global:1,True:1,False:1,None:1};
+var MATH = {sqrt:1,floor:1,ceil:1,pi:1,exp:1,log:1,sin:1,cos:1,tan:1,fabs:1};
+
+function lev(a,b){ var d=[],i,j,p,t; for(j=0;j<=b.length;j++) d[j]=j; for(i=1;i<=a.length;i++){ p=d[0]; d[0]=i; for(j=1;j<=b.length;j++){ t=d[j]; d[j]=Math.min(d[j]+1,d[j-1]+1,p+(a[i-1]===b[j-1]?0:1)); p=t; } } return d[b.length]; }
+
+/* ---------- Lecture du source (chaînes et commentaires neutralisés) ---------- */
+function scan(src){
+  var raw = String(src).replace(/\r\n?/g,'\n').split('\n'), lines=[], stack=[], br=null, str=null, triple=null;
+  for(var i=0;i<raw.length;i++){
+    var L=raw[i], out='', start=stack.length, j=0;
+    while(j<L.length){
+      var c=L[j];
+      if(triple){ if(L.substr(j,3)===triple){ out+='   '; j+=3; triple=null; } else { out+=' '; j++; } continue; }
+      if(c==='#') break;
+      if(c==='"'||c==="'"){
+        if(L.substr(j,3)===c+c+c){ triple=c+c+c; out+='   '; j+=3; continue; }
+        var k=j+1, closed=false;
+        while(k<L.length){ if(L[k]==='\\'){ k+=2; continue; } if(L[k]===c){ closed=true; break; } k++; }
+        if(!closed){ if(!str) str={line:i+1,col:j,q:c}; j=L.length; break; }
+        out+=c+new Array(k-j).join(' ')+c; j=k+1; continue;
+      }
+      if('([{'.indexOf(c)>=0) stack.push({ch:c,line:i+1,col:j});
+      else if(')]}'.indexOf(c)>=0){
+        var top=stack[stack.length-1], want={')':'(',']':'[','}':'{'}[c];
+        if(!top){ if(!br) br={kind:'extra',line:i+1,col:j,ch:c}; }
+        else if(top.ch!==want){ if(!br) br={kind:'mismatch',line:i+1,col:j,ch:c,open:top}; stack.pop(); }
+        else stack.pop();
+      }
+      out+=c; j++;
+    }
+    lines.push({n:i+1, raw:L, code:out.replace(/\s+$/,''), indent:/^ */.exec(L)[0].length, depth:start, endDepth:stack.length});
+  }
+  if(!br && stack.length){ var t=stack[stack.length-1]; br={kind:'unclosed',line:t.line,col:t.col,ch:t.ch}; }
+  return {lines:lines, br:br, str:str};
+}
+function lastColon(code){ var d=0; for(var i=0;i<code.length;i++){ var c=code[i]; if('([{'.indexOf(c)>=0) d++; else if(')]}'.indexOf(c)>=0) d--; else if(c===':'&&d===0) return i; } return -1; }
+function headerOf(kw){ return kw==='def'?'function definition':"'"+kw+"' statement"; }
+
+/* ---------- Le code n'a pas pu être lu ---------- */
+var BAD_CHAR = {'≤':'<=','≥':'>=','≠':'!=','×':'*','÷':'/','’':"'",'‘':"'",'“':'"','”':'"','«':'"','»':'"','−':'-','→':'->'};
+function explainSyntax(msg, src){
+  var A=scan(src), m=/ligne (\d+)/.exec(msg), pyLine=m?+m[1]:null, C_=[], i;
+  function add(o){ C_.push(o); }
+  if(A.str) add({line:A.str.line,col:A.str.col,len:A.lines[A.str.line-1].raw.length-A.str.col,t:'Un guillemet n’est pas refermé',
+    b:'Une chaîne de caractères s’ouvre et se ferme sur la même ligne, avec le même guillemet ('+C(A.str.q)+').',py:'SyntaxError: unterminated string literal (detected at line '+A.str.line+')',kind:'str'});
+  if(A.br){
+    var b=A.br, nm={'(':'parenthèse','[':'crochet','{':'accolade',')':'parenthèse',']':'crochet','}':'accolade'}[b.ch];
+    if(b.kind==='unclosed') add({line:b.line,col:b.col,len:1,t:(b.ch==='('?'Une parenthèse ouverte':b.ch==='['?'Un crochet ouvert':'Une accolade ouverte')+' n’est jamais '+(b.ch==='('||b.ch==='{'?'refermée':'refermé'),
+      b:'Python continue à chercher '+C({'(':')','[':']','{':'}'}[b.ch])+' jusqu’à la fin du code. L’erreur se trouve ici, même si les lignes suivantes semblent en cause.',py:"SyntaxError: '"+b.ch+"' was never closed",kind:'br'});
+    if(b.kind==='extra') add({line:b.line,col:b.col,len:1,t:'Ce '+C(b.ch).replace('<code>','« ').replace('</code>',' »')+' ferme quelque chose qui n’a jamais été ouvert',b:'Il y a une '+nm+' fermante en trop sur cette ligne, ou l’ouverture a été oubliée plus tôt.',py:"SyntaxError: unmatched '"+b.ch+"'",kind:'br'});
+    if(b.kind==='mismatch') add({line:b.line,col:b.col,len:1,t:'Parenthèses et crochets ne correspondent pas',b:C(b.open.ch)+' ouvert ligne '+b.open.line+' ne peut pas se fermer avec '+C(b.ch)+'.',py:"SyntaxError: closing parenthesis '"+b.ch+"' does not match opening parenthesis '"+b.open.ch+"'"+(b.open.line!==b.line?' on line '+b.open.line:''),kind:'br'});
+  }
+  A.lines.forEach(function(l){
+    if(l.depth>0) return;
+    var c=l.code, t=c.trim(), mm;
+    if(!t) return;
+    if((mm=/^(Def|If|Elif|Else|For|While|Return)\b/.exec(t))){ add({line:l.n,col:l.indent,len:mm[1].length,t:'Les mots-clés de Python s’écrivent en minuscules',b:'Écris '+C(mm[1].toLowerCase())+' et non '+C(mm[1])+' : Python distingue majuscules et minuscules.',py:'SyntaxError: invalid syntax'}); return; }
+    if(/^else\s+if\b/.test(t)){ add({line:l.n,col:l.indent,len:7,t:'En Python, « else if » s’écrit elif',b:'Remplace '+C('else if')+' par '+C('elif')+', suivi de la condition et de deux points.',py:"SyntaxError: expected ':'"}); return; }
+    if((mm=/&&|\|\|/.exec(c))){ add({line:l.n,col:mm.index,len:2,t:C(mm[0])+' n’existe pas en Python',b:'On écrit '+C(mm[0]==='&&'?'and':'or')+'.',py:'SyntaxError: invalid syntax'}); return; }
+    if((mm=/\w(\+\+|--)\s*$/.exec(c))){ add({line:l.n,col:mm.index+1,len:2,t:C(mm[1])+' n’existe pas en Python',b:'Pour ajouter 1, on écrit '+C('i += 1')+' ou '+C('i = i + 1')+'.',py:'SyntaxError: invalid syntax'}); return; }
+    if((mm=/^(if|elif|while)\b/.exec(t))){
+      var d=0, eq=-1;
+      for(i=0;i<c.length;i++){ var ch=c[i]; if('([{'.indexOf(ch)>=0) d++; else if(')]}'.indexOf(ch)>=0) d--; else if(ch==='='&&d===0){ if(c[i+1]==='='){ i++; continue; } if('=!<>'.indexOf(c[i-1])>=0) continue; eq=i; break; } }
+      if(eq>=0){ var left=c.slice(0,eq).trim(), lastW=left.split(/\s+/).pop(), simple=/^(if|elif|while)\s+[A-Za-z_]\w*$/.test(left), subs=/\]$/.test(left)&&/^(if|elif|while)\s+[A-Za-z_]\w*\[[^\s]*\]$/.test(left);
+        add({line:l.n,col:eq,len:1,t:'Tu as écrit « = » au lieu de « == »',b:C('=')+' range une valeur dans une variable, '+C('==')+' compare deux valeurs. Une condition a besoin d’une comparaison.',py:simple?"SyntaxError: invalid syntax. Maybe you meant '==' or ':=' instead of '='?":(subs?"SyntaxError: cannot assign to subscript here. Maybe you meant '==' instead of '='?":null)}); return; }
+    }
+    if(/^else\b/.test(t) && !/^else\s*:/.test(t)){ if(/^else\s+\S/.test(t)){ add({line:l.n,col:l.indent+4,len:t.length-4,t:'else ne prend pas de condition',b:'Si tu veux tester quelque chose, écris '+C('elif condition:')+'. Sinon, écris simplement '+C('else:')+'.',py:"SyntaxError: expected ':'"}); return; } }
+    if(/^for\b/.test(t) && !/\bin\b/.test(t)){ add({line:l.n,col:l.indent,len:t.length,t:'Une boucle for s’écrit « for variable in … : »',b:'Il manque '+C('in')+'. Exemple : '+C('for i in range(n):')+'.',py:'SyntaxError: invalid syntax'}); return; }
+    if((mm=/^def\s+\w+\s*:/.exec(t))){ add({line:l.n,col:l.indent,len:t.length,t:'Il manque les parenthèses après le nom de la fonction',b:'Même sans paramètre, on écrit '+C('def nom():')+'.',py:"SyntaxError: expected '('"}); return; }
+    if((mm=/^(def|if|elif|else|for|while)\b/.exec(t)) && l.endDepth===0 && lastColon(c)<0){
+      add({line:l.n,col:l.raw.replace(/\s*(#.*)?$/,'').length,len:0,ins:':',t:'Il manque « : » à la fin de cette ligne',b:'Après '+C('def')+', '+C('if')+', '+C('elif')+', '+C('else')+', '+C('for')+' et '+C('while')+', Python attend deux points avant le bloc.',py:"SyntaxError: expected ':'"});
+    }
+  });
+  /* indentation */
+  var code=A.lines.filter(function(l){ return l.code.trim() && l.depth===0; });
+  function prevOf(n){ var p=null; code.forEach(function(l){ if(l.n<n) p=l; }); return p; }
+  if(/^IndentationError: il manque/.test(msg) && pyLine){
+    var cur=A.lines[pyLine-1], pv=cur&&prevOf(pyLine);
+    if(pv){ var kw=(/^\s*(def|if|elif|else|for|while)\b/.exec(pv.raw)||[])[1]||'if', onlyCom=false;
+      for(i=pv.n;i<pyLine-1;i++){ if(A.lines[i]&&A.lines[i].raw.trim()) onlyCom=true; }
+      if(!cur||!cur.raw.trim()||onlyCom) add({line:pv.n,exact:true,col:pv.raw.replace(/\s+$/,'').length,len:0,t:'Ce bloc est vide',b:'Après « : », il faut au moins une instruction. Un commentaire ne compte pas : si le bloc doit rester vide, écris '+C('pass')+'.',py:'IndentationError: expected an indented block after '+headerOf(kw)+' on line '+pv.n});
+      else add({line:pyLine,col:cur.indent,len:cur.raw.trim().length,t:'Cette ligne devrait être décalée',b:'La ligne '+pv.n+' se termine par « : ». Python attend donc juste après un bloc décalé de 4 espaces de plus, soit '+(pv.indent+4)+' espaces ; cette ligne en a '+cur.indent+'.',py:'IndentationError: expected an indented block after '+headerOf(kw)+' on line '+pv.n,exact:true}); }
+  }
+  if(/^IndentationError: indentation incohérente/.test(msg) && pyLine){
+    var cu=A.lines[pyLine-1], lv=[0];
+    code.forEach(function(l){ if(l.n>=pyLine) return; while(lv[lv.length-1]>l.indent) lv.pop(); if(l.indent>lv[lv.length-1]) lv.push(l.indent); });
+    add({line:pyLine,col:0,len:cu.indent,t:'Ce décalage ne correspond à aucun bloc ouvert',b:'Cette ligne a '+plural(cu.indent,'espace')+' au début. Les blocs ouverts au-dessus sont à '+lv.join(', ')+' espaces : aligne-la sur l’un d’eux.',py:'IndentationError: unindent does not match any outer indentation level',exact:true});
+  }
+  structural(code,add);
+  code.forEach(function(l,idx){
+    var w=/^\s*(elif|else)\b/.exec(l.code); if(!w) return;
+    var sib=null; for(var k=idx-1;k>=0;k--){ if(code[k].indent<l.indent) break; if(code[k].indent===l.indent){ sib=code[k]; break; } }
+    var sk=sib?(/^\s*(\w+)/.exec(sib.code)||[])[1]:null;
+    if(sk==='if'||sk==='elif') return;
+    if(w[1]==='else'&&(sk==='for'||sk==='while')){ add({line:l.n,col:l.indent,len:4,t:'Ce else est aligné sur une boucle',b:'Tu voulais sans doute l’aligner sur le '+C('if')+' correspondant, décalé plus à droite. L’écriture '+C(sk+' … else')+' existe en Python, mais elle n’est pas gérée ici.',py:null,loopElse:true}); return; }
+    add({line:l.n,col:l.indent,len:w[1].length,t:'Ce '+w[1]+' n’est rattaché à aucun if',b:'Un '+C(w[1])+' s’aligne exactement sur le '+C('if')+' auquel il répond. Vérifie son décalage.',py:'SyntaxError: invalid syntax'});
+  });
+  code.forEach(function(l,idx){
+    if(!idx){ if(l.indent>0) add({line:l.n,col:0,len:l.indent,t:'La première ligne ne doit pas être décalée',b:'Le programme commence au bord gauche, sans espaces.',py:'IndentationError: unexpected indent'}); return; }
+    var pv=code[idx-1];
+    if(l.indent>pv.indent && !/:\s*$/.test(pv.code) && !/\\\s*$/.test(pv.raw)) add({line:l.n,col:0,len:l.indent,t:'Cette ligne est trop décalée',b:'La ligne '+pv.n+' ne se termine pas par « : », donc aucun nouveau bloc ne s’ouvre ici. Aligne celle-ci sur la précédente.',py:'IndentationError: unexpected indent'});
+  });
+  /* on garde le premier motif compatible avec la ligne signalée par l'interpréteur */
+  C_.forEach(function(c,k){ c._k=k; });
+  function rk(c){ return c.py&&/^IndentationError/.test(c.py)?0:(c.kind==='br'?1:2); }
+  C_.sort(function(a,b){ return (a.line-b.line)||(rk(a)-rk(b))||(a._k-b._k); });
+  var pick=null;
+  for(i=0;i<C_.length;i++){ var c0=C_[i]; if(pyLine==null||c0.line<=pyLine||c0.kind){ pick=c0; break; } }
+  if(pick&&pick.kind==='br'&&A.br.kind==='unclosed'&&pyLine!=null&&pyLine<=A.br.line) pick.py=null;
+  if(!pick){
+    var mm2;
+    pick={line:pyLine,t:'Python ne comprend pas cette ligne',b:'Regarde d’abord les parenthèses, les deux points et l’orthographe.',py:'SyntaxError: invalid syntax'};
+    if((mm2=/il manque « (.+?) »/.exec(msg))){
+      var rawL=(A.lines[pyLine-1]||{code:''}).code.replace(/\s+$/,'');
+      if(mm2[1]===':'&&/:$/.test(rawL)){ pick.b='Après le mot-clé, Python attend une seule expression. Il manque sans doute un opérateur entre deux valeurs : '+C('in')+', '+C('==')+', '+C('<')+', '+C('and')+'…'; }
+      else { pick.t='Il manque « '+mm2[1]+' » ici'; pick.b='Python attendait '+C(mm2[1])+' à cet endroit de la ligne.'; pick.py=null; }
+    }
+    else if((mm2=/expression inattendue ligne \d+(?: près de « (.+?) »)?/.exec(msg))){ pick.b=mm2[1]?'Python ne s’attendait pas à '+C(mm2[1])+' à cet endroit. Une valeur ou un nom manque peut-être juste avant.':'Il manque une valeur à la fin de cette ligne.'; if(mm2[1]){ var r=(A.lines[pyLine-1]||{raw:''}).raw, q=r.indexOf(mm2[1]); if(q>=0){ pick.col=q; pick.len=mm2[1].length; } } }
+    else if((mm2=/structure inattendue ligne \d+ \(attendu : (\w+)\)/.exec(msg))){ pick.b=mm2[1]==='NAME'?'À cet endroit, Python attendait un nom : celui d’une variable ou d’un paramètre.':mm2[1]==='NEWLINE'?'Il reste quelque chose en trop à la fin de cette ligne.':'La structure de cette ligne n’est pas celle attendue.'; }
+    else if((mm2=/mot-clé « (.+?) » inattendu/.exec(msg))){ pick.t='Le mot-clé '+mm2[1]+' ne peut pas être ici'; pick.b=C(mm2[1])+' est réservé par Python : il ne peut pas servir de nom de variable ni apparaître à cet endroit.'; var r2=(A.lines[pyLine-1]||{raw:''}).raw, q2=r2.search(new RegExp('\\b'+mm2[1]+'\\b')); if(q2>=0){ pick.col=q2; pick.len=mm2[1].length; } }
+    else if((mm2=/caractère inattendu « (.+?) »/.exec(msg))){ pick.t='Ce caractère n’existe pas en Python'; var rep=BAD_CHAR[mm2[1]]; pick.b=rep?'Remplace '+C(mm2[1])+' par '+C(rep)+'. Les claviers de téléphone insèrent parfois ces variantes.':'Retire '+C(mm2[1])+' ou remplace-le par son équivalent ASCII.'; var r3=(A.lines[pyLine-1]||{raw:''}).raw, q3=r3.indexOf(mm2[1]); if(q3>=0){ pick.col=q3; pick.len=mm2[1].length; } if(!pyLine){ A.lines.some(function(l){ var q4=l.raw.indexOf(mm2[1]); if(q4>=0){ pick.line=l.n; pick.col=q4; pick.len=mm2[1].length; return true; } return false; }); } pick.py='SyntaxError: invalid character';  }
+    else if(/bloc vide/.test(msg)){ pick.t='Ce bloc est vide'; pick.b='Après « : », il faut au moins une instruction. Un commentaire ne suffit pas : pour un bloc vide, écris '+C('pass')+'.'; pick.py=null; }
+    else if(/IndentationError/.test(msg)){ pick.t='L’indentation ne suit pas la structure du code'; pick.b='Un bloc se décale de 4 espaces après une ligne terminée par « : », et toutes ses lignes s’alignent.'; pick.py=null; }
+    else if(/return.*en dehors/.test(msg)){ pick.t=C('return')+' est en dehors d’une fonction'; pick.b='Un '+C('return')+' doit être à l’intérieur d’une fonction : vérifie son décalage.'; pick.py="SyntaxError: 'return' outside function"; }
+    else if(/break.*en dehors/.test(msg)){ pick.t=C('break')+' ou '+C('continue')+' est en dehors d’une boucle'; pick.b='Ces instructions n’ont de sens que dans une boucle : vérifie leur décalage.'; pick.py=null; }
+  }
+  return {t:pick.t, lead:pick.b, line:pick.line||null, where:whereOf(A.lines,pick), py:pick.py||msg, pyReal:!!pick.py, short:shortOf(pick.t)};
+}
+function shortOf(t){ return String(t).replace(/<[^>]+>/g,'').replace(/ à la fin de cette ligne/,'').replace(/ ici$/,'').slice(0,46); }
+function whereOf(lines,p){
+  if(!p||!p.line||!lines[p.line-1]) return null;
+  var raw=lines[p.line-1].raw;
+  return {line:p.line, code:raw, col:p.col==null?null:p.col, len:p.len==null?null:p.len, ins:p.ins||null};
+}
+
+function structural(code,add){
+  code.forEach(function(l,idx){
+    var nx=code[idx+1], c=l.code.replace(/\s+$/,'');
+    if(/^\s*(def|if|elif|else|for|while)\b/.test(c)&&/:$/.test(c)&&nx&&nx.indent<=l.indent){
+      var kw=/^\s*(\w+)/.exec(c)[1];
+      add({line:nx.n,col:nx.indent,len:nx.raw.trim().length,t:'Cette ligne devrait être décalée',b:'La ligne '+l.n+' se termine par « : ». Python attend donc juste après un bloc décalé de 4 espaces de plus, soit '+(l.indent+4)+' espaces ; cette ligne en a '+nx.indent+'.',py:'IndentationError: expected an indented block after '+headerOf(kw)+' on line '+l.n});
+    }
+  });
+}
+/* Fautes que CPython refuse à la compilation et que l'interpréteur laisserait passer */
+function staticErrors(src){
+  var A=scan(src), code=A.lines.filter(function(l){ return l.code.trim()&&l.depth===0; }), out=null;
+  if(A.br||A.str) return null;
+  function enclosing(idx,re){ var ind=code[idx].indent; for(var k=idx-1;k>=0;k--){ var p=code[k]; if(p.indent<ind){ ind=p.indent; if(re.test(p.code)) return p; } } return null; }
+  for(var i=0;i<code.length&&!out;i++){
+    var l=code[i], c=l.code.trim(), m, pv=code[i-1];
+    if(i===0&&l.indent>0) out={line:l.n,col:0,len:l.indent,t:'La première ligne ne doit pas être décalée',b:'Le programme commence au bord gauche, sans espaces.',py:'IndentationError: unexpected indent'};
+    else if(pv&&l.indent>pv.indent&&!/:\s*$/.test(pv.code)&&!/\\\s*$/.test(pv.raw)) out={line:l.n,col:0,len:l.indent,t:'Cette ligne est trop décalée',b:'La ligne '+pv.n+' ne se termine pas par « : », donc aucun nouveau bloc ne s’ouvre ici. Aligne celle-ci sur la précédente.',py:'IndentationError: unexpected indent'};
+    else if(/^return\b/.test(c)&&!enclosing(i,/^\s*def\b/)) out={line:l.n,col:l.indent,len:6,t:'Ce return est en dehors de la fonction',b:'Un '+C('return')+' doit être dans le corps de la fonction, donc décalé d’au moins 4 espaces par rapport à '+C('def')+'.',py:"SyntaxError: 'return' outside function"};
+    else if(/^break\b/.test(c)&&!enclosing(i,/^\s*(for|while)\b/)) out={line:l.n,col:l.indent,len:5,t:'Ce break est en dehors d’une boucle',b:C('break')+' n’a de sens que dans une boucle : vérifie son décalage.',py:"SyntaxError: 'break' outside loop"};
+    else if(/^continue\b/.test(c)&&!enclosing(i,/^\s*(for|while)\b/)) out={line:l.n,col:l.indent,len:8,t:'Ce continue est en dehors d’une boucle',b:C('continue')+' n’a de sens que dans une boucle : vérifie son décalage.',py:"SyntaxError: 'continue' not properly in loop"};
+    else if((m=/(^|[^\w.])0\d+\b/.exec(l.code))&&!/\.\d/.test(l.code.slice(m.index,m.index+m[0].length+1))) out={line:l.n,col:m.index+m[1].length,len:m[0].length-m[1].length,t:'Un entier ne commence pas par 0',b:'Écris '+C(String(parseInt(m[0].slice(m[1].length),10)))+' sans le zéro de tête.',py:'SyntaxError: leading zeros in decimal integer literals are not permitted; use an 0o prefix for octal integers'};
+  }
+  if(!out) return null;
+  return {t:out.t, lead:out.b, line:out.line, where:whereOf(A.lines,out), py:out.py, pyReal:true, short:shortOf(out.t)};
+}
+
+/* ---------- Évaluation sans effet de bord ---------- */
+function safeEval(txt, env){
+  if(/\(/.test(txt.replace(/\b(len|abs|min|max)\(/g,''))) return FAIL;
+  try{ return PYMINI.evalIn(txt, env, PYMINI.newState({timeout:40})); }catch(e){ return FAIL; }
+}
+function scanSubscripts(raw, env){
+  var code=raw.replace(/#.*$/,''), re=/[A-Za-z_]\w*/g, m, found=[];
+  while((m=re.exec(code))){
+    if(code[m.index-1]==='.') continue;
+    var p=re.lastIndex, start=m.index, prefix=m[0];
+    while(code[p]==='['){
+      var d=0,q=p;
+      do{ if(code[q]==='[') d++; else if(code[q]===']') d--; q++; }while(d>0&&q<code.length);
+      if(d!==0) break;
+      var txt=code.slice(p+1,q-1), expr=code.slice(start,q);
+      if(txt.indexOf(':')<0){
+        var base=safeEval(prefix,env), idx=safeEval(txt,env);
+        if(base!==FAIL && idx!==FAIL){
+          if(base instanceof TT.Dict){ var has=safeEval(txt+' in '+prefix,env); if(has===false) found.push({kind:'key',expr:expr,col:start,len:q-start,container:prefix,base:base,idx:idx,idxTxt:txt}); }
+          else if((Array.isArray(base)||typeof base==='string'||base instanceof TT.Tuple) && typeof idx==='number' && Number.isInteger(idx)){
+            var n=base instanceof TT.Tuple?base.items.length:base.length;
+            if(idx>=n||idx<-n) found.push({kind:'index',expr:expr,col:start,len:q-start,container:prefix,base:base,idx:idx,n:n,idxTxt:txt});
+          }
+        }
+      }
+      prefix=expr; p=q;
+    }
+    re.lastIndex=Math.max(re.lastIndex,p);
+  }
+  return found;
+}
+
+/* ---------- Boucles et appels vus dans le déroulé ---------- */
+function indentOf(lines,n){ var l=lines[n-1]||''; return /^ */.exec(l)[0].length; }
+function loopsOf(T, lines){
+  var heads={}, steps=T.steps;
+  steps.forEach(function(s,k){ if((s.kind==='while'||s.kind==='for')&&s.frames.length===1) (heads[s.line]=heads[s.line]||[]).push(k); });
+  var ks=Object.keys(heads).map(Number);
+  if(!ks.length) return null;
+  var minI=Math.min.apply(null,ks.map(function(n){ return indentOf(lines,n); }));
+  var top=ks.filter(function(n){ return indentOf(lines,n)===minI; }).sort(function(a,b){ return a-b; });
+  var line=top[top.length-1], idx=heads[line];
+  for(var v=top.length-1;v>=0;v--){ if(heads[top[v]].length>1 || v===0){ line=top[v]; idx=heads[line]; break; } }
+  var h=steps[idx[idx.length-1]], kind=h.kind, ind=indentOf(lines,line);
+  var inBody=function(n){ if(n<=line) return false; for(var i=line;i<n-1;i++){ if((lines[i]||'').trim()&&indentOf(lines,i+1)<=ind) return false; } return indentOf(lines,n)>ind; };
+  var iter, exit;
+  var last=steps[steps.length-1];
+  if(kind==='while'){
+    iter=idx.filter(function(k){ return steps[k].cond===true; }).length;
+    exit=(h.cond===false)?'cond':(last&&last.ret!==undefined&&!last.end&&inBody(last.line)?'return':'other');
+  } else {
+    var nx=steps[idx[0]+1];
+    iter=idx.length;
+    if(idx.length===1&&!(nx&&inBody(nx.line)&&nx.frames.length===1)) iter=0;
+    exit=(last&&last.ret!==undefined&&!last.end&&inBody(last.line)&&last.frames.length===1)?'return':'end';
+  }
+  return {line:line,kind:kind,iter:iter,exit:exit,idx:idx,header:(lines[line-1]||'').trim(),inBody:inBody,last:last};
+}
+function condText(h){ return h.replace(/^(while|elif|if)\s+/,'').replace(/:\s*(#.*)?$/,''); }
+function namesIn(txt){ return (txt.replace(/"[^"]*"|'[^']*'/g,'').match(/[A-Za-zÀ-ÿ_]\w*/g)||[]).filter(function(w){ return !KW[w]&&!PY_BUILTINS[w]; }); }
+function uniq(a){ return a.filter(function(x,i){ return a.indexOf(x)===i; }); }
+function varsAt(step){ var f=step.frames[step.frames.length-1]; return f?f.vars:[]; }
+function findVar(step,n){ return varsAt(step).filter(function(v){ return v.name===n; })[0]; }
+function loopFact(L, T){
+  if(!L) return null;
+  var steps=T.steps, h=steps[L.idx[L.idx.length-1]];
+  if(L.kind==='while'){
+    if(L.exit==='cond'){
+      var cn=condText(L.header), vs=uniq(namesIn(cn)).map(function(n){ var v=findVar(h,n); return v&&v.t==='val'?C(n+' = '+v.r):null; }).filter(Boolean);
+      return 'La boucle de la ligne '+L.line+' a fait '+plural(L.iter,'tour')+', puis s’est arrêtée car '+C(cn)+' est devenue fausse'+(vs.length?' ('+vs.join(', ')+')':'')+'.';
+    }
+    if(L.exit==='return') return 'La fonction s’est arrêtée pendant le tour '+L.iter+' de la boucle de la ligne '+L.line+', sur le '+C('return')+' de la ligne '+L.last.line+'.';
+    return 'La boucle de la ligne '+L.line+' a fait '+plural(L.iter,'tour')+'.';
+  }
+  if(L.iter===0) return 'La boucle de la ligne '+L.line+' n’a fait aucun tour : elle parcourt une séquence vide sur ce test.';
+  if(L.exit==='return') return 'La fonction s’est arrêtée pendant le tour '+L.iter+' de la boucle de la ligne '+L.line+', sur le '+C('return')+' de la ligne '+L.last.line+'.';
+  return 'La boucle de la ligne '+L.line+' a parcouru ses '+plural(L.iter,'tour')+' jusqu’au bout.';
+}
+
+/* Tableau de suivi : une ligne par tour de la boucle principale */
+function loopTable(L, T){
+  if(!L||!L.idx.length) return null;
+  var steps=T.steps, rows=[];
+  L.idx.forEach(function(k,n){
+    var st=steps[k], src=(L.kind==='for'&&steps[k+1]&&steps[k+1].frames.length===1)?steps[k+1]:st;
+    if(L.kind==='for'&&L.iter===0) return;
+    rows.push({n:n+1, vars:varsAt(src), cond:st.cond});
+  });
+  if(!rows.length) return null;
+  var order=[], seen={};
+  rows.forEach(function(r){ r.vars.forEach(function(v){ if(!seen[v.name]){ seen[v.name]={first:v.r,moved:false,t:v.t,short:v.t==='val'||(v.t==='list'&&v.len<=9)}; order.push(v.name); } else if(seen[v.name].first!==v.r) seen[v.name].moved=true; }); });
+  var cols=order.filter(function(n){ return seen[n].moved && seen[n].short; }).slice(0,6);
+  var loopVar=(/^for\s+(\w+)/.exec(L.header)||[])[1];
+  if(loopVar&&cols.indexOf(loopVar)<0&&seen[loopVar]) cols.unshift(loopVar);
+  if(!cols.length) return null;
+  var out=rows.map(function(r){ return {n:r.n, cells:cols.map(function(c){ var v=r.vars.filter(function(x){ return x.name===c; })[0]; return v?v.r:'·'; }), cond:r.cond}; });
+  var cut=null;
+  if(out.length>12){ cut=out.length-10; out=out.slice(0,5).concat([{gap:cut}]).concat(out.slice(-5)); }
+  var exitRow=L.kind==='while'&&L.exit==='cond';
+  return {cols:cols, rows:out, header:L.header, line:L.line, hasCond:L.kind==='while', exitRow:exitRow, note:exitRow?'La dernière ligne montre l’état au moment où la condition est testée pour la dernière fois.':null};
+}
+function callTable(T){
+  var byDepth=[], order=[], steps=T.steps;
+  steps.forEach(function(s){
+    var d=s.frames.length, f=s.frames[d-1];
+    if(!byDepth[d]){ byDepth[d]={d:d,arg:argStr(f),ret:null,name:f.name}; order.push(byDepth[d]); }
+    if(s.ret!==undefined) byDepth[d].ret=s.ret;
+  });
+  if(order.length<2) return null;
+  var rows=order.map(function(o){ return {call:o.name+'('+o.arg+')',ret:o.ret}; });
+  var cut=null;
+  if(rows.length>10){ cut=rows.length-7; rows=rows.slice(0,4).concat([{gap:cut}]).concat(rows.slice(-3)); }
+  return {calls:rows};
+}
+function argStr(f){ return (f.args||[]).map(function(a){ var v=f.vars.filter(function(x){ return x.name===a; })[0]; if(!v) return a; return v.t==='val'?v.r:(v.r.length>22?a:v.r); }).join(', '); }
+
+/* Comparaison à la référence : première variable commune qui s'écarte */
+function seqs(T){ var m={},order=[]; T.steps.forEach(function(s,k){ if(s.frames.length!==1) return; s.frames[0].vars.forEach(function(v){ var a=m[v.name]; if(!a){ m[v.name]=[{r:v.r,k:k}]; order.push(v.name); } else if(a[a.length-1].r!==v.r) a.push({r:v.r,k:k}); }); }); return {m:m,order:order}; }
+function compareRef(T,R){
+  if(!R||!R.steps.length||!T.steps.length||T.capped||R.capped) return null;
+  var A=seqs(T), B=seqs(R), best=null;
+  A.order.forEach(function(n){
+    if(!B.m[n]) return;
+    var a=A.m[n], b=B.m[n], i=0;
+    while(i<a.length&&i<b.length&&a[i].r===b[i].r) i++;
+    if(i===a.length&&i===b.length) return;
+    var pos=i<a.length?a[i].k:T.steps.length;
+    if(!best||pos<best.pos) best={n:n,i:i,pos:pos,a:a[i]?a[i].r:null,b:b[i]?b[i].r:null};
+  });
+  if(!best) return null;
+  if(best.a!==null&&best.b!==null) return {step:Math.max(0,best.pos-1),html:'Même entrée, deux exécutions : '+C(best.n)+' prend la valeur '+V(best.a,'bad')+' chez toi, là où la référence a '+V(best.b,'good')+'. C’est le premier écart observé.'};
+  if(best.a===null) return {step:T.steps.length-1,html:(T.steps.length<R.steps.length?'Ton exécution suit la référence, puis se termine avant elle : dans la référence, ':'Dans la référence, ')+C(best.n)+' prend ensuite la valeur '+V(best.b,'good')+'. Chez toi, cette variable ne change plus.'};
+  return {step:Math.max(0,best.pos-1),html:'Chez toi, '+C(best.n)+' prend encore la valeur '+V(best.a,'bad')+', alors que la référence a déjà terminé avec cette variable.'};
+}
+
+/* ---------- Le code s'arrête sur une erreur ---------- */
+function explainRuntime(msg, ctx){
+  var T=ctx.T, lines=ctx.lines, tb=T&&T.tb, line=(tb&&tb.line)||(T&&T.lastLine)||null, raw=line?lines[line-1]:null;
+  var type=(/^(\w+)/.exec(msg)||[])[1]||'Erreur', detail=msg.replace(/^\w+:\s*/,''), env=T&&T.lastEnv, m;
+  var last=T&&T.steps.length?T.steps[T.steps.length-1]:null;
+  var x={t:'Erreur à l’exécution',lead:esc(detail),facts:[],hint:null,py:msg,pyReal:false,line:line,mark:null};
+  var sub=(env&&raw)?scanSubscripts(raw,env):[];
+  function varOnLine(){ if(!last||!raw) return []; var ns=uniq(namesIn(raw.replace(/#.*$/,''))); return varsAt(last).filter(function(v){ return ns.indexOf(v.name)>=0; }); }
+  function near(name){ var cand=uniq((ctx.src.replace(/#.*$/gm,'').replace(/"[^"\n]*"|'[^'\n]*'/g,'').match(/[A-Za-zÀ-ÿ_]\w*/g)||[])).filter(function(w){ return w!==name&&!KW[w]; }), best=null, bd=3, seuil=Math.max(1,Math.floor(name.length/3)); cand.forEach(function(w){ var d=lev(w,name); if(d<bd&&d<=seuil){ bd=d; best=w; } }); return best; }
+
+  if(type==='NameError' && (m=/le nom « (.+?) » n/.exec(msg))){
+    var nm=m[1], low=nm.toLowerCase(), cap=nm[0].toUpperCase()+nm.slice(1).toLowerCase();
+    x.t='« '+nm+' » n’existe pas à ce moment du programme'; x.short=nm+' ?';
+    x.lead='Python lit '+C(nm)+' à la ligne '+line+', mais aucune variable ni fonction ne porte ce nom à cet instant.';
+    x.py="NameError: name '"+nm+"' is not defined"; x.pyReal=true;
+    if(raw){ var q=raw.search(new RegExp('(^|[^\\w])'+nm+'\\b')); if(q>=0){ var off=raw[q]===nm[0]?0:1; x.mark={col:q+off,len:nm.length}; } }
+    if(isLocalRead(nm,line,lines)){ x.py="UnboundLocalError: cannot access local variable '"+nm+"' where it is not associated with a value"; }
+    var assigned=[], imp=new RegExp('^\\s*from\\s+\\w+\\s+import\\b.*\\b'+nm+'\\b');
+    lines.forEach(function(l,i){ if(new RegExp('^\\s*'+nm+'\\s*(=[^=]|\\+=|-=)').test(l)||new RegExp('^\\s*for\\s+'+nm+'\\s+in\\b').test(l)) assigned.push(i+1); });
+    var later=assigned.filter(function(n){ return n>line; })[0], before=assigned.filter(function(n){ return n<line; })[0], imported=lines.some(function(l){ return imp.test(l); });
+    if(assigned.indexOf(line)>=0&&!before) x.hint=C(nm)+' est lue sur cette ligne avant d’avoir reçu une première valeur. Initialise-la plus haut, avant la boucle par exemple.';
+    else if(imported) x.hint='Le module importé n’est pas disponible ici : l’exécuteur du site ne connaît que '+C('math')+'.';
+    else if(cap==='True'||cap==='False'||cap==='None'){ if(nm!==cap) x.hint='En Python, '+C(cap)+' prend une majuscule.'; }
+    else if(later) x.hint=C(nm)+' reçoit sa valeur à la ligne '+later+', donc après avoir été lue ici. Inverse les deux lignes, ou initialise la variable avant.';
+    else if(before) x.hint=C(nm)+' reçoit sa valeur à la ligne '+before+', mais cette ligne n’a pas été exécutée sur ce test : elle est sans doute dans un bloc non emprunté.';
+    else if(PY_BUILTINS[low]) x.hint='Python distingue majuscules et minuscules : la fonction s’écrit '+C(low)+'.';
+    else if(MATH[nm]) x.hint=C(nm)+' vient du module math : écris '+C('from math import '+nm)+' en tête de ton code.';
+    else {
+      var cs=uniq((ctx.src.replace(/#.*$/gm,'').match(/[A-Za-zÀ-ÿ_]\w*/g)||[])).filter(function(w){ return w!==nm&&w.toLowerCase()===low; })[0];
+      var nb=near(nm);
+      if(cs) x.hint='Python distingue majuscules et minuscules : '+C(cs)+' et '+C(nm)+' sont deux noms différents.';
+      else if(nb) x.hint='Tu voulais peut-être écrire '+C(nb)+'.';
+      else x.hint='Une variable doit recevoir une valeur avant d’être lue. S’il s’agit d’un texte, il manque des guillemets.';
+    }
+  }
+  else if(type==='IndexError'){
+    var bad=sub.filter(function(s){ return s.kind==='index'; });
+    x.t='Tu lis une case qui n’existe pas'; x.short='case inexistante';
+    if(/pop\(\)/.test(msg)){ x.t='pop() sur une liste vide'; x.short='liste vide'; x.lead='Ligne '+line+', '+C('pop')+' retire un élément d’une liste qui n’en contient plus.'; x.py='IndexError: pop from empty list'; x.pyReal=true; x.hint='Vérifie que la liste n’est pas vide avant de retirer un élément.'; }
+    else if(bad.length===1){
+      var b=bad[0], kindW=Array.isArray(b.base)?'list':(typeof b.base==='string'?'string':'tuple'), simple=/^-?\d+$/.test(b.idxTxt.trim());
+      x.mark={col:b.col,len:b.len};
+      x.lead=C(b.expr)+' demande la case d’indice '+V(b.idx,'bad')+(simple?'':' (car '+C(b.idxTxt.trim()+' = '+b.idx)+')')+'. Or '+C(b.container)+(b.n?' a '+plural(b.n,'case')+' : ses indices vont de 0 à '+(b.n-1)+', ou de −'+b.n+' à −1 en partant de la fin.':' est vide : elle n’a aucune case.');
+      var lhs=lhsEnd(raw), onLeft=kindW==='list'&&lhs>=0&&b.col<lhs;
+      x.py=onLeft?'IndexError: list assignment index out of range':'IndexError: '+kindW+' index out of range'; x.pyReal=true;
+      if(b.n===0) x.hint='Ce test passe une liste vide. Ta fonction doit traiter ce cas avant de lire une case.';
+      else if(b.idx===b.n) x.hint='Tu dépasses la dernière case d’exactement un rang : décalage d’une unité. '+C('range(len('+b.container+'))')+' s’arrête à '+C('len('+b.container+') - 1')+'.';
+      else if(b.idx<0){ var idn=uniq(namesIn(b.idxTxt)); x.hint='En Python, un indice négatif lit depuis la fin de la liste, sans erreur : '+(idn.length?C(idn[0])+' a donc pu descendre sous 0 bien avant cette ligne. ':'')+'Il manque sans doute une condition qui l’empêche de passer sous 0.'; }
+      else x.hint='Regarde pourquoi '+C(b.idxTxt.trim())+' dépasse la taille de '+C(b.container)+' : déroule le test jusqu’à cette ligne.';
+    } else x.lead='Une lecture par indice dépasse la taille de la liste à la ligne '+line+'.';
+  }
+  else if(type==='KeyError'){
+    var kb=sub.filter(function(s){ return s.kind==='key'; });
+    x.t='Cette clé n’est pas dans le dictionnaire'; x.short='clé absente'; x.py=msg.replace(/\s+—.*$/,''); x.pyReal=true;
+    if(kb.length===1){ var kk=kb[0], keys=[]; kk.base.m.forEach(function(e){ keys.push(PYMINI.repr(e[0])); }); x.mark={col:kk.col,len:kk.len}; x.lead=C(kk.expr)+' cherche la clé '+V(PYMINI.repr(kk.idx),'bad')+', absente de '+C(kk.container)+'.'+(keys.length?' Clés présentes : '+keys.slice(0,8).map(function(k){ return C(k); }).join(', ')+(keys.length>8?'…':'')+'.':' Le dictionnaire est vide.'); x.py='KeyError: '+PYMINI.repr(kk.idx); }
+    else x.lead='La ligne '+line+' lit une clé que le dictionnaire ne contient pas.';
+    x.hint='Teste d’abord sa présence avec '+C('in')+', ou lis la valeur avec '+C('get')+' et une valeur par défaut.';
+  }
+  else if(type==='ZeroDivisionError'){
+    x.t='Division par zéro'; x.short='division par 0'; x.lead='À la ligne '+line+', le dénominateur vaut 0.'; x.py='ZeroDivisionError: division by zero'; x.pyReal=true;
+    if(raw&&/len\(/.test(raw)) x.hint='La longueur vaut 0 : ce test passe une liste vide, à traiter à part.';
+  }
+  else if(type==='RecursionError'){ Object.assign(x,explainRecursion(ctx)); x.py='RecursionError: maximum recursion depth exceeded'; x.pyReal=true; }
+  else if(type==='TimeoutError'){ Object.assign(x,explainInfinite(ctx)); x.py=null; if(x.line){ line=x.line; raw=lines[line-1]; } }
+  else if(type==='AssertionError'){ x.t='Un assert a échoué'; x.short='assert faux'; x.lead='À la ligne '+line+', la condition de ce '+C('assert')+' est fausse.'+(detail&&detail!=='AssertionError'?' Message : '+esc(detail):''); x.py=detail&&detail!=='AssertionError'?msg:'AssertionError'; x.pyReal=true; }
+  else if(type==='AttributeError'){
+    var mm=/objet de type (\w+) n.a pas de méthode « (\w+) »/.exec(msg), mo=/module (\w+) n.a pas d.attribut « (\w+) »/.exec(msg);
+    x.t='Cette méthode n’existe pas'; x.short='méthode inconnue';
+    if(mm){ x.lead='Ligne '+line+', '+C('.'+mm[2])+' est appliquée à '+FR[mm[1]]+', qui n’a pas cette méthode.'; x.py="AttributeError: '"+mm[1]+"' object has no attribute '"+mm[2]+"'"; x.pyReal=true; var alt={add:'append',push:'append',length:null,size:null}; if(mm[1]==='list'&&alt[mm[2]]) x.hint='Pour ajouter en fin de liste, on écrit '+C('.append(valeur)')+'.'; if(/^(length|size)$/.test(mm[2])) x.hint='La longueur s’obtient avec '+C('len(objet)')+'.'; if(mm[1]==='NoneType') x.hint='Ton objet vaut None : une fonction ou une méthode a renvoyé rien du tout juste avant.'; }
+    else if(mo){ x.lead='Le module '+C(mo[1])+' ne contient pas '+C(mo[2])+'.'; x.py="AttributeError: module '"+mo[1]+"' has no attribute '"+mo[2]+"'"; x.pyReal=true; }
+  }
+  else if(type==='TypeError') explainType(x,detail,msg,ctx,line,raw,last,varOnLine);
+  else if(type==='ValueError'){
+    x.t='Valeur impossible'; x.short='valeur';
+    if((m=/décomposition impossible : (\d+) valeur\(s\) pour (\d+)/.exec(msg))){ x.t='Le nombre de valeurs ne correspond pas'; x.short='décomposition'; x.lead='À la ligne '+line+', tu ranges '+plural(+m[1],'valeur')+' dans '+m[2]+' variables.'; }
+    else if(/suite vide/.test(msg)){ x.t='min ou max sur une séquence vide'; x.short='séquence vide'; x.lead='À la ligne '+line+', '+C('min')+' ou '+C('max')+' reçoit une séquence sans élément.'; x.hint='Ce test passe sans doute une liste vide, à traiter à part.'; }
+    else x.lead='Ligne '+line+' : '+esc(detail)+'.';
+  }
+  if(!line&&/argument/.test(msg)){ var df=(/^(\w+)\(\)/.exec(detail)||[])[1]; if(df) lines.forEach(function(l,i){ if(!line&&new RegExp('^\\s*def\\s+'+df+'\\b').test(l)){ line=i+1; raw=l; x.line=line; x.neutral=true; } }); }
+  if(line&&raw) x.where={line:line,code:raw,col:x.mark?x.mark.col:null,len:x.mark?x.mark.len:null};
+  if(last&&line){ var vs=varOnLine(); x.vars=vs; }
+  x.t=x.t; x.jump=T&&T.steps.length?T.steps.length-1:null;
+  return x;
+}
+function lhsEnd(raw){ if(/^\s*(if|elif|while|for|return|assert|def)\b/.test(raw)) return -1; var d=0; for(var i=0;i<raw.length;i++){ var c=raw[i]; if('([{'.indexOf(c)>=0) d++; else if(')]}'.indexOf(c)>=0) d--; else if(c==='='&&d===0&&raw[i+1]!=='='&&'=!<>'.indexOf(raw[i-1])<0) return i; } return -1; }
+function isLocalRead(nm,line,lines){
+  var ind=null, start=-1, i, cur=/^ */.exec(lines[line-1]||'')[0].length;
+  for(i=line-1;i>=0;i--){ var l=lines[i]; if(!l.trim()) continue; var k=/^ */.exec(l)[0].length; if(/^\s*def\b/.test(l)&&k<cur){ start=i; ind=k; break; } }
+  if(start<0) return false;
+  var re=new RegExp('^\\s*(?:[\\w\\s,]*,\\s*)?'+nm+'\\s*(?:,[\\w\\s,]*)?(=[^=]|\\+=|-=|\\*=|/=|//=|%=)'), fr=new RegExp('^\\s*for\\s+(?:[\\w\\s,]*,\\s*)?'+nm+'\\s*(?:,[\\w\\s,]*)?\\s+in\\b');
+  for(i=start+1;i<lines.length;i++){ var L=lines[i]; if(L.trim()&&/^ */.exec(L)[0].length<=ind) break; if(re.test(L)||fr.test(L)) return true; }
+  return false;
+}
+function explainType(x,detail,msg,ctx,line,raw,last,varOnLine){
+  var m, sameLineNone=varOnLine().filter(function(v){ return v.r==='None'; });
+  x.t='Deux types qui ne vont pas ensemble'; x.short='types'; x.lead='Ligne '+line+' : '+esc(detail)+'.';
+  var OPS={addition:'+',soustraction:'-',multiplication:'*',division:'/','division entière':'//',modulo:'%',puissance:'** or pow()'};
+  if((m=/(.+?) \(\) reçoit|^(\w+)\(\) reçoit (\d+) argument\(s\) mais en attend (\d+)/.exec(detail))&&m[2]){
+    var f=m[2],g=+m[3],w=+m[4]; x.t='Mauvais nombre d’arguments'; x.short='arguments'; x.lead=C(f)+' est appelée avec '+plural(g,'argument')+', mais ta définition en attend '+w+'.';
+    x.py='TypeError: '+f+'() takes '+w+' positional argument'+(w===1?'':'s')+' but '+g+(g===1?' was':' were')+' given'; x.pyReal=true; x.hint='Compare les paramètres écrits après '+C('def')+' avec l’énoncé de la carte.';
+  }
+  else if((m=/^(\w+)\(\) : il manque l.argument « (.+?) »/.exec(detail))){ x.t='Il manque un argument'; x.short='argument'; x.lead=C(m[1])+' est appelée sans valeur pour le paramètre '+C(m[2])+'.'; x.hint='Compare les paramètres écrits après '+C('def')+' avec l’énoncé de la carte.'; }
+  else if((m=/^(addition|soustraction|multiplication|division entière|division|modulo|puissance) impossible entre (\w+) et (\w+)/.exec(detail))){
+    x.t='Opération impossible entre '+FR[m[2]]+' et '+FR[m[3]]; x.short=m[1]+' impossible';
+    x.lead='À la ligne '+line+', '+C(OPS[m[1]].split(' ')[0])+' ne s’applique pas à '+FR[m[2]]+' et '+FR[m[3]]+'.';
+    if(!/^(str|list|tuple)$/.test(m[2])&&!/^(str|list|tuple)$/.test(m[3])){ x.py="TypeError: unsupported operand type(s) for "+OPS[m[1]]+": '"+m[2]+"' and '"+m[3]+"'"; x.pyReal=true; }
+    if(sameLineNone.length) noneHint(x,sameLineNone[0].name,ctx);
+  }
+  else if(/additionner une chaîne/.test(detail)){ x.t='Une chaîne et un nombre ne s’additionnent pas'; x.short='chaîne + nombre'; x.lead='À la ligne '+line+', '+C('+')+' mélange du texte et un nombre.'; x.hint='Convertis le nombre avec '+C('str(x)')+', ou utilise une f-string.'; }
+  else if((m=/^cet objet \((\w+)\) n/.exec(detail))){
+    x.t='Tu appelles quelque chose qui n’est pas une fonction'; x.short='pas une fonction'; x.lead='À la ligne '+line+', des parenthèses suivent '+FR[m[1]]+'.'; x.py="TypeError: '"+m[1]+"' object is not callable"; x.pyReal=true;
+    var shadow=Object.keys(PY_BUILTINS).filter(function(b){ return new RegExp('^\\s*'+b+'\\s*=[^=]','m').test(ctx.src); })[0];
+    x.hint=shadow?'Tu as utilisé '+C(shadow)+' comme nom de variable : la fonction du même nom n’est plus accessible.':'S’il s’agit d’un produit, il manque '+C('*')+' : on écrit '+C('2 * (x + 1)')+'.';
+  }
+  else if(/un indice doit être un entier/.test(detail)){
+    x.t='Un indice doit être un entier'; x.short='indice non entier'; x.lead='À la ligne '+line+', l’indice utilisé entre crochets n’est pas un entier.'; x.py='TypeError: list indices must be integers or slices, not '+((/pas (\w+)/.exec(detail)||[0,'float'])[1]); x.pyReal=true;
+    var fl=varOnLine().filter(function(v){ return v.t==='val'&&/^-?\d+\.\d+$/.test(v.r); })[0];
+    if(fl){ x.lead=C(fl.name)+' vaut '+V(fl.r,'bad')+' : on ne peut pas s’en servir comme indice.'; if(new RegExp('^\\s*'+fl.name+'\\s*=.*[^/]/[^/]','m').test(ctx.src)) x.hint=C('/')+' donne toujours un flottant en Python. Pour un indice, utilise la division entière '+C('//')+'.'; }
+  }
+  else if((m=/^on ne peut pas indexer un objet de type (\w+)/.exec(detail))){ x.t='Des crochets sur '+FR[m[1]]; x.short='crochets'; x.lead='À la ligne '+line+', '+C('[…]')+' est appliqué à '+FR[m[1]]+', qui n’a pas de cases.'; x.py="TypeError: '"+m[1]+"' object is not subscriptable"; x.pyReal=true; if(sameLineNone.length) noneHint(x,sameLineNone[0].name,ctx); }
+  else if((m=/^impossible de parcourir un objet de type (\w+)/.exec(detail))){ x.t='On ne peut pas parcourir '+FR[m[1]]; x.short='non parcourable'; x.lead='À la ligne '+line+', '+C('for … in')+' reçoit '+FR[m[1]]+'.'; x.py="TypeError: '"+m[1]+"' object is not iterable"; x.pyReal=true; if(m[1]==='int') x.hint='Pour répéter n fois, écris '+C('for i in range(n):')+'.'; if(m[1]==='NoneType'&&sameLineNone.length) noneHint(x,sameLineNone[0].name,ctx); }
+  else if((m=/^len\(\) ne s.applique pas à un objet de type (\w+)/.exec(detail))){ x.t='len() ne s’applique pas à '+FR[m[1]]; x.short='len()'; x.lead='À la ligne '+line+', '+C('len')+' reçoit '+FR[m[1]]+'.'; x.py="TypeError: object of type '"+m[1]+"' has no len()"; x.pyReal=true; if(sameLineNone.length) noneHint(x,sameLineNone[0].name,ctx); }
+  else if(/un tuple ne se modifie pas/.test(detail)){ x.t='Un tuple ne se modifie pas'; x.short='tuple'; x.lead='À la ligne '+line+', tu écris dans une case d’un tuple.'; x.py="TypeError: 'tuple' object does not support item assignment"; x.pyReal=true; x.hint='Utilise une liste si les valeurs doivent changer.'; }
+  else if(/chaîne de caractères ne se modifie pas/.test(detail)){ x.t='Une chaîne ne se modifie pas'; x.short='chaîne'; x.lead='À la ligne '+line+', tu écris dans une case d’une chaîne.'; x.py="TypeError: 'str' object does not support item assignment"; x.pyReal=true; x.hint='Construis une nouvelle chaîne, ou passe par une liste de caractères.'; }
+  else if((m=/^comparaison impossible entre (\w+) et (\w+)/.exec(detail))){ x.t='Comparaison impossible entre '+FR[m[1]]+' et '+FR[m[2]]; x.short='comparaison'; x.lead='À la ligne '+line+', les deux valeurs comparées ne sont pas du même genre.'; if(sameLineNone.length) noneHint(x,sameLineNone[0].name,ctx); }
+}
+function noneHint(x,name,ctx){
+  var re=new RegExp('^\\s*'+name+'\\s*=\\s*\\w+(\\[[^\\]]*\\])*\\.(append|sort|reverse|extend|insert|remove|clear)\\(','m');
+  x.facts.push(C(name)+' vaut '+V('None')+' à ce moment-là.');
+  if(re.test(ctx.src)) x.hint=C('.append')+', '+C('.sort')+' et les méthodes du même type modifient la liste et renvoient None. Écris l’appel seul, sans '+C(name+' =')+'.';
+  else x.hint='Une fonction sans '+C('return')+' renvoie None. Regarde d’où vient la valeur de '+C(name)+'.';
+}
+function explainRecursion(ctx){
+  var T=ctx.T, x={t:'La récursion ne s’arrête jamais',short:'pas de cas de base',facts:[]}, steps=T?T.steps:[], seen=[], fname=null;
+  steps.forEach(function(s){ var d=s.frames.length; if(!seen[d]){ var f=s.frames[d-1]; seen[d]=argStr(f); fname=f.name; } });
+  var args=seen.filter(function(a){ return a!==undefined; });
+  x.lead='Chaque appel en relance un autre, sans jamais atteindre de cas d’arrêt.';
+  if(args.length>1){
+    var shown=args.slice(0,4).map(function(a){ return C(fname+'('+a+')'); }).join(' → ');
+    x.facts.push('Appels observés : '+shown+' → …');
+    var same=args[0]===args[1], src=ctx.src, hasIf=/^\s*(if|elif)\b/m.test(src.replace(/#.*$/gm,''));
+    if(same) x.hint='L’argument ne change pas d’un appel à l’autre. L’appel récursif doit porter sur un problème plus petit.';
+    else if(!hasIf) x.hint='Ta fonction ne contient aucun '+C('if')+' : rien ne peut arrêter les appels. Écris le cas de base avant l’appel récursif.';
+    else { var ic=(/^\s*(?:if|elif)\s+(.+?):/m.exec(src)||[])[1]; if(ic) x.hint='La condition '+C(ic)+' n’est jamais vraie sur la suite des appels : vérifie qu’elle correspond bien au cas de base.'; }
+  }
+  return x;
+}
+function explainInfinite(ctx){
+  var T=ctx.T, lines=ctx.lines, x={t:'Ta boucle ne s’arrête jamais',short:'boucle infinie',lead:'Le code a été interrompu : il ne se terminait pas.',facts:[]};
+  if(!T||!T.steps.length) return x;
+  var cnt={}, steps=T.steps; steps.forEach(function(s){ if(s.kind==='while') cnt[s.line]=(cnt[s.line]||0)+1; });
+  var best=null; Object.keys(cnt).forEach(function(l){ if(best==null||cnt[l]>cnt[best]) best=l; });
+  if(best==null){ x.lead='Le code a été interrompu : il faisait trop d’opérations.'; x.t='Le code met trop de temps'; x.short='trop long'; return x; }
+  var line=+best, head=(lines[line-1]||'').trim(), cn=condText(head), idx=[]; steps.forEach(function(s,k){ if(s.kind==='while'&&s.line===line) idx.push(k); });
+  var last=idx.slice(-6), ns=uniq(namesIn(cn)), first=steps[last[0]], end=steps[last[last.length-1]];
+  x.line=line; x.lead='La boucle de la ligne '+line+' tourne sans fin : '+C(cn)+' reste vraie.'; x.jump=last[0];
+  var ind=indentOf(lines,line), body=[]; for(var i=line;i<lines.length;i++){ if(lines[i].trim()&&indentOf(lines,i+1)<=ind) break; body.push(lines[i]); }
+  var parts=ns.map(function(n){ var a=findVar(first,n), b=findVar(end,n); if(!a||!b||a.t!=='val') return null; return {n:n,a:a.r,b:b.r,same:last.every(function(k){ var v=findVar(steps[k],n); return v&&v.r===a.r; })}; }).filter(Boolean);
+  var still=parts.filter(function(p){ return p.same; }), moving=parts.filter(function(p){ return !p.same; });
+  if(parts.length){
+    if(still.length) x.facts.push('Sur les '+last.length+' derniers tours observés, '+still.map(function(p){ return C(p.n+' = '+p.a); }).join(' et ')+(still.length>1?' ne changent pas.':' ne change pas.'));
+    moving.forEach(function(p){ var vals=last.map(function(k){ var v=findVar(steps[k],p.n); return v?v.r:'?'; }); x.facts.push(C(p.n)+' évolue ('+vals.slice(-4).join(', ')+'…), mais la condition reste vraie.'); });
+  }
+  var never=ns.filter(function(n){ var v=findVar(first,n); if(!v||v.t!=='val') return false; var re=new RegExp('(^|[,\\s])'+n+'\\s*(=[^=]|\\+=|-=|\\*=|/=|//=)'); return !body.some(function(l){ return re.test(l.replace(/#.*$/,'')); }); });
+  if(still.length&&never.length) x.hint='Aucune ligne de la boucle ne modifie '+never.map(function(n){ return C(n); }).join(' ni ')+'. Il manque sans doute sa mise à jour.';
+  else if(still.length===parts.length&&parts.length) x.hint='Plus rien ne bouge d’un tour à l’autre : la zone ne rétrécit plus. Vérifie les mises à jour dans la boucle.';
+  else if(moving.length) x.hint='La variable change, mais dans le mauvais sens ou sans jamais atteindre la sortie.';
+  return x;
+}
+
+/* ---------- Le code tourne, le résultat est faux ---------- */
+function typeOf(v){ return PYMINI.typeName(v); }
+function items(v){ return v instanceof TT.Tuple?v.items:v; }
+function diffValues(g,w,x,ctx){
+  var tg=typeOf(g), tw=typeOf(w), r=PYMINI.repr;
+  if(tg!==tw && !(typeof g==='number'&&typeof w==='number')){ x.facts.push('Tu renvoies '+FR[tg]+', la carte attend '+FR[tw]+'.'); return; }
+  if(typeof g==='number'&&typeof w==='number'){
+    var d=g-w, gs=d>0?'+':'−';
+    if(Math.abs(Math.abs(d)-1)<1e-12) x.facts.push('Écart d’exactement 1 ('+V(gs+'1')+') : c’est souvent une borne ou un tour de boucle en trop ou en moins.');
+    else if(w!==0&&Math.abs(g/w-Math.round(g/w))<1e-9&&Math.abs(g/w)>=2) x.facts.push('Ton résultat vaut '+Math.round(g/w)+' fois la valeur attendue.');
+    else if(Math.abs(d)<1e-6*Math.max(1,Math.abs(w))) x.facts.push('Les deux valeurs sont très proches : écart de '+esc(d.toExponential(1))+'.');
+    else x.facts.push('Écart : '+V((d>0?'+':'')+r(d))+'.');
+    return;
+  }
+  if(typeof g==='string'){
+    var i=0; while(i<g.length&&i<w.length&&g[i]===w[i]) i++;
+    if(g.toLowerCase()===w.toLowerCase()) x.facts.push('Seules les majuscules diffèrent.');
+    else if(g.trim()===w.trim()) x.facts.push('Seuls des espaces en début ou en fin diffèrent.');
+    else x.facts.push('Première différence au caractère '+i+'.');
+    return;
+  }
+  if(Array.isArray(g)||g instanceof TT.Tuple){
+    var a=items(g), b=items(w), w0=g instanceof TT.Tuple?'composante':'case', bad=[];
+    var mx=Math.max(a.length,b.length), first=-1;
+    for(var k=0;k<mx;k++){ if(k>=a.length||k>=b.length||!PYMINI.eq(a[k],b[k])){ bad.push(k); if(first<0) first=k; } }
+    x.diff={got:a.map(r),want:b.map(r),bad:bad,w:w0};
+    if(a.length!==b.length){
+      var ms=multi(a), mt=multi(b), miss=sub_(mt,ms), extra=sub_(ms,mt);
+      x.facts.push('Ton résultat a '+plural(a.length,'élément')+', la carte en attend '+b.length+'.');
+      if(miss.length) x.facts.push('Il manque : '+miss.slice(0,6).map(function(s){ return V(s,'good'); }).join(' ')+'.');
+      if(extra.length) x.facts.push('En trop : '+extra.slice(0,6).map(function(s){ return V(s,'bad'); }).join(' ')+'.');
+    } else {
+      var same=sub_(multi(a),multi(b)).length===0;
+      if(same&&Array.isArray(g)) x.facts.push('Les bons éléments sont présents, mais pas dans le bon ordre.');
+      if(first>=0) x.facts.push((w0==='composante'?'Composante':'Case')+' '+(w0==='composante'?first+1:first)+' : '+V(a[first]===undefined?'':r(a[first]),'bad')+' au lieu de '+V(r(b[first]),'good')+'.');
+    }
+    return;
+  }
+  if(g instanceof TT.Dict){
+    var ek=function(d){ var o={}; d.m.forEach(function(e){ o[r(e[0])]=e[1]; }); return o; }, oa=ek(g), ob=ek(w);
+    var mk=Object.keys(ob).filter(function(k){ return !(k in oa); }), xk=Object.keys(oa).filter(function(k){ return !(k in ob); }), dv=Object.keys(ob).filter(function(k){ return (k in oa)&&!PYMINI.eq(oa[k],ob[k]); });
+    if(mk.length) x.facts.push('Clés manquantes : '+mk.slice(0,6).map(function(s){ return V(s,'good'); }).join(' ')+'.');
+    if(xk.length) x.facts.push('Clés en trop : '+xk.slice(0,6).map(function(s){ return V(s,'bad'); }).join(' ')+'.');
+    if(dv.length) x.facts.push('Pour la clé '+V(dv[0])+' : '+V(r(oa[dv[0]]),'bad')+' au lieu de '+V(r(ob[dv[0]]),'good')+'.');
+  }
+}
+function multi(a){ var m={}; a.forEach(function(v){ var k=PYMINI.repr(v); m[k]=(m[k]||0)+1; }); return m; }
+function sub_(a,b){ var out=[]; Object.keys(a).forEach(function(k){ var n=a[k]-(b[k]||0); while(n-->0) out.push(k); }); return out; }
+function explainValue(ctx,t,r){
+  var T=ctx.T, lines=ctx.lines, x={facts:[],hint:null}, complet=T&&T.steps.length&&!T.capped, L=complet?loopsOf(T,lines):null, got=r.got, want=r.want, g=T&&T.gotV, w=T&&T.wantV, last=complet?T.steps[T.steps.length-1]:null;
+  x.t='Le résultat n’est pas le bon';
+  x.lead='Ton code s’exécute sans erreur, mais il renvoie '+V(got,'bad')+' alors que la carte attend '+V(want,'good')+'.';
+  if(t.out!==undefined){ x.t='Ce qui est affiché n’est pas le bon texte'; x.lead='Ton code affiche '+V(got,'bad')+' alors que la carte attend '+V(want,'good')+'.'; }
+  var inPlace=/^\(lambda (\w+): \[.+, \1\]\[1\]\)\((.+)\)$/.exec(t.call);
+  if(inPlace&&T&&g!==undefined&&PYMINI.repr(g)===normRepr(inPlace[2])){ x.t='La liste n’a pas été modifiée'; x.lead='Après l’appel, '+C(inPlace[1])+' vaut toujours '+V(got,'bad')+' : ta fonction n’a pas changé la liste reçue.'; }
+  else if(g!==undefined&&w!==undefined&&t.out===undefined) diffValues(g,w,x,ctx);
+  if(got==='None'&&T&&!T.capped&&t.out===undefined){
+    var hasRet=/^\s*return\b/m.test(ctx.src.replace(/#.*$/gm,'')), retStep=T.steps.some(function(s){ return s.ret!==undefined&&!s.end&&s.frames.length===1; }), printed=(T.out||[]).join('\n').trim();
+    x.t='Ta fonction ne renvoie rien';
+    x.facts=[];
+    x.diff=null;
+    if(!hasRet) x.lead='Ta fonction ne contient aucun '+C('return')+'. Python renvoie alors '+V('None')+'.';
+    else if(!retStep) x.lead='Sur ce test, la fonction se termine sans passer par un '+C('return')+'. Python renvoie alors '+V('None')+'.';
+    else x.lead='Le '+C('return')+' atteint ne renvoie aucune valeur.';
+    if(printed&&(printed===want||printed===String(want).replace(/^'|'$/g,''))) x.hint='Ta fonction <b>affiche</b> le bon résultat avec '+C('print')+', mais ne le <b>renvoie</b> pas. Remplace '+C('print(…)')+' par '+C('return …')+'.';
+    else if(/^\s*\w+\s*=\s*\w+\.(append|sort|reverse|extend|insert)\(/m.test(ctx.src)) x.hint=C('.append')+', '+C('.sort')+' et les méthodes du même type renvoient None : le résultat de l’appel ne doit pas être rangé dans une variable.';
+    else if(hasRet&&!retStep){ var rl=[]; lines.forEach(function(l,i){ if(/^\s*return\b/.test(l)) rl.push(i+1); }); x.hint='Ton '+C('return')+' (ligne '+rl.join(', ')+') n’a pas été atteint : vérifie la condition ou le décalage de ce bloc.'; }
+  }
+  var lf=loopFact(L,T); if(lf) x.facts.push(lf);
+  if(last&&last.ret!==undefined&&!last.end&&last.frames.length===1&&got!=='None'&&!(L&&L.exit==='return')) x.facts.push('Le résultat vient du '+C('return')+' de la ligne '+last.line+'.');
+  if(ctx.same&&ctx.same.n>=2&&got===ctx.same.v) x.facts.push('Sur les '+ctx.same.n+' tests, ta fonction renvoie toujours '+V(ctx.same.v)+'.');
+  if(L&&L.exit==='return'&&L.iter===1&&ctx.Tref){
+    var RL=ctx.Tref.steps.length?loopsOf(ctx.Tref,ctx.solLines):null;
+    if(RL&&RL.iter>1&&!x.hint) x.hint='Ta fonction sort dès le premier tour, alors que la référence en fait '+RL.iter+'. Ce '+C('return')+' est sans doute trop décalé, ou devrait venir après la boucle.';
+  }
+  var cmp=ctx.Tref&&T?compareRef(T,ctx.Tref):null;
+  if(cmp&&!x.hint){ x.hint=cmp.html; x.ref=true; }
+  x.jump=cmp?cmp.step:(T&&T.steps.length?T.steps.length-1:null);
+  if(last&&last.line){ var ln=(L&&L.exit==='cond')?L.line:last.line; x.where={line:ln,code:lines[ln-1],col:null,len:null,neutral:true}; x.whereLabel=(L&&L.exit==='cond')?'Sortie de boucle':(last.end?'Dernière ligne exécutée':'D’où vient le résultat'); }
+  return x;
+}
+function normRepr(lit){ try{ return PYMINI.repr(PYMINI.evalIn(lit, PYMINI.newEnv(PYMINI.newState({})), PYMINI.newState({}))); }catch(e){ return lit; } }
+
+/* ---------- Tout est bon ---------- */
+function remarks(src, spec, cost, tests){
+  var S=scan(src), out=[], code=S.lines.map(function(l){ return l.code; }), all=code.join('\n'), i, m;
+  if(/\bprint\s*\(/.test(all)&&!tests.some(function(t){ return t.out!==undefined; })) out.push('Il reste un '+C('print')+' : la fonction n’a besoin que de son '+C('return')+'.');
+  if(/==\s*(True|False)\b/.test(all)) out.push('Une comparaison à '+C('True')+' ou '+C('False')+' est inutile : '+C('if x:')+' suffit, ou '+C('if not x:')+'.');
+  for(i=0;i<code.length-1;i++){
+    if((m=/^(\s*)if\s+(.+):\s*$/.exec(code[i]))&&new RegExp('^\\s+return True\\s*$').test(code[i+1])){
+      var nx=code[i+2]||'', nx2=code[i+3]||'';
+      if(new RegExp('^'+m[1]+'return False\\s*$').test(nx)||(new RegExp('^'+m[1]+'else:\\s*$').test(nx)&&/^\s+return False\s*$/.test(nx2))) out.push('Ces lignes peuvent s’écrire en une seule : '+C('return '+m[2])+'.');
+    }
+  }
+  var counts={}; (all.match(/[A-Za-zÀ-ÿ_]\w*/g)||[]).forEach(function(w){ counts[w]=(counts[w]||0)+1; });
+  code.forEach(function(l,idx){ if((m=/^\s*([A-Za-zÀ-ÿ_]\w*)\s*=[^=]/.exec(l))&&counts[m[1]]===1&&m[1]!=='_') out.push('La variable '+C(m[1])+' (ligne '+(idx+1)+') reçoit une valeur qui n’est jamais lue.'); });
+  code.forEach(function(l,idx){ if((m=/^\s*([A-Za-zÀ-ÿ_]\w*)\s*=.*[^/]\/[^/]/.exec(l))&&new RegExp('[\\w\\])]\\[[^\\]]*\\b'+m[1]+'\\b').test(all)) out.push('À la ligne '+(idx+1)+', '+C('/')+' donne un flottant en Python, or '+C(m[1])+' sert d’indice. Écris '+C('//')+' : en vrai Python, ce code provoquerait une erreur.'); });
+  var fn=(/^\s*def\s+(\w+)/m.exec(all)||[])[1];
+  if(fn&&new RegExp('\\b'+fn+'\\s*\\([^\\n]*\\[[^\\]\\n]*:[^\\]\\n]*\\]').test(all.replace(/^\s*def.*$/m,''))) out.push('La tranche passée à l’appel récursif recopie la liste à chaque appel, ce qui coûte cher. Passer des indices évite cette copie.');
+  if(cost&&cost.ratio>=2&&cost.me-cost.ref>20) out.push('Sur le test le plus long, ton code effectue '+cost.me+' opérations et la référence '+cost.ref+', soit '+String(Math.round(cost.ratio*10)/10).replace('.',',')+' fois plus.');
+  return out;
+}
+
+/* ---------- Présentation d'un appel dans la console ---------- */
+function displayOf(t){
+  var m=/^\(lambda (\w+): \[(.+), \1\]\[1\]\)\((.+)\)$/.exec(t.call);
+  var code=m?(m[1]+' = '+m[3]+' ; '+m[2]+' ; '+m[1]):t.call, note=null, lab=t.label||'';
+  var h=lab.indexOf('#');
+  if(h>=0) note=lab.slice(h+1).trim();
+  else if(lab&&!m&&lab.indexOf('(')<0) note=lab;
+  else if(lab&&m&&lab.indexOf(' ; ')<0) note=lab;
+  return {code:code,note:note};
+}
+function realFinal(msg){ return msg; }
+
+/* ---------- Entrée principale ---------- */
+function analyser(spec, src, opts){
+  opts=opts||{};
+  var tests=spec.tests||[], lines=String(src).split('\n'), sol=spec.sol||null;
+  var rep;
+  try{ rep=PYMINI.check({setup:spec.setup,tests:tests,requires:spec.requires||[]},src,{timeout:opts.timeout||2500}); }
+  catch(e){ rep={ok:false,fatal:'Erreur interne de l’exécuteur : '+((e&&e.message)||e),results:[],out:[]}; }
+  var R={rep:rep,src:src,lines:lines,state:null,free:false,x:null,tests:[],cost:null,remarks:[]};
+  if(!rep.fatal||!/^(SyntaxError|IndentationError)/.test(rep.fatal)){ var se=staticErrors(src); if(se){ R.state='syntax'; R.free=true; R.x=se; return R; } }
+  if(rep.fatal){
+    var f=rep.fatal;
+    if(/^Il n.y a rien/.test(f)){ R.state='empty'; R.free=true; R.x={t:'L’éditeur est vide',lead:'Écris ta fonction, puis relance.'}; return R; }
+    if((/^Il manque la définition de : (.+?)\./).test(f)){
+      var want=/^Il manque la définition de : (.+?)\./.exec(f)[1], defs=(src.match(/^\s*def\s+(\w+)/gm)||[]).map(function(s){ return s.replace(/^\s*def\s+/,''); });
+      R.state='missing'; R.free=true; R.x={t:'La fonction '+want+' n’est pas définie',short:'def absent',lead:defs.length?'Tu as défini '+defs.map(function(d){ return C(d); }).join(', ')+', mais la carte attend '+C(want)+'.':'Ton code ne contient aucune ligne '+C('def '+want+'(…):')+'.',py:null};
+      return R;
+    }
+    if(/non gérée?s?\b|pas gérée?s? ici|Erreur interne/.test(f)){ R.state='limit'; R.free=true; R.x={t:'Cette écriture n’est pas gérée ici',lead:'Ton code n’est pas forcément faux : l’exécuteur du site ne connaît qu’une partie de Python. Détail : '+esc(f.replace(/^\w+:\s*/,''))+'.',line:(/ligne (\d+)/.exec(f)||[])[1]?+(/ligne (\d+)/.exec(f)[1]):null,py:null}; return R; }
+    if(/^(SyntaxError|IndentationError)/.test(f)){ R.state='syntax'; R.free=true; R.x=explainSyntax(f,src); R.x.raw=f; return R; }
+    var T0=PYMINI.trace(spec,src,'None',{});
+    R.state='runtime'; R.x=explainRuntime(f,{T:T0,lines:lines,src:src}); R.x.tb=tbOf(T0,lines,R.x,null); return R;
+  }
+  var res=rep.results, gotAll=res.filter(function(r){ return !r.error&&r.got!==null; }).map(function(r){ return r.got; });
+  var same=(gotAll.length===res.length&&res.length>=2&&gotAll.every(function(v){ return v===gotAll[0]; })&&!res.every(function(r){ return r.want===gotAll[0]; }))?{n:res.length,v:gotAll[0]}:null;
+  var solLines=sol?String(sol).split('\n'):null, maxT=null;
+  tests.forEach(function(t,i){
+    var r=res[i], skipped=!!(r.error&&/^non exécuté/.test(r.error));
+    var T=skipped?null:PYMINI.trace(spec,src,t.call,{eq:t.eq});
+    var Tref=(!skipped&&sol)?PYMINI.trace(spec,sol,t.call,{eq:t.eq}):null;
+    var ctx={T:T,Tref:Tref,lines:lines,solLines:solLines,src:src,spec:spec,same:same};
+    var d=displayOf(t), item={i:i,call:t.call,code:d.code,note:d.note,pass:r.pass,got:r.got,want:r.want,error:r.error,T:T,skipped:skipped,x:null,out:T?T.out:[]};
+    var L=T&&T.steps.length&&!T.capped?loopsOf(T,lines):null;
+    if(skipped){ item.x={t:'Test non exécuté',lead:'Un test précédent a été interrompu : celui-ci n’a pas été lancé.',facts:[]}; }
+    else if(r.error){ item.x=explainRuntime(r.error,ctx); item.x.tb=tbOf(T,lines,item.x,d.code); item.kind='error'; }
+    else if(!r.pass){ item.x=explainValue(ctx,t,r); item.kind='value'; }
+    else {
+      item.kind='ok';
+      var lf=L?loopFact(L,T):null, last=T&&T.steps.length&&!T.capped?T.steps[T.steps.length-1]:null;
+      item.x={t:'Ce test passe',lead:t.out!==undefined?'Ton code affiche le texte attendu.':(t.tol!=null?'Ton code renvoie '+V(r.got,'good')+', égal à '+V(r.want)+' à la tolérance près.':'Ton code renvoie '+V(r.got,'good')+', la valeur attendue.'),facts:[],jump:0};
+      if(lf) item.x.facts.push(lf);
+      if(last&&last.ret!==undefined&&!last.end&&last.frames.length===1&&!(L&&L.exit==='return')) item.x.facts.push('Le résultat vient du '+C('return')+' de la ligne '+last.line+'.');
+    }
+    if(item.x&&T&&T.steps.length&&(!T.capped||r.error)&&!(r.error&&/^TimeoutError/.test(r.error)&&!L)){ var tb=L?loopTable(L,T):null; if(tb) item.x.table=tb; else { var ct=callTable(T); if(ct) item.x.calls=ct.calls; } }
+    if(T&&Tref&&r.pass&&!T.capped&&!Tref.capped&&T.ticks>(maxT?maxT.me:-1)) maxT={me:T.ticks,ref:Tref.ticks,L:L,i:i};
+    R.tests.push(item);
+  });
+  var firstBad=res.findIndex(function(r){ return !r.pass; });
+  R.first=firstBad;
+  if(rep.ok){
+    R.state='ok';
+    R.cost=maxT?{me:maxT.me,ref:maxT.ref,ratio:maxT.ref?maxT.me/maxT.ref:1}:null;
+    R.remarks=remarks(src,spec,R.cost,tests);
+  } else R.state=res[firstBad].error?'runtime':'logic';
+  return R;
+}
+function tbOf(T,lines,x,code){
+  var o=[];
+  if(!T) return null;
+  var fs=(T.tb&&T.tb.frames)||[], line=(T.tb&&T.tb.line)||T.lastLine, rows=[];
+  fs=fs.filter(function(f){ return !/lambda/.test(f.name||''); });
+  fs.forEach(function(f,i){ var n=i<fs.length-1?fs[i+1].callLine:line; rows.push({line:n,fn:f.name}); });
+  var tail=rows;
+  if(rows.length>4) tail=rows.slice(0,2).concat([{gap:rows.length-3}]).concat(rows.slice(-1));
+  return {rows:tail.map(function(r){ if(r.gap) return r; return {line:r.line,fn:r.fn,code:(lines[r.line-1]||'').trim(),col:null}; }),mark:x.mark||null,final:x.py,real:!!x.pyReal,line:line};
+}
+return {run:analyser, esc:esc};
 })();
 
 /* ===== Contextes d'énoncé affichés AU RECTO des cartes d'informatique (champ `qcode`) =====
@@ -16791,6 +17708,7 @@ function renderQuestion(){
   $('#qText').innerHTML = (q._consigneHtml || '') + qHTML(q.q) + (q._qfigHtml || '');
 
   const zone = $('#answerZone'); zone.innerHTML='';
+  { const ct = $('#ceTabs'); if(ct) ct.remove(); ceEdActuel = null; ceMajTouches = null; }   // mode code : volets de la carte précédente
   if(q.mode==='qcm') renderQCM(zone, q);
   else if(q.mode==='flash') renderFlash(zone, q);
   else if(q.mode==='code') renderCode(zone, q);
@@ -16973,124 +17891,433 @@ function f3SaisieFermee(auto){
        tests:[{call:"f(…)", eq:"…", tol:1e-9, label:"…"}],
        sol:"…"            solution de référence (ajoutée à `answer` au chargement) }
    L'exécution passe par PYMINI (interpréteur maison, aucun appel réseau : l'app reste hors ligne).
-   Le PREMIER lancement est la tentative NOTÉE ; ensuite l'éditeur reste ouvert pour expérimenter
-   sans changer la note (l'auto-évaluation, elle, reste modifiable). */
+   Une erreur de syntaxe ne consomme pas d'essai et ne dévoile rien. La solution n'apparaît qu'après réussite
+   ou abandon ; ensuite l'éditeur reste ouvert pour expérimenter sans changer la note. Les explications de la
+   console viennent de DIAG (ce qui est mesuré d'un côté, les pistes de l'autre). */
 function escCode(s){
   return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
-const CODE_KEYS = ['⇥','(',')','[',']','{','}',':',',','"','=','==','!=','<','>','_','#'];
-
-function codeReport(rep){
-  let h = '<div class="code-out">';
-  if(rep.out && rep.out.length)
-    h += '<div class="co-print"><b>Affiché par ton code</b><pre>'+escCode(rep.out.join('\n'))+'</pre></div>';
-  if(rep.fatal){
-    h += '<div class="co-head bad">❌ Le code ne s’exécute pas</div>'
-      +  '<div class="co-line bad"><span class="ci">✗</span><div>'+escCode(rep.fatal)+'</div></div>';
-  } else {
-    const n = rep.results.length, k = rep.results.filter(r=>r.pass).length;
-    h += '<div class="co-head '+(rep.ok?'ok':'bad')+'">'+(rep.ok?'✅':'❌')+' '+k+' test'+(k>1?'s':'')+' sur '+n+' réussi'+(k>1?'s':'')+'</div>';
-    rep.results.forEach(r=>{
-      h += '<div class="co-line '+(r.pass?'ok':'bad')+'"><span class="ci">'+(r.pass?'✓':'✗')+'</span><div><code>'+escCode(r.label)+'</code>';
-      if(r.error) h += '<br><span class="co-err">'+escCode(r.error)+'</span>';
-      else if(!r.pass) h += '<br>obtenu <code>'+escCode(r.got)+'</code> · attendu <code>'+escCode(r.want)+'</code>';
-      h += '</div></div>';
-    });
+/* --- Coloration : un miroir <pre> coloré sous un <textarea> au texte transparent (pas de bibliothèque : hors ligne garanti) --- */
+const CE_KW = new Set('def return if elif else for while in not and or is pass break continue lambda assert import from global'.split(' '));
+const CE_CONST = new Set(['True','False','None']);
+const CE_BI = new Set('len range print sum min max sorted enumerate zip abs int float str list dict set tuple round any all'.split(' '));
+function ceHl(line){
+  const lead = /^ */.exec(line)[0].length, n4 = Math.floor(lead/4);
+  let out = '<span class="ce-ig">    </span>'.repeat(n4), m, pos = n4*4, apresDef = false;
+  const re = /(#.*$)|("(?:[^"\\]|\\.)*"?|'(?:[^'\\]|\\.)*'?)|(\b\d+(?:\.\d+)?(?:e-?\d+)?\b)|([A-Za-zÀ-ÖØ-öø-ÿ_][\wÀ-ÖØ-öø-ÿ]*)|(\s+)|(.)/g;
+  re.lastIndex = pos;
+  while(pos < line.length && (m = re.exec(line))){
+    pos = re.lastIndex;
+    const t = escCode(m[0]);
+    if(m[1]) out += '<span class="ce-t-m">'+t+'</span>';
+    else if(m[2]) out += '<span class="ce-t-s">'+t+'</span>';
+    else if(m[3]) out += '<span class="ce-t-n">'+t+'</span>';
+    else if(m[4]){
+      const w = m[4], appel = /^\s*\(/.test(line.slice(pos));
+      if(CE_KW.has(w)){ out += '<span class="ce-t-k">'+t+'</span>'; apresDef = (w==='def'); continue; }
+      if(CE_CONST.has(w)) out += '<span class="ce-t-c">'+t+'</span>';
+      else if(apresDef || (appel && !CE_BI.has(w))) out += '<span class="ce-t-f">'+t+'</span>';
+      else if(CE_BI.has(w)) out += '<span class="ce-t-b">'+t+'</span>';
+      else out += t;
+      apresDef = false;
+    } else out += t;
   }
-  return h + '</div>';
+  return out;
 }
+const ceHlBloc = src => String(src).replace(/\n$/,'').split('\n').map(l => '<span class="ce-ln">'+(ceHl(l)||' ')+'</span>').join('');
+
+/* --- Saisie : passe par execCommand pour garder l'historique d'annulation ; beforeinput couvre aussi les claviers virtuels --- */
+const CE_OPEN = {'(':')','[':']','{':'}'};
+function ceSaisie(el, o){
+  let busy = false;
+  function ins(t){
+    busy = true;
+    let ok = false; try{ ok = document.execCommand('insertText', false, t); }catch(e){}
+    busy = false;
+    if(!ok){ el.setRangeText(t, el.selectionStart, el.selectionEnd, 'end'); el.dispatchEvent(new Event('input',{bubbles:true})); }
+  }
+  function del(){
+    busy = true;
+    let ok = false; try{ ok = document.execCommand('delete'); }catch(e){}
+    busy = false;
+    if(!ok){ el.setRangeText('', el.selectionStart, el.selectionEnd, 'end'); el.dispatchEvent(new Event('input',{bubbles:true})); }
+  }
+  function nouvelleLigne(){
+    const avant = el.value.slice(0, el.selectionStart), ligne = avant.slice(avant.lastIndexOf('\n')+1);
+    let ind = /^ */.exec(ligne)[0].length;
+    const code = ligne.replace(/#.*$/,'').trimEnd();
+    if(/:$/.test(code)) ind += 4;
+    else if(/^\s*(return\b|pass$|break$|continue$|raise\b)/.test(code)) ind = Math.max(0, ind-4);
+    ins('\n'+' '.repeat(ind));
+  }
+  function decaler(sens){
+    const v = el.value; let s = el.selectionStart, e = el.selectionEnd;
+    const ls = v.lastIndexOf('\n', s-1)+1; let le = v.indexOf('\n', e-((e>s && v[e-1]==='\n')?1:0)); if(le<0) le = v.length;
+    let prem = 0, total = 0;
+    const out = v.slice(ls,le).split('\n').map((l,i)=>{
+      if(sens>0){ if(!l.trim() && s!==e) return l; if(i===0) prem = 4; total += 4; return '    '+l; }
+      const k = Math.min(4, /^ */.exec(l)[0].length); if(i===0) prem = -k; total -= k; return l.slice(k);
+    }).join('\n');
+    if(out === v.slice(ls,le)) return;
+    el.setSelectionRange(ls,le); ins(out); el.setSelectionRange(Math.max(ls,s+prem), Math.max(ls,e+total));
+  }
+  function aligneElse(){   // « else » tapé au niveau du bloc : il rejoint son if
+    const v = el.value, s = el.selectionStart, ls = v.lastIndexOf('\n',s-1)+1, ligne = v.slice(ls,s);
+    if(!/^\s*(else|elif\b.*)$/.test(ligne)) return;
+    const cur = /^ */.exec(ligne)[0].length;
+    for(const l of v.slice(0,ls).split('\n').reverse()){
+      if(!l.trim()) continue;
+      const k = /^ */.exec(l)[0].length, si = /^\s*(if|elif)\b/.test(l);
+      if(k===cur && si) return;
+      if(k<cur){ if(si){ el.setSelectionRange(ls,s); ins(' '.repeat(k)+ligne.trimStart()); } return; }
+    }
+  }
+  function caractere(c){
+    const s = el.selectionStart, e = el.selectionEnd, v = el.value, nx = v[s], pv = v[s-1];
+    const libre = !nx || /[\s)\]},:]/.test(nx), guil = (c==='"' || c==="'");
+    if(s!==e && (CE_OPEN[c]||guil)){ const m = v.slice(s,e); ins(c+m+(CE_OPEN[c]||c)); el.setSelectionRange(s+1, s+1+m.length); return true; }
+    if((c===')'||c===']'||c==='}'||guil) && nx===c && s===e){ el.setSelectionRange(s+1,s+1); return true; }
+    if(CE_OPEN[c] && libre){ ins(c+CE_OPEN[c]); el.setSelectionRange(s+1,s+1); return true; }
+    if(guil && libre && !(pv && /\w/.test(pv))){ ins(c+c); el.setSelectionRange(s+1,s+1); return true; }
+    if(c===':'){ aligneElse(); ins(':'); return true; }
+    return false;
+  }
+  el.addEventListener('beforeinput', ev=>{
+    if(busy || ev.isComposing) return;
+    const t = ev.inputType, s = el.selectionStart, e = el.selectionEnd, v = el.value;
+    if(t==='insertLineBreak' || t==='insertParagraph'){ ev.preventDefault(); nouvelleLigne(); return; }
+    if(t==='deleteContentBackward' && s===e && s>0){
+      const paire = (CE_OPEN[v[s-1]]===v[s]) || ((v[s-1]==='"'||v[s-1]==="'") && v[s]===v[s-1]);
+      if(paire){ ev.preventDefault(); el.setSelectionRange(s-1,s+1); del(); return; }
+      const ls = v.lastIndexOf('\n',s-1)+1, tete = v.slice(ls,s);
+      if(tete.length && !tete.trim()){ const n = tete.length%4 || 4; ev.preventDefault(); el.setSelectionRange(s-n,s); del(); return; }
+    }
+    if(t==='insertText' && ev.data && ev.data.length===1){ if(caractere(ev.data)) ev.preventDefault(); }
+  });
+  el.addEventListener('keydown', ev=>{
+    if((ev.metaKey||ev.ctrlKey) && ev.key==='Enter'){ ev.preventDefault(); if(o.lancer) o.lancer(); return; }
+    if(ev.key==='Tab'){
+      ev.preventDefault();
+      if(ev.shiftKey){ decaler(-1); return; }
+      if(el.selectionStart!==el.selectionEnd && el.value.slice(el.selectionStart,el.selectionEnd).includes('\n')){ decaler(1); return; }
+      const ls = el.value.lastIndexOf('\n', el.selectionStart-1)+1, col = el.selectionStart-ls; ins(' '.repeat(4-(col%4)));
+    }
+  });
+  el._ce = {ins, decaler, caractere};
+}
+
+/* --- Éditeur : police réelle de 16 px (pas de zoom iOS), réduite à l'écran par --ce-s --- */
+let ceEdActuel = null, ceMajTouches = null;
+document.addEventListener('selectionchange', ()=>{ if(ceMajTouches && document.activeElement && document.activeElement.id==='codeEd') ceMajTouches(); });
+window.addEventListener('resize', ()=>{ if(ceEdActuel) ceEdActuel.layout(); });
+function ceEditeur(mount, valeur, o){
+  mount.innerHTML = '<div class="ce-ed"><div class="ce-in"><div class="ce-gut" aria-hidden="true"></div><div class="ce-code"><pre class="ce-miroir" aria-hidden="true"></pre>'
+    + '<textarea class="ce-ta" id="codeEd" spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off" wrap="off" aria-label="Éditeur Python"></textarea></div></div></div>';
+  const box = mount.querySelector('.ce-ed'), inner = mount.querySelector('.ce-in'), ta = mount.querySelector('.ce-ta'), hl = mount.querySelector('.ce-miroir'), gut = mount.querySelector('.ce-gut');
+  ta.value = valeur;
+  let marques = {}, actif = 0, nbLignes = -1;
+  function layout(){
+    const n = ta.value.split('\n').length, H = Math.max(8, n+1)*24 + 24;
+    const s = parseFloat(getComputedStyle(box).getPropertyValue('--ce-s')) || .875;
+    inner.style.height = H+'px'; box.style.height = (H*s+3)+'px'; nbLignes = n;
+  }
+  function peindre(){
+    const L = ta.value.split('\n');
+    hl.innerHTML = L.map((l,i)=>{ const n = i+1, c = ['ce-ln'], er = marques.err && marques.err.line===n; if(n===actif) c.push('act'); if(er) c.push('err');
+      return '<span class="'+c.join(' ')+'"'+(er && marques.err.msg ? ' data-msg="'+escCode(marques.err.msg).replace(/"/g,'&quot;')+'"' : '')+'>'+(ceHl(l)||' ')+'</span>'; }).join('');
+    gut.innerHTML = L.map((_,i)=>{ const n = i+1, c = []; if(n===actif) c.push('act'); if(marques.err && marques.err.line===n) c.push('err'); return '<span class="'+c.join(' ')+'">'+n+'</span>'; }).join('');
+    if(L.length !== nbLignes) layout();
+    hl.scrollLeft = ta.scrollLeft;
+  }
+  function curseur(){ const n = ta.value.slice(0,ta.selectionStart).split('\n').length; if(n!==actif){ actif = n; peindre(); } if(o.touches) o.touches(); }
+  ceSaisie(ta, {lancer:o.lancer});
+  ta.addEventListener('input', ()=>{ if(marques.err) marques.err = null; actif = ta.value.slice(0,ta.selectionStart).split('\n').length; peindre(); if(o.touches) o.touches(); });
+  ta.addEventListener('scroll', ()=>{ hl.scrollLeft = ta.scrollLeft; });
+  ['click','keyup','focus'].forEach(ev=>ta.addEventListener(ev,curseur));
+  ta.addEventListener('blur', ()=>{ actif = 0; peindre(); });
+  layout(); peindre();
+  return {el:ta, get value(){ return ta.value; }, marks(m){ marques = m; peindre(); }, layout};
+}
+
+/* --- Console : tout le texte vient de DIAG, déjà échappé --- */
+const CE_BANNIERE = {
+  syntax:['warn','Python ne peut pas lire ton code','Aucune ligne n’a été exécutée. Cet essai ne compte pas.'],
+  limit:['warn','Écriture non gérée ici','Cet essai ne compte pas.'],
+  missing:['warn','La fonction attendue est introuvable','Cet essai ne compte pas.'],
+  empty:['warn','Rien à exécuter','Cet essai ne compte pas.'],
+  todo:['warn','Pas encore prêt','Cet essai ne compte pas.'],
+  runtime:['ko','Ton code s’arrête sur une erreur',''],
+  logic:['ko','Pas d’erreur Python, mais un résultat est faux',''],
+  ok:['ok','Aucune erreur, tous les tests passent','']
+};
+const ceIc = n => '<svg class="i" aria-hidden="true"><use href="#i-'+n+'"/></svg>';
+function ceBanniere(A){
+  const b = CE_BANNIERE[A.state], R = A.rep.results||[], n = R.length, k = R.filter(x=>x.pass).length;
+  let sous = b[2];
+  if(A.state==='runtime') sous = n ? k+' test'+(k>1?'s':'')+' sur '+n+' réussi'+(k>1?'s':'')+'. Python s’est arrêté sur une ligne de ton code.' : 'Python s’est arrêté avant même de lancer les tests.';
+  if(A.state==='logic') sous = k+' test'+(k>1?'s':'')+' sur '+n+' réussi'+(k>1?'s':'')+'. Ton code va jusqu’au bout, mais il ne renvoie pas toujours ce qui est attendu.';
+  if(A.state==='ok') sous = n+' test'+(n>1?'s':'')+' sur '+n+'. Ton code s’exécute du début à la fin et renvoie les bonnes valeurs.';
+  return '<div class="ce-ban '+b[0]+'"><span class="ce-bi">'+ceIc(b[0]==='ok'?'check':b[0]==='warn'?'alert':'x')+'</span><b>'+b[1]+'</b><span class="ce-s">'+sous+'</span>'
+    + (n?'<div class="ce-bar" aria-label="'+k+' sur '+n+'">'+R.map(x=>'<i class="'+(x.pass?'ok':'')+'"></i>').join('')+'</div>':'')+'</div>';
+}
+function ceTraceback(tb, lignes){
+  const rows = tb.rows||[], der = rows[rows.length-1];
+  let h = '<span class="ce-tb">Traceback (most recent call last):</span>';
+  rows.forEach(r=>{
+    if(r.gap){ h += '<span class="ce-tb ce-tb-g">  [… '+r.gap+' appels identiques …]</span>'; return; }
+    h += '<span class="ce-tb">  line '+r.line+', in '+escCode(r.fn)+'</span><span class="ce-tb">    '+escCode(r.code)+'</span>';
+    if(r===der && tb.mark && tb.mark.col!=null){ const c = tb.mark.col - /^ */.exec(lignes[r.line-1]||'')[0].length; if(c>=0) h += '<span class="ce-tb-c">    '+' '.repeat(c)+'^'.repeat(Math.max(1,tb.mark.len))+'</span>'; }
+  });
+  return h + '<span class="ce-tb ce-tb-f">'+(tb.final?escCode(tb.final):'(exécution interrompue : le code ne se terminait pas)')+'</span>';
+}
+function ceConsole(A, sel){
+  return '<div class="ce-term"><div class="ce-term-h"><span>Console</span><span>Touche un test pour l’expliquer</span></div>'+A.tests.map(t=>{
+    const est = t.i===sel, cls = t.skipped?'sk':(t.pass?'ok':'ko');
+    let o = '';
+    (t.out||[]).forEach(l=>{ o += '<span class="ce-p-out">'+escCode(l)+'</span>'; });
+    if(t.skipped) o += '<span class="ce-to"><span class="ce-mut">non lancé</span></span>';
+    else if(t.error){
+      if(est && t.x.tb && t.x.tb.rows.length) o += ceTraceback(t.x.tb, A.lines);
+      else o += '<span class="ce-tb ce-tb-f">'+escCode(t.x.py || (/^TimeoutError/.test(t.error)?'(exécution interrompue : le code ne se terminait pas)':t.error))+'</span>';
+    }
+    else o += '<span class="ce-to"><span>'+escCode(t.got)+'</span>'+(t.pass?'<span class="ce-okb">'+ceIc('check')+'</span>':'<span class="ce-kob">'+ceIc('x')+' attendu '+escCode(t.want)+'</span>')+'</span>';
+    return '<button type="button" class="ce-t '+cls+(est?' sel':'')+'" data-sel="'+t.i+'"><span class="ce-tl"><span class="ce-pr">&gt;&gt;&gt; </span>'+ceHl(t.code)+'</span>'+(t.note?'<span class="ce-tn"># '+escCode(t.note)+'</span>':'')+o+'</button>';
+  }).join('')+'</div>';
+}
+function ceConsoleSyntaxe(x){
+  if(!x.where && !x.py) return '';
+  const type = x.pyReal ? x.py : String(x.py||'').split(':')[0];
+  let h = '<div class="ce-term"><div class="ce-term-h"><span>Console</span>'+(x.pyReal?'<span>Message exact de Python</span>':'')+'</div><div class="ce-term-b">';
+  if(x.where){
+    const raw = x.where.code||'', ind = /^ */.exec(raw)[0].length;
+    h += '<span class="ce-tb">  line '+x.where.line+'</span><span class="ce-tb">    '+escCode(raw.trim())+'</span>';
+    if(x.where.col!=null) h += '<span class="ce-tb-c">    '+' '.repeat(Math.max(0,x.where.col-ind))+'^'.repeat(Math.max(1,x.where.len||1))+'</span>';
+  }
+  if(type) h += '<span class="ce-tb ce-tb-f">'+escCode(type)+'</span>';
+  return h+'</div></div>';
+}
+function ceOu(x){
+  const w = x.where; if(!w || w.code==null) return '';
+  const raw = w.code, ind = /^ */.exec(raw)[0].length;
+  let corps;
+  if(w.ins) corps = ceHl(raw.replace(/\s+$/,'').slice(ind))+'<mark class="ce-mi">'+escCode(w.ins)+'</mark>';
+  else if(w.col!=null && w.len){ const s = Math.max(0,w.col-ind), e = s+w.len; corps = ceHl(raw.slice(ind,ind+s))+'<mark class="ce-mx">'+escCode(raw.slice(ind+s,ind+e))+'</mark>'+ceHl(raw.slice(ind+e)); }
+  else corps = ceHl(raw.trim());
+  return '<div class="ce-lieu"><span class="ce-l">'+(x.whereLabel?x.whereLabel+' · ':'')+'ligne '+w.line+'</span><pre>'+corps+'</pre></div>';
+}
+function ceVars(vs){
+  return '<div class="ce-bloc"><span class="ce-l">À cet instant</span><div class="ce-vars">'+vs.map(v=>{
+    const r = v.t==='dict' ? '{… '+v.len+' clé'+(v.len>1?'s':'')+'}' : (v.r.length>46 ? v.r.slice(0,44)+'…' : v.r);
+    return '<span class="ce-var"><b>'+escCode(v.name)+'</b>= '+escCode(r)+'</span>';
+  }).join('')+'</div></div>';
+}
+function ceDiff(d){
+  const ligne = (lbl,a,cls)=>'<div class="ce-dr"><span class="ce-l">'+lbl+'</span><div class="ce-cells">'+(a.map((v,i)=>'<div class="ce-cell '+(d.bad.indexOf(i)>=0?cls:'')+'"><small>'+(d.w==='composante'?i+1:i)+'</small><b>'+escCode(v)+'</b></div>').join('')||'<span class="ce-var">vide</span>')+'</div></div>';
+  return '<div class="ce-bloc ce-diff">'+ligne('Obtenu',d.got,'kob')+ligne('Attendu',d.want,'okb')+'</div>';
+}
+function ceTableau(x){
+  if(x.table){
+    const T = x.table, der = T.rows[T.rows.length-1], nc = T.cols.length+1+(T.hasCond?1:0);
+    return '<div class="ce-bloc"><span class="ce-l">Tableau de suivi · boucle de la ligne '+T.line+'</span><div class="ce-tw"><table class="ce-suivi"><thead><tr><th>Tour</th>'+T.cols.map(c=>'<th>'+escCode(c)+'</th>').join('')+(T.hasCond?'<th>Condition</th>':'')+'</tr></thead><tbody>'
+      + T.rows.map(r=> r.gap ? '<tr class="gap"><td colspan="'+nc+'">… '+r.gap+' tours …</td></tr>'
+        : '<tr'+(T.exitRow&&r===der?' class="exit"':'')+'><td>'+r.n+'</td>'+r.cells.map(c=>'<td>'+escCode(c)+'</td>').join('')+(T.hasCond?'<td>'+(r.cond===undefined?'':(r.cond?'True':'False'))+'</td>':'')+'</tr>').join('')
+      + '</tbody></table></div>'+(T.note?'<p class="ce-note2">'+T.note+'</p>':'')+'</div>';
+  }
+  if(x.calls) return '<div class="ce-bloc"><span class="ce-l">Appels récursifs</span><div class="ce-tw"><table class="ce-suivi"><thead><tr><th>Appel</th><th>Renvoie</th></tr></thead><tbody>'
+    + x.calls.map(r=> r.gap ? '<tr class="gap"><td colspan="2">… '+r.gap+' appels …</td></tr>' : '<tr><td>'+escCode(r.call)+'</td><td>'+(r.ret==null?'en attente':escCode(r.ret))+'</td></tr>').join('')+'</tbody></table></div></div>';
+  return '';
+}
+function ceExplication(x){
+  let h = '<div class="ce-xp"><h4>'+x.t+'</h4><p class="ce-lead">'+x.lead+'</p>'+ceOu(x);
+  if(x.facts && x.facts.length) h += '<ul class="ce-f">'+x.facts.map(f=>'<li>'+f+'</li>').join('')+'</ul>';
+  if(x.diff) h += ceDiff(x.diff);
+  if(x.vars && x.vars.length) h += ceVars(x.vars);
+  if(x.hint) h += '<div class="ce-piste"><span class="ce-l">'+(x.ref?'Comparaison avec la référence':'Piste à vérifier')+'</span><p>'+x.hint+'</p></div>';
+  return h + ceTableau(x) + '</div>';
+}
+function ceBilan(A){
+  const c = A.cost, F = s => String(Math.round(s*10)/10).replace('.',',');
+  if(!c && !A.remarks.length) return '';
+  let h = '<div class="ce-xp"><span class="ce-l">Bilan</span>';
+  if(c) h += '<p class="ce-lead">Sur le test le plus long, ton code effectue '+c.me+' opérations ; la référence, '+c.ref+'.'+(c.ratio>=1.5?' Soit '+F(c.ratio)+' fois plus.':(c.ratio<=.67?' Tu fais mieux que la référence.':' Coût équivalent.'))+'</p>';
+  if(A.remarks.length) h += '<div class="ce-piste"><span class="ce-l">Ça marche, mais</span><ul class="ce-f">'+A.remarks.map(r=>'<li>'+r+'</li>').join('')+'</ul></div>';
+  return h+'</div>';
+}
+function ceSortie(A, sel, essais){
+  let h = ceBanniere(A);
+  if(A.x){
+    h += ceExplication(A.x);
+    if(A.state==='syntax') h += ceConsoleSyntaxe(A.x);
+    else if(A.state==='runtime' && A.x.tb && A.x.tb.rows.length) h += '<div class="ce-term"><div class="ce-term-h"><span>Console</span></div><div class="ce-term-b">'+ceTraceback(A.x.tb, A.lines)+'</div></div>';
+    return h;
+  }
+  const it = A.tests[sel];
+  h += ceConsole(A, sel);
+  if(it && it.x) h += ceExplication(it.x);
+  if(A.state==='ok') h += ceBilan(A);
+  if(A.state!=='ok' && essais>=3) h += '<p class="ce-note2">Trois essais : tu peux continuer, ou regarder la solution pour passer à la suite.</p>';
+  return h;
+}
+
+const CE_SYMBOLES = [['⇥','in'],['⇤','out'],['◂','g'],['▸','d'],['↶','u'],':','(',')','[',']',',','=','==','!=','<','>','<=','>=','+','-','*','/','//','%','"','.','_','{','}','#'];
 
 function renderCode(zone, q){
   const spec = q.code || {};
+  const carte = $('#aurCard'), etat = {essais:0, fini:false, an:null, sel:0};
+  const telephone = () => window.matchMedia && window.matchMedia('(max-width: 760px)').matches;
+
+  /* Onglets du téléphone : au-dessus de l'énoncé, donc dans la carte (retirés par renderQuestion pour les autres modes) */
+  const tabs = document.createElement('div');
+  tabs.id = 'ceTabs'; tabs.className = 'ce-tabs'; tabs.setAttribute('role','tablist'); tabs.setAttribute('aria-label','Volets de la carte');
+  tabs.innerHTML = [['enonce','Énoncé'],['code','Code'],['res','Résultat']].map(([k,t])=>'<button type="button" role="tab" data-ce-t="'+k+'">'+t+(k==='res'?'<i class="ce-pastille" hidden></i>':'')+'</button>').join('');
+  carte.insertBefore(tabs, $('#qText'));
+  function onglet(t, haut){
+    carte.dataset.ceTab = t;
+    tabs.querySelectorAll('button').forEach(b=>{ const on = b.dataset.ceT===t; b.classList.toggle('on',on); b.setAttribute('aria-selected', on?'true':'false'); });
+    if(t==='code' && ceEdActuel) ceEdActuel.layout();
+    if(haut!==false) scrollQuizTop();
+  }
+  tabs.addEventListener('click', e=>{ const b = e.target.closest('[data-ce-t]'); if(b) onglet(b.dataset.ceT); });
+
+  const rappel = String(q.q).replace(/<[^>]+>/g,'').replace(/\$/g,'');
   const wrap = document.createElement('div');
-  wrap.className = 'code-zone';
-  const rows = Math.max(7, Math.min(20, String(spec.start||'').split('\n').length + 5));
-  // ⟦F3⟧ touches de code AU-DESSUS de l'éditeur : sous lui, elles passaient sous le clavier du téléphone
+  wrap.className = 'code-zone ce-zone';
   wrap.innerHTML =
-      (spec.setup ? '<div class="code-ctx"><div class="cc-t">Déjà chargé en mémoire</div><pre>'+escCode(spec.setup)+'</pre></div>' : '')
-    + '<div class="code-keys" id="codeKeys" role="toolbar" aria-label="Caractères de code"></div>'
-    + '<textarea class="code-ed" id="codeEd" rows="'+rows+'" spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off"></textarea>'
-    + '<div class="input-row" style="margin-top:10px">'
-    +   '<button class="btn" id="runBtn" type="button">▶ Exécuter les tests</button>'
-    +   '<button class="aur-mini-btn" id="dunnoBtn" type="button"><svg class="i" aria-hidden="true"><use href="#i-help"/></svg><span>Voir la solution</span></button>'
+      '<div class="ce-p ce-p-enonce">'
+    +   (spec.setup ? '<details class="ce-ctx" open><summary>Déjà chargé en mémoire</summary><pre>'+ceHlBloc(spec.setup)+'</pre></details>' : '')
+    +   '<button type="button" class="btn ce-go" data-ce-t="code">Écrire le code</button>'
     + '</div>'
-    + '<div id="codeOut"></div>';
+    + '<div class="ce-p ce-p-code">'
+    +   '<button type="button" class="ce-rappel" data-ce-t="enonce">'+escCode(rappel)+'</button>'
+    +   '<div class="ce-head"><span class="ce-l">Ton code</span><div class="ce-tries" id="ceTries"></div></div>'
+    +   '<div class="ce-keys" role="toolbar" aria-label="Touches de code"><div class="ce-krow" id="ceSugg"></div><div class="ce-krow">'
+    +     CE_SYMBOLES.map(k=>Array.isArray(k)?'<button type="button" class="ce-key a" data-a="'+k[1]+'" aria-label="'+({in:'Indenter',out:'Désindenter',g:'Curseur à gauche',d:'Curseur à droite',u:'Annuler'})[k[1]]+'">'+k[0]+'</button>':'<button type="button" class="ce-key" data-k="'+escCode(k).replace(/"/g,'&quot;')+'">'+escCode(k)+'</button>').join('')
+    +   '</div></div>'
+    +   '<div id="ceEdMount"></div><div id="ceNote"></div>'
+    +   '<div class="input-row ce-acts">'
+    +     '<button class="btn" id="runBtn" type="button">'+ceIc('play')+'<span id="runLbl">Vérifier</span><span class="ce-kbd">'+(/Mac|iPhone|iPad/.test(navigator.platform||'')?'⌘↵':'Ctrl ↵')+'</span></button>'
+    +     '<button class="aur-mini-btn" id="dunnoBtn" type="button">'+ceIc('help')+'<span>Voir la solution</span></button>'
+    +   '</div>'
+    + '</div>'
+    + '<div class="ce-p ce-p-res"><div id="codeOut" class="ce-out"><p class="ce-vide">Vérifier exécute ton code sur les tests de la carte. Une faute de frappe ne coûte aucun essai.</p></div></div>';
   zone.appendChild(wrap);
+  wrap.addEventListener('click', e=>{ const b = e.target.closest('[data-ce-t]'); if(b) onglet(b.dataset.ceT); });
 
-  const ed = wrap.querySelector('#codeEd');
-  ed.value = spec.start || '';
-  /* On ne donne le focus que sur grand écran : sur téléphone, ouvrir le clavier d'office
-     recouvrirait l'énoncé et le contexte que l'élève doit justement lire avant d'écrire. */
-  if(window.matchMedia && window.matchMedia('(min-width: 760px)').matches)
-    setTimeout(()=>{ try{ ed.focus(); ed.setSelectionRange(ed.value.length, ed.value.length); }catch(e){} }, 30);
+  const sortie = wrap.querySelector('#codeOut'), note = wrap.querySelector('#ceNote'), run = wrap.querySelector('#runBtn'), dunno = wrap.querySelector('#dunnoBtn');
+  const zoneTouches = wrap.querySelector('.ce-keys'), sugg = wrap.querySelector('#ceSugg');
 
-  /* Tabulation = 4 espaces, retour à la ligne = indentation conservée (et +4 après « : ») */
-  ed.addEventListener('keydown', e=>{
-    if(e.key==='Tab'){ e.preventDefault(); insertAtCursor(ed, '    ', false); return; }
-    if((e.metaKey||e.ctrlKey) && e.key==='Enter'){ e.preventDefault(); wrap.querySelector('#runBtn').click(); return; }
-    if(e.key==='Enter'){
-      const before = ed.value.slice(0, ed.selectionStart);
-      const line = before.slice(before.lastIndexOf('\n')+1);
-      const ind = (line.match(/^[ \t]*/)||[''])[0] + (/:\s*$/.test(line) ? '    ' : '');
-      e.preventDefault(); insertAtCursor(ed, '\n'+ind, false);
+  /* Touches du téléphone : la première rangée suit ce qu'on est en train d'écrire */
+  function noms(){
+    const tout = ((spec.setup||'')+'\n'+ed.value).replace(/#.*$/gm,'').replace(/"[^"\n]*"|'[^'\n]*'/g,'');
+    const f = new Map();
+    (tout.match(/[A-Za-z_]\w*/g)||[]).forEach(w=>{ if(!CE_KW.has(w)&&!CE_BI.has(w)&&!CE_CONST.has(w)) f.set(w,(f.get(w)||0)+1); });
+    return [...f.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+  }
+  function suggestions(){
+    const el = ed.el, avant = el.value.slice(0,el.selectionStart), ligne = avant.slice(avant.lastIndexOf('\n')+1), t = ligne.trimStart();
+    const pm = /[A-Za-zÀ-ÿ_]\w*$/.exec(ligne), pre = pm ? pm[0] : '', N = noms();
+    if(/\.\w*$/.test(ligne)) return {l:['append(','pop(','get(','keys()','values()','items()'].filter(x=>x.startsWith(pre)), p:pre};
+    if(/^\s*for\s+[\w, ]+\s+$/.test(ligne)) return {l:['in range(','in enumerate(','in '], p:''};
+    if(pre){ const g = [...N,'len(','range(','enumerate(','sum(','min(','max(','abs(','return ','True','False','None','and ','or ','not ','for ','while ','if ','elif ','else:','def ']; return {l:g.filter(x=>x.startsWith(pre)&&x!==pre).slice(0,10), p:pre}; }
+    if(t==='') return {l:['if ','for ','while ','return ','elif ','else:','def ',...N.slice(0,4)], p:''};
+    if(/^\s*return\b/.test(ligne)) return {l:[...N.slice(0,5),'True','False','None','len('], p:''};
+    return {l:[...N.slice(0,6),'len(','range(','and ','or ','not ','True','False'], p:''};
+  }
+  function majTouches(){
+    if(getComputedStyle(zoneTouches).display==='none') return;
+    const s = suggestions();
+    sugg.innerHTML = s.l.map(x=>'<button type="button" class="ce-key w" data-w="'+escCode(x).replace(/"/g,'&quot;')+'" data-p="'+s.p.length+'">'+escCode(x)+'</button>').join('');
+  }
+  /* Le doigt qui se pose ne doit pas retirer le focus (le clavier se fermerait) ; l'action part au clic, qui n'a pas lieu si le doigt fait défiler la rangée */
+  zoneTouches.addEventListener('pointerdown', ev=>{ if(ev.target.closest('.ce-key')) ev.preventDefault(); });
+  zoneTouches.addEventListener('mousedown', ev=>{ if(ev.target.closest('.ce-key')) ev.preventDefault(); });
+  zoneTouches.addEventListener('click', ev=>{
+    const b = ev.target.closest('.ce-key'); if(!b) return;
+    const el = ed.el, sm = el._ce;
+    if(document.activeElement!==el) el.focus();
+    if(b.dataset.w!==undefined){
+      const w = b.dataset.w, p = +b.dataset.p||0;
+      if(p){ const s = el.selectionStart; el.setSelectionRange(s-p,s); }
+      if(w.endsWith('(')){ sm.ins(w+')'); const c = el.selectionStart-1; el.setSelectionRange(c,c); } else sm.ins(w);
+    } else {
+      const a = b.dataset.a, k = b.dataset.k;
+      if(a==='in') sm.decaler(1);
+      else if(a==='out') sm.decaler(-1);
+      else if(a==='g'){ const c = Math.max(0,el.selectionStart-1); el.setSelectionRange(c,c); }
+      else if(a==='d'){ const c = Math.min(el.value.length,el.selectionEnd+1); el.setSelectionRange(c,c); }
+      else if(a==='u') document.execCommand('undo');
+      else if(!sm.caractere(k)) sm.ins(k);
     }
+    majTouches();
   });
 
-  /* rangée de touches (clavier mobile : « : », guillemets et crochets y sont pénibles) */
-  const keys = wrap.querySelector('#codeKeys');
-  CODE_KEYS.forEach(k=>{
-    const b = document.createElement('button');
-    b.type='button'; b.className='code-key'; b.textContent = k;
-    if(k==='⇥') b.title = 'Indenter de 4 espaces';
-    /* ⟦F3⟧ pointerdown annulé : l'éditeur garde le focus (le clavier du téléphone ne se ferme pas) ; l'insertion
-       se fait au clic, qui ne part pas quand le doigt fait défiler la rangée de touches (et marche au clavier) */
-    b.addEventListener('pointerdown', ev=>{ ev.preventDefault(); });
-    b.addEventListener('mousedown', ev=>{ ev.preventDefault(); });
-    b.addEventListener('click', ()=>{ insertAtCursor(ed, k==='⇥' ? '    ' : k, false); });
-    keys.appendChild(b);
-  });
+  const ed = ceEditeur(wrap.querySelector('#ceEdMount'), spec.start || '', {lancer:verifier, touches:majTouches});
+  ceEdActuel = ed; ceMajTouches = majTouches;
+  majTouches();
+  /* Téléphone : on ouvre sur l'énoncé, à lire avant d'écrire. Grand écran : le curseur est déjà dans l'éditeur. */
+  onglet('enonce', false);
+  if(window.matchMedia && window.matchMedia('(min-width: 761px)').matches)
+    setTimeout(()=>{ try{ ed.el.focus({preventScroll:true}); ed.el.setSelectionRange(ed.el.value.length, ed.el.value.length); }catch(e){} }, 30);
 
-  let graded = false;
-  wrap.querySelector('#runBtn').onclick = ()=>{
-    const out = wrap.querySelector('#codeOut');
-    let rep;
-    try{
-      rep = PYMINI.check({setup:spec.setup, tests:spec.tests||[], requires:spec.requires||[]}, ed.value, {timeout:2500});
-    }catch(e){
-      rep = {ok:false, fatal:'Erreur interne de l’exécuteur : '+((e&&e.message)||e), results:[], out:[]};
+  function libre(titre, lead){ return {state:'todo', free:true, x:{t:titre, lead:lead}, rep:{ok:false,results:[],out:[]}, tests:[], first:-1, lines:[]}; }
+  function peindre(){
+    const A = etat.an; if(!A) return;
+    sortie.innerHTML = ceSortie(A, etat.sel, etat.essais);
+    wrap.querySelector('#ceTries').innerHTML = '<span>Essais</span>'+[0,1,2].map(i=>'<i class="'+(i<etat.essais?((i===etat.essais-1&&A.rep.ok)?'ok':'ko'):'')+'"></i>').join('');
+    note.innerHTML = (A.free && A.x) ? '<div class="ce-avis"><span>'+((A.x.line||(A.x.where&&A.x.where.line))?'<b>Ligne '+(A.x.line||A.x.where.line)+'.</b> ':'')+A.x.t+'. <b>Cet essai ne compte pas.</b></span></div>' : '';
+    const pa = tabs.querySelector('.ce-pastille');
+    if(pa){ pa.hidden = false; pa.className = 'ce-pastille '+(A.free?'warn':A.rep.ok?'ok':'ko'); }
+    const it = A.x ? null : A.tests[etat.sel], x = A.x || (it && it.x); let err = null;
+    if(x && ((A.x && (A.state==='syntax'||A.state==='runtime')) || (it && it.kind==='error'))){ const ln = x.line || (x.where && x.where.line); if(ln && !x.neutral) err = {line:ln, msg:x.short}; }
+    ed.marks({err});
+  }
+  sortie.addEventListener('click', e=>{ const b = e.target.closest('[data-sel]'); if(b){ etat.sel = +b.dataset.sel; peindre(); } });
+
+  function verifier(){
+    const src = ed.value, debut = String(spec.start||'').trim();
+    let A;
+    if(!etat.fini && debut && src.trim()===debut) A = libre('Tu n’as encore rien modifié', 'L’amorce seule ne peut pas réussir : complète-la, puis relance.');
+    else { try{ A = DIAG.run(spec, src, {timeout:2500}); }catch(e){ A = libre('Erreur interne de l’exécuteur', codeErreur(e)); } }
+    etat.an = A; etat.sel = (A.first!=null && A.first>=0) ? A.first : 0;
+    let gagne = false;
+    if(!A.free && !etat.fini){ etat.essais++; if(A.rep.ok){ etat.fini = true; gagne = true; } }
+    peindre();
+    if(!A.free && telephone()) onglet('res');
+    if(gagne){
+      wrap.querySelector('#runLbl').textContent = 'Ré-exécuter (hors notation)';
+      run.classList.add('ghost');   // l'action principale est désormais la note
+      dunno.classList.add('hidden');
+      revealCode(q, etat.essais);
     }
-    out.innerHTML = codeReport(rep);
-    if(!graded){
-      graded = true;
-      wrap.querySelector('#runBtn').textContent = '▶ Ré-exécuter (hors notation)';
-      wrap.querySelector('#runBtn').classList.add('ghost');   // ⟦F3⟧ l'action principale est désormais la note
-      wrap.querySelector('#dunnoBtn').classList.add('hidden');
-      revealCode(q, !!rep.ok);
-    }
-  };
-  wrap.querySelector('#dunnoBtn').onclick = ()=>{
+  }
+  function codeErreur(e){ return escCode((e && e.message) || e); }
+  run.onclick = verifier;
+  dunno.onclick = ()=>{
     if(answeredFlag) return;
-    graded = true;
-    wrap.querySelector('#runBtn').textContent = '▶ Essayer quand même';
-    wrap.querySelector('#runBtn').classList.add('ghost');
-    wrap.querySelector('#dunnoBtn').classList.add('hidden');
+    etat.fini = true;
+    wrap.querySelector('#runLbl').textContent = 'Essayer quand même';
+    run.classList.add('ghost');
+    dunno.classList.add('hidden');
     revealUnknown(q);
+    if(telephone()) onglet('res');
   };
 }
 
-function revealCode(q, ok){
+function revealCode(q, essais){
   answeredFlag = true;
   const fb = $('#feedback');
-  /* ⟦F3⟧ un seul verdict : celui du rapport de tests, juste au-dessus (« 4 tests sur 4 réussis ») ; plus de
-     « Tous les tests passent » ni de « Réponse correcte » répétés. Tests en échec : pas de note par défaut. */
   let html = '<div class="reveal-ans"><span class="rl">Solution de référence</span>'+(q.answer||'')+'</div>';
   html += expHTML(q);
   if(q.vig) html += f3Vig(q.vig);
   html += courseLink(q) + annalesLine(q);
   fb.innerHTML = html; fb.className='feedback';
-  finalizeSelf(q, ok, {verdict:false, sansDefaut:!ok, consigne: ok ? 'Affine si besoin :' : 'Compare avec la solution, puis note-toi :'});
+  /* Réussi du premier coup : Entrée garde « Correct ». Sinon « Difficile » est proposé et Entrée ne choisit rien : l'élève garde le dernier mot. */
+  const premier = essais <= 1;
+  finalizeSelf(q, true, {verdict:false, sansDefaut:!premier, consigne: premier ? 'Réussi du premier coup. Affine si besoin :' : 'Réussi au '+essais+'e essai : « Difficile » est proposé, à toi de juger.'});
+  if(!premier){ const g = fb.querySelector('.srs-grade .sg2.g1'); if(g) g.classList.add('ce-propose'); }
   typeset(fb);
 }
+
 /* ⟦F3⟧ encadré « Vigilance » : icône au trait (masquée sur téléphone, où elle prenait une colonne au texte) */
 function f3Vig(v){
   return '<div class="vig"><span class="ic"><svg class="i" aria-hidden="true"><use href="#i-alert"/></svg></span><span><b>Vigilance.</b> ' + v + '</span></div>';
