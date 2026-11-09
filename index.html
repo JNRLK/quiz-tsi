@@ -18335,7 +18335,7 @@ function ceComparaison(mine, sol){
   return (n===m && A.size===m ? '<p class="ce-note2">Ton code est identique à la référence.</p>' : '')
     + '<div class="ce-cmp">'+(n?'<div class="ce-bloc"><span class="ce-l">Ton code</span>'+bloc(a,A,'del')+'</div>':'')+'<div class="ce-bloc"><span class="ce-l">Référence</span>'+bloc(b,B,'add')+'</div></div>';
 }
-/* --- Pas à pas : l'état affiché est celui APRÈS la ligne surlignée --- */
+/* --- Pas à pas : l'état affiché est celui APRÈS l'exécution de la ligne surlignée --- */
 function ceArgs(f){ return (f.args||[]).map(a=>{ const v = f.vars.filter(x=>x.name===a)[0]; if(!v) return a; return v.t==='val' ? v.r : (v.r.length>22 ? a : v.r); }).join(', '); }
 function ceLegende(T, i, vus, lignes){
   const st = T.steps[i], txt = (lignes[st.line-1]||'').trim(), haut = st.frames[st.frames.length-1];
