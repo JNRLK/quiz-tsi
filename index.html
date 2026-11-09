@@ -3242,7 +3242,7 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
      et la réduit par --ce-s ; le texte du textarea est transparent, la couleur vient du miroir placé dessous. */
   .ce-zone{display:grid; gap:12px; grid-template-columns:minmax(0,1fr)}
   .ce-p{display:grid; gap:10px; min-width:0; grid-template-columns:minmax(0,1fr)}
-  .ce-p-enonce:empty{display:none}
+  .ce-p-enonce{display:none}
   .ce-tabs, .ce-go, .ce-rappel{display:none}
   .ce-l{font-size:11px; letter-spacing:.08em; text-transform:uppercase; font-weight:600; color:var(--muted)}
   .ce-ctx{border:1px solid var(--line); border-radius:12px; background:var(--bg-deep)}
@@ -3362,6 +3362,67 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
   .ce-suivi tr.gap td{color:var(--muted); font-style:italic}
   .ce-note2{margin:0; font-size:12.5px; color:var(--muted)}
   .srs-grade .sg2.ce-propose{outline:2px solid var(--accent); outline-offset:1px}
+  /* Colonne de l'énoncé : exemples, données, indices (dans #qText, d'où la remise à zéro de la typographie) */
+  .ce-side{display:grid; gap:12px; margin-top:16px; font:400 14px/1.5 'Lexend',sans-serif; color:var(--ink); grid-template-columns:minmax(0,1fr)}
+  .ce-ex{display:grid; gap:7px}
+  .ce-ex-row{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:2px 12px; padding:8px 11px; border-radius:11px; background:var(--bg-deep); font:400 12.5px/1.45 'JetBrains Mono',monospace}
+  .ce-ex-row code{font:inherit; background:none; padding:0; overflow-wrap:anywhere; min-width:0}
+  .ce-ex-row b{font-weight:600; color:var(--accent-soft); overflow-wrap:anywhere; min-width:0}
+  .ce-hints{display:grid; gap:7px}
+  .ce-hints:empty{display:none}
+  .ce-hint{display:grid; gap:7px; padding:10px 12px; border:1px solid var(--line); border-radius:12px; font:400 13.5px/1.5 'Lexend',sans-serif; text-align:left; background:none; color:var(--ink)}
+  .ce-hint h5{margin:0; font:600 13px/1.3 'Lexend',sans-serif; display:flex; gap:7px; align-items:center}
+  .ce-hint p{margin:0}
+  .ce-hint code{font:400 12.5px 'JetBrains Mono',monospace; background:var(--bg-deep); border-radius:5px; padding:1px 5px; overflow-wrap:anywhere}
+  .ce-hint pre{margin:0; overflow-x:auto; font:400 12.5px/19px 'JetBrains Mono',monospace}
+  .ce-hint .ce-ln{height:19px; padding:0}
+  .ce-hint .ce-ig{height:19px}
+  button.ce-hint{cursor:pointer; width:100%; background:var(--tile); min-height:40px}
+  button.ce-hint:hover{border-color:var(--accent)}
+  /* Onglets de la console, pas à pas, comparaison */
+  .ce-rtabs{display:flex; gap:18px; border-bottom:1px solid var(--line); overflow-x:auto; scrollbar-width:none}
+  .ce-rtabs::-webkit-scrollbar{display:none}
+  .ce-rtabs button{border:0; background:none; cursor:pointer; padding:9px 1px; font:500 13.5px 'Lexend',sans-serif; color:var(--muted); border-bottom:2px solid transparent; margin-bottom:-1px; display:flex; align-items:center; gap:6px; white-space:nowrap; min-height:40px}
+  .ce-rtabs button.on{color:var(--ink); font-weight:600; border-bottom-color:var(--accent)}
+  .ce-rtabs button:disabled{opacity:.55; cursor:default}
+  .ce-link{justify-self:start; display:inline-flex; align-items:center; gap:7px; cursor:pointer; border:1px solid var(--accent); background:none; border-radius:999px; padding:7px 14px; font:600 13px 'Lexend',sans-serif; color:var(--accent); min-height:38px}
+  .ce-link:hover{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+  .ce-tr-top{display:grid; gap:8px; grid-template-columns:minmax(0,1fr)}
+  .ce-tr-top select{width:100%; min-height:38px; padding:0 8px; border-radius:9px; border:1px solid var(--line); background:var(--panel); color:var(--ink); font:400 12.5px 'JetBrains Mono',monospace}
+  .ce-tr-ctl{display:flex; align-items:center; gap:5px}
+  .ce-tr-ctl button{width:40px; height:40px; display:grid; place-items:center; border-radius:10px; border:1px solid var(--line); background:var(--tile); color:var(--ink); cursor:pointer; flex:none}
+  .ce-tr-ctl button:hover:not(:disabled){border-color:var(--accent)}
+  .ce-tr-ctl button:disabled{opacity:.4; cursor:default}
+  .ce-tr-ctl input[type=range]{flex:1; min-width:30px; accent-color:var(--accent)}
+  .ce-tr-ctl span{font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap}
+  .ce-tr-cap{padding:10px 13px; border-radius:12px; background:color-mix(in srgb,var(--accent) 11%,transparent); font-size:14px; min-height:42px}
+  .ce-tr-cap code{font:400 12.5px 'JetBrains Mono',monospace; background:var(--bg-deep); border-radius:5px; padding:1px 5px; overflow-wrap:anywhere}
+  .ce-tr-code{margin:0; padding:8px 0; border-radius:12px; background:var(--bg-deep); overflow-x:auto; font:400 12.5px/21px 'JetBrains Mono',monospace}
+  .ce-tr-code .ce-ln, .ce-cmp .ce-ln{height:21px; padding:0 12px}
+  .ce-tr-code .ce-ig, .ce-cmp .ce-ig{height:21px}
+  .ce-ln.tr{background:color-mix(in srgb,var(--accent) 22%,transparent)}
+  .ce-gut span.tr{color:var(--accent); font-weight:700; opacity:1}
+  .ce-frames{display:grid; gap:7px; grid-template-columns:minmax(0,1fr)}
+  .ce-fr-plus{font-size:12.5px; color:var(--muted); text-align:center; padding:2px 0}
+  .ce-fr{border:1px solid var(--line); border-radius:12px; padding:9px 12px; display:grid; gap:8px; min-width:0}
+  .ce-fr.act{border-color:var(--accent)}
+  .ce-fr.old{opacity:.82}
+  .ce-fr-h{font:600 12.5px/1.3 'JetBrains Mono',monospace; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap}
+  .ce-fr-h .rv{color:var(--ok-text)}
+  .ce-var.chg{background:color-mix(in srgb,var(--accent) 24%,transparent)}
+  .ce-lst{display:grid; gap:3px; min-width:0}
+  .ce-lst-n{font:600 12.5px/1.3 'JetBrains Mono',monospace}
+  .ce-fr .ce-cell{grid-template-rows:14px 30px 15px}
+  .ce-cell.chg b{background:color-mix(in srgb,var(--accent) 30%,var(--panel)); font-weight:700}
+  .ce-cell.dim b{background:var(--bg-deep); color:var(--muted)}
+  .ce-cell.p b{border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent)}
+  .ce-cell em{font-style:normal; font-size:10.5px; font-weight:700; color:var(--accent); line-height:15px; white-space:nowrap}
+  .ce-tr-fin{margin:0; font-size:13.5px}
+  .ce-cmp{display:grid; gap:10px; grid-template-columns:minmax(0,1fr)}
+  .ce-cmp pre{margin:0; padding:8px 0; border-radius:12px; background:var(--bg-deep); overflow-x:auto; font:400 12.5px/21px 'JetBrains Mono',monospace}
+  .ce-ln.add{background:color-mix(in srgb,var(--ok-text) 16%,transparent)}
+  .ce-ln.del{background:color-mix(in srgb,var(--no-text) 14%,transparent)}
+  @media (min-width:761px){ .ce-cmp{grid-template-columns:repeat(2,minmax(0,1fr))} }
   /* Téléphone : trois onglets, éditeur bord à bord (environ 40 colonnes) */
   @media (max-width:760px){
     .ce-tabs{display:flex; gap:2px; padding:3px; margin-bottom:12px; border-radius:14px; background:var(--inset-soft)}
@@ -3371,6 +3432,7 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
     .ce-pastille.ok{background:var(--ok-text)}
     .ce-pastille.ko{background:var(--no-text)}
     .ce-pastille.warn{background:var(--warn-text)}
+    .ce-p-enonce{display:grid}
     .ce-go{display:inline-flex; justify-content:center; width:100%}
     .ce-rappel{display:block; width:100%; text-align:left; background:none; border:0; padding:0; color:var(--muted); font:400 13px/1.4 'Lexend',sans-serif; cursor:pointer; overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
     #aurCard.aur-m-code[data-ce-tab="enonce"] :is(.ce-p-code, .ce-p-res, #feedback){display:none}
@@ -3381,6 +3443,8 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
     .ce-ta{padding:12px 10px}
     .ce-miroir .ce-ln{padding:0 10px}
     .ce-acts .btn{flex:1 1 auto}
+    .ce-fr .ce-cell{min-width:26px}
+    .ce-fr .ce-cell b{padding:0 3px; font-size:12.5px}
   }
   /* Grand écran : l'énoncé à gauche reste visible, le code et la console à droite */
   @media (min-width:1100px){
@@ -3388,7 +3452,7 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
     .aur-ses-body:has(#aurCard.aur-m-code) :is(.aur-rail, .aur-aside){display:none}
     .aur-ses-body:has(#aurCard.aur-m-code) .aur-center{max-width:1240px}
     #aurCard.aur-m-code{display:grid; grid-template-columns:minmax(0,5fr) minmax(0,7fr); grid-template-areas:"q a" "q f"; column-gap:30px; align-items:start}
-    #aurCard.aur-m-code #qText{grid-area:q; position:sticky; top:16px; align-self:start}
+    #aurCard.aur-m-code #qText{grid-area:q; position:sticky; top:16px; align-self:start; max-height:calc(100vh - 32px); overflow-y:auto; margin:0}
     #aurCard.aur-m-code #answerZone{grid-area:a; min-width:0}
     #aurCard.aur-m-code #feedback{grid-area:f; min-width:0}
     .ce-ln.err[data-msg]::after{content:attr(data-msg); margin-left:22px; font:500 12.5px/1 'Lexend',sans-serif; color:var(--no-text); background:color-mix(in srgb,var(--no-text) 12%,transparent); padding:3px 9px; border-radius:999px}
@@ -3421,6 +3485,12 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
   <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 21.5c3.9 0 6.5-2.7 6.5-6.3 0-3.7-2.6-5.6-3.7-9.2-1.8 1.6-2.6 3.4-2.6 5.2-1-1-1.7-2.3-1.7-4.2-2.9 2.5-5 5.4-5 8.2 0 3.6 2.6 6.3 6.5 6.3Z"/></symbol>
   <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
   <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5-12-7.5Z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+  <symbol id="i-first" viewBox="0 0 24 24"><path d="M6 5v14M18 6l-8 6 8 6z"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-last" viewBox="0 0 24 24"><path d="M18 5v14M6 6l8 6-8 6z"/></symbol>
+  <symbol id="i-steps" viewBox="0 0 24 24"><path d="M4 7h10M4 12h16M4 17h7"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
   <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
   <symbol id="i-cards" viewBox="0 0 24 24"><rect x="7" y="3" width="13" height="16" rx="2.5"/><path d="M4 7v11a3 3 0 0 0 3 3h9"/></symbol>
@@ -7065,7 +7135,7 @@ function tbOf(T,lines,x,code){
   if(rows.length>4) tail=rows.slice(0,2).concat([{gap:rows.length-3}]).concat(rows.slice(-1));
   return {rows:tail.map(function(r){ if(r.gap) return r; return {line:r.line,fn:r.fn,code:(lines[r.line-1]||'').trim(),col:null}; }),mark:x.mark||null,final:x.py,real:!!x.pyReal,line:line};
 }
-return {run:analyser, esc:esc};
+return {run:analyser, esc:esc, affichage:displayOf};
 })();
 
 /* ===== Contextes d'énoncé affichés AU RECTO des cartes d'informatique (champ `qcode`) =====
@@ -17775,7 +17845,7 @@ function renderQuestion(){
   $('#qText').innerHTML = (q._consigneHtml || '') + qHTML(q.q) + (q._qfigHtml || '');
 
   const zone = $('#answerZone'); zone.innerHTML='';
-  { const ct = $('#ceTabs'); if(ct) ct.remove(); ceEdActuel = null; ceMajTouches = null; }   // mode code : volets de la carte précédente
+  { const ct = $('#ceTabs'); if(ct) ct.remove(); ceEdActuel = null; ceMajTouches = null; ceStopLecture(); }   // mode code : volets de la carte précédente
   if(q.mode==='qcm') renderQCM(zone, q);
   else if(q.mode==='flash') renderFlash(zone, q);
   else if(q.mode==='code') renderCode(zone, q);
@@ -18074,7 +18144,8 @@ function ceSaisie(el, o){
 }
 
 /* --- Éditeur : police réelle de 16 px (pas de zoom iOS), réduite à l'écran par --ce-s --- */
-let ceEdActuel = null, ceMajTouches = null;
+let ceEdActuel = null, ceMajTouches = null, ceLecture = null;
+function ceStopLecture(){ if(ceLecture){ clearInterval(ceLecture); ceLecture = null; } }
 document.addEventListener('selectionchange', ()=>{ if(ceMajTouches && document.activeElement && document.activeElement.id==='codeEd') ceMajTouches(); });
 window.addEventListener('resize', ()=>{ if(ceEdActuel) ceEdActuel.layout(); });
 function ceEditeur(mount, valeur, o){
@@ -18090,9 +18161,9 @@ function ceEditeur(mount, valeur, o){
   }
   function peindre(){
     const L = ta.value.split('\n');
-    hl.innerHTML = L.map((l,i)=>{ const n = i+1, c = ['ce-ln'], er = marques.err && marques.err.line===n; if(n===actif) c.push('act'); if(er) c.push('err');
+    hl.innerHTML = L.map((l,i)=>{ const n = i+1, c = ['ce-ln'], er = marques.err && marques.err.line===n; if(n===actif) c.push('act'); if(er) c.push('err'); if(marques.trace===n) c.push('tr');
       return '<span class="'+c.join(' ')+'"'+(er && marques.err.msg ? ' data-msg="'+escCode(marques.err.msg).replace(/"/g,'&quot;')+'"' : '')+'>'+(ceHl(l)||' ')+'</span>'; }).join('');
-    gut.innerHTML = L.map((_,i)=>{ const n = i+1, c = []; if(n===actif) c.push('act'); if(marques.err && marques.err.line===n) c.push('err'); return '<span class="'+c.join(' ')+'">'+n+'</span>'; }).join('');
+    gut.innerHTML = L.map((_,i)=>{ const n = i+1, c = []; if(n===actif) c.push('act'); if(marques.err && marques.err.line===n) c.push('err'); if(marques.trace===n) c.push('tr'); return '<span class="'+c.join(' ')+'">'+n+'</span>'; }).join('');
     if(L.length !== nbLignes) layout();
     hl.scrollLeft = ta.scrollLeft;
   }
@@ -18194,23 +18265,26 @@ function ceTableau(x){
     + x.calls.map(r=> r.gap ? '<tr class="gap"><td colspan="2">… '+r.gap+' appels …</td></tr>' : '<tr><td>'+escCode(r.call)+'</td><td>'+(r.ret==null?'en attente':escCode(r.ret))+'</td></tr>').join('')+'</tbody></table></div></div>';
   return '';
 }
-function ceExplication(x){
+function ceExplication(x, it){
   let h = '<div class="ce-xp"><h4>'+x.t+'</h4><p class="ce-lead">'+x.lead+'</p>'+ceOu(x);
   if(x.facts && x.facts.length) h += '<ul class="ce-f">'+x.facts.map(f=>'<li>'+f+'</li>').join('')+'</ul>';
   if(x.diff) h += ceDiff(x.diff);
   if(x.vars && x.vars.length) h += ceVars(x.vars);
   if(x.hint) h += '<div class="ce-piste"><span class="ce-l">'+(x.ref?'Comparaison avec la référence':'Piste à vérifier')+'</span><p>'+x.hint+'</p></div>';
-  return h + ceTableau(x) + '</div>';
+  h += ceTableau(x);
+  if(it && it.T && it.T.steps.length) h += '<button type="button" class="ce-link" data-jump="'+it.i+':'+(x.jump==null?0:x.jump)+'">'+ceIc('steps')+(it.pass?'Dérouler ce test':'Voir ce moment, pas à pas')+'</button>';
+  return h + '</div>';
 }
-function ceBilan(A){
+function ceBilan(A, fini){
   const c = A.cost, F = s => String(Math.round(s*10)/10).replace('.',',');
-  if(!c && !A.remarks.length) return '';
+  if(!c && !A.remarks.length && !fini) return '';
   let h = '<div class="ce-xp"><span class="ce-l">Bilan</span>';
   if(c) h += '<p class="ce-lead">Sur le test le plus long, ton code effectue '+c.me+' opérations ; la référence, '+c.ref+'.'+(c.ratio>=1.5?' Soit '+F(c.ratio)+' fois plus.':(c.ratio<=.67?' Tu fais mieux que la référence.':' Coût équivalent.'))+'</p>';
   if(A.remarks.length) h += '<div class="ce-piste"><span class="ce-l">Ça marche, mais</span><ul class="ce-f">'+A.remarks.map(r=>'<li>'+r+'</li>').join('')+'</ul></div>';
+  if(fini) h += '<button type="button" class="ce-link" data-v="cmp">Comparer à la solution</button>';
   return h+'</div>';
 }
-function ceSortie(A, sel, essais){
+function ceSortie(A, sel, essais, fini){
   let h = ceBanniere(A);
   if(A.x){
     h += ceExplication(A.x);
@@ -18220,17 +18294,100 @@ function ceSortie(A, sel, essais){
   }
   const it = A.tests[sel];
   h += ceConsole(A, sel);
-  if(it && it.x) h += ceExplication(it.x);
-  if(A.state==='ok') h += ceBilan(A);
+  if(it && it.x) h += ceExplication(it.x, it);
+  if(A.state==='ok') h += ceBilan(A, fini);
   if(A.state!=='ok' && essais>=3) h += '<p class="ce-note2">Trois essais : tu peux continuer, ou regarder la solution pour passer à la suite.</p>';
   return h;
+}
+
+/* --- Avant d'écrire : deux exemples ; les cas limites restent pour la vérification --- */
+function ceExemples(spec){
+  const T = spec.tests || [], sans = T.filter(t=>!/cas limite|#/.test(t.label||'')), vus = (sans.length>=2 ? sans : T).slice(0,2);
+  if(!vus.length) return '';
+  const reste = T.length - vus.length;
+  return '<div class="ce-ex"><span class="ce-l">Ce que ta fonction doit renvoyer</span>'
+    + vus.map(t=>{ const d = DIAG.affichage(t), res = t.out!==undefined ? 'affiche '+t.out : ((t.tol!=null?'≈ ':'')+t.eq); return '<div class="ce-ex-row"><code>'+escCode(d.code)+'</code><b>→ '+escCode(res)+'</b></div>'; }).join('')
+    + (reste>0 ? '<p class="ce-note2">+ '+reste+' autre'+(reste>1?'s':'')+' test'+(reste>1?'s':'')+', dont les cas limites, à la vérification</p>' : '')
+    + '</div>';
+}
+/* --- Indice « structure » : la solution, expressions masquées --- */
+function ceSquelette(sol){
+  return String(sol).replace(/\s+$/,'').split('\n').map(l=>{
+    let m;
+    if(/^\s*(def|import|from)\b/.test(l) || !l.trim()) return l;
+    if((m = l.match(/^(\s*(?:while|if|elif)\s+)(.+?)(\s*:\s*)$/))) return m[1]+'…'+m[3];
+    if((m = l.match(/^(\s*return\s+)(.+)$/))) return m[1]+'…';
+    if((m = l.match(/^(\s*for\s+.+?\s+in\s+)(.+?)(\s*:\s*)$/))) return m[1]+'…'+m[3];
+    if((m = l.match(/^(\s*[^=#]*?[^=!<>+\-*\/\s]\s*[+\-*\/]?=\s*)(?!=)(.+)$/))) return m[1]+'…';
+    if((m = l.match(/^(\s*[\w.]+\()(.+)(\)\s*)$/))) return m[1]+'…'+m[3];
+    return l;
+  }).join('\n');
+}
+/* --- Comparaison ligne à ligne avec la référence --- */
+function ceComparaison(mine, sol){
+  const K = s => s.replace(/\s+/g,' ').trim(), net = s => String(s||'').replace(/\n+$/,'');
+  const a = net(mine) ? net(mine).split('\n') : [], b = net(sol).split('\n'), n = a.length, m = b.length;
+  const d = Array.from({length:n+1}, ()=>new Array(m+1).fill(0));
+  for(let i=n-1;i>=0;i--) for(let j=m-1;j>=0;j--) d[i][j] = K(a[i])===K(b[j]) ? d[i+1][j+1]+1 : Math.max(d[i+1][j], d[i][j+1]);
+  const A = new Set(), B = new Set(); let i = 0, j = 0;
+  while(i<n && j<m){ if(K(a[i])===K(b[j])){ A.add(i); B.add(j); i++; j++; } else if(d[i+1][j]>=d[i][j+1]) i++; else j++; }
+  const bloc = (L,M,cls)=>'<pre>'+L.map((l,k)=>'<span class="ce-ln'+(M.has(k)?'':' '+cls)+'">'+(ceHl(l)||' ')+'</span>').join('')+'</pre>';
+  return (n===m && A.size===m ? '<p class="ce-note2">Ton code est identique à la référence.</p>' : '')
+    + '<div class="ce-cmp">'+(n?'<div class="ce-bloc"><span class="ce-l">Ton code</span>'+bloc(a,A,'del')+'</div>':'')+'<div class="ce-bloc"><span class="ce-l">Référence</span>'+bloc(b,B,'add')+'</div></div>';
+}
+/* --- Pas à pas : l'état affiché est celui APRÈS la ligne surlignée --- */
+function ceArgs(f){ return (f.args||[]).map(a=>{ const v = f.vars.filter(x=>x.name===a)[0]; if(!v) return a; return v.t==='val' ? v.r : (v.r.length>22 ? a : v.r); }).join(', '); }
+function ceLegende(T, i, vus, lignes){
+  const st = T.steps[i], txt = (lignes[st.line-1]||'').trim(), haut = st.frames[st.frames.length-1];
+  if(st.end) return '<code>'+escCode(haut.name)+'</code> arrive à sa fin sans <code>return</code> : elle renvoie <b>None</b>';
+  if(st.ret!==undefined) return '<code>'+escCode(haut.name)+'('+escCode(ceArgs(haut))+')</code> renvoie <b>'+escCode(st.ret)+'</b>';
+  if(st.cond!==undefined){
+    const c = txt.replace(/^(while|elif|if)\s+/,'').replace(/:\s*(#.*)?$/,''), w = /^while/.test(txt);
+    return '<code>'+escCode(c)+'</code> vaut <b>'+(st.cond?'True':'False')+'</b> : '+(w?(st.cond?'on fait un tour':'on sort de la boucle'):(st.cond?'on entre dans ce bloc':'on passe à la suite'));
+  }
+  const avant = haut ? haut.vars : [], apres = vus[vus.length-1] ? vus[vus.length-1].vars : [];
+  const ch = apres.filter(a=>{ const b = avant.filter(x=>x.name===a.name)[0]; return !b || b.r!==a.r; });
+  if(ch.length) return ch.map(a=>'<code>'+escCode(a.name)+'</code> ← <b>'+escCode(a.t==='val'?a.r:(a.t==='list'?'liste modifiée':'dictionnaire'))+'</b>').join(' · ');
+  return '<code>'+escCode(txt)+'</code>';
+}
+function ceCadre(f, k, vus, st, i, src){
+  const actif = k===vus.length-1, prev = st.frames[k] ? st.frames[k].vars : [];
+  const change = v=>{ const b = prev.filter(x=>x.name===v.name)[0]; return i>0 && (!b || b.r!==v.r); };
+  const ints = {}; f.vars.forEach(v=>{ if(v.t==='val' && /^-?\d+$/.test(v.r)) ints[v.name] = +v.r; });
+  const zone = [['g','d'],['gauche','droite'],['debut','fin']].filter(z=>(z[0] in ints)&&(z[1] in ints))[0];
+  const estIndice = (nom,l)=>/^(g|d|m|i|j|k|gauche|droite|debut|fin|milieu)$/.test(nom) || new RegExp(l+'\\[[^\\]]*\\b'+nom+'\\b').test(src);
+  const vars = f.vars.filter(v=>v.t!=='list').map(v=>{
+    const r = v.t==='dict' ? '{… '+v.len+' clé'+(v.len>1?'s':'')+'}' : (v.r.length>40 ? v.r.slice(0,38)+'…' : v.r);
+    return '<span class="ce-var'+(actif&&change(v)?' chg':'')+'"><b>'+escCode(v.name)+'</b>= '+escCode(r)+'</span>';
+  }).join('');
+  const listes = f.vars.filter(v=>v.t==='list').map(v=>{
+    const b = prev.filter(x=>x.name===v.name)[0], ptr = {};
+    Object.keys(ints).forEach(nom=>{ const val = ints[nom]; if(val>=0 && val<v.items.length && estIndice(nom,v.name)) (ptr[val]=ptr[val]||[]).push(nom); });
+    const cases = v.items.map((x,c)=>{ const chg = actif && b && b.items && b.items[c]!==x && i>0, dim = zone && (c<ints[zone[0]] || c>ints[zone[1]]); return '<div class="ce-cell'+(chg?' chg':'')+(dim?' dim':'')+(ptr[c]?' p':'')+'"><small>'+c+'</small><b>'+escCode(x)+'</b><em>'+(ptr[c]||[]).join(' ')+'</em></div>'; }).join('');
+    return '<div class="ce-lst"><span class="ce-lst-n">'+escCode(v.name)+'</span>'+(v.len?'<div class="ce-cells">'+cases+'</div>':'<span class="ce-var">liste vide</span>')+'</div>';
+  }).join('');
+  const rv = (actif && st.ret!==undefined) ? '<span class="rv">renvoie '+escCode(st.ret)+'</span>' : '';
+  return '<div class="ce-fr'+(actif?' act':(vus.length>1?' old':''))+'"><div class="ce-fr-h"><span>'+escCode(f.name)+'('+escCode(ceArgs(f))+')</span>'+rv+'</div>'+listes+(vars?'<div class="ce-vars">'+vars+'</div>':'')+'</div>';
+}
+function ceEtape(T, i, A, attendu, voirCode){
+  const n = T.steps.length, st = T.steps[i], nx = T.steps[i+1], meme = nx && nx.frames.length===st.frames.length && st.ret===undefined;
+  const vus = meme ? nx.frames : st.frames, coupe = Math.max(0, vus.length-4);
+  let fin = '';
+  if(i===n-1){
+    if(T.error) fin = '<div class="ce-avis"><b>Arrêt.</b> '+escCode(T.error)+'</div>';
+    else if(T.capped) fin = '<div class="ce-avis">Le déroulé s’arrête ici : '+n+' étapes affichées au maximum.</div>';
+    else if(attendu!=null) fin = '<p class="ce-tr-fin">Résultat <span class="ce-val '+(T.got===attendu?'good':'bad')+'">'+escCode(T.got)+'</span> · attendu <span class="ce-val good">'+escCode(attendu)+'</span></p>';
+  }
+  return '<div class="ce-tr-cap">'+ceLegende(T,i,vus,A.lines)+'</div>'
+    + (voirCode ? '<pre class="ce-tr-code">'+A.src.replace(/\n$/,'').split('\n').map((l,k)=>'<span class="ce-ln'+(k+1===st.line?' tr':'')+'">'+(ceHl(l)||' ')+'</span>').join('')+'</pre>' : '')
+    + '<div class="ce-frames">'+(coupe?'<div class="ce-fr-plus">'+coupe+' appel'+(coupe>1?'s':'')+' en attente au-dessus</div>':'')+vus.slice(coupe).map((f,k)=>ceCadre(f,k+coupe,vus,st,i,A.src)).join('')+'</div>'+fin;
 }
 
 const CE_SYMBOLES = [['⇥','in'],['⇤','out'],['◂','g'],['▸','d'],['↶','u'],':','(',')','[',']',',','=','==','!=','<','>','<=','>=','+','-','*','/','//','%','"','.','_','{','}','#'];
 
 function renderCode(zone, q){
   const spec = q.code || {};
-  const carte = $('#aurCard'), etat = {essais:0, fini:false, an:null, sel:0};
+  const carte = $('#aurCard'), etat = {essais:0, fini:false, an:null, sel:0, vue:'res', ti:0, indices:0, code:null};
   const telephone = () => window.matchMedia && window.matchMedia('(max-width: 760px)').matches;
 
   /* Onglets du téléphone : au-dessus de l'énoncé, donc dans la carte (retirés par renderQuestion pour les autres modes) */
@@ -18246,12 +18403,19 @@ function renderCode(zone, q){
   }
   tabs.addEventListener('click', e=>{ const b = e.target.closest('[data-ce-t]'); if(b) onglet(b.dataset.ceT); });
 
+  /* Colonne de l'énoncé (onglet Énoncé sur téléphone) : exemples, données de la carte, indices */
+  const cote = document.createElement('div');
+  cote.className = 'ce-side';
+  cote.innerHTML = ceExemples(spec)
+    + (spec.setup ? '<details class="ce-ctx" open><summary>Déjà chargé en mémoire</summary><pre>'+ceHlBloc(spec.setup)+'</pre></details>' : '')
+    + '<div class="ce-hints" id="ceHints"></div>';
+  $('#qText').appendChild(cote);
+
   const rappel = String(q.q).replace(/<[^>]+>/g,'').replace(/\$/g,'');
   const wrap = document.createElement('div');
   wrap.className = 'code-zone ce-zone';
   wrap.innerHTML =
       '<div class="ce-p ce-p-enonce">'
-    +   (spec.setup ? '<details class="ce-ctx" open><summary>Déjà chargé en mémoire</summary><pre>'+ceHlBloc(spec.setup)+'</pre></details>' : '')
     +   '<button type="button" class="btn ce-go" data-ce-t="code">Écrire le code</button>'
     + '</div>'
     + '<div class="ce-p ce-p-code">'
@@ -18327,50 +18491,130 @@ function renderCode(zone, q){
     setTimeout(()=>{ try{ ed.el.focus({preventScroll:true}); ed.el.setSelectionRange(ed.el.value.length, ed.el.value.length); }catch(e){} }, 30);
 
   function libre(titre, lead){ return {state:'todo', free:true, x:{t:titre, lead:lead}, rep:{ok:false,results:[],out:[]}, tests:[], first:-1, lines:[]}; }
-  function peindre(){
-    const A = etat.an; if(!A) return;
-    sortie.innerHTML = ceSortie(A, etat.sel, etat.essais);
-    wrap.querySelector('#ceTries').innerHTML = '<span>Essais</span>'+[0,1,2].map(i=>'<i class="'+(i<etat.essais?((i===etat.essais-1&&A.rep.ok)?'ok':'ko'):'')+'"></i>').join('');
-    note.innerHTML = (A.free && A.x) ? '<div class="ce-avis"><span>'+((A.x.line||(A.x.where&&A.x.where.line))?'<b>Ligne '+(A.x.line||A.x.where.line)+'.</b> ':'')+A.x.t+'. <b>Cet essai ne compte pas.</b></span></div>' : '';
-    const pa = tabs.querySelector('.ce-pastille');
-    if(pa){ pa.hidden = false; pa.className = 'ce-pastille '+(A.free?'warn':A.rep.ok?'ok':'ko'); }
-    const it = A.x ? null : A.tests[etat.sel], x = A.x || (it && it.x); let err = null;
-    if(x && ((A.x && (A.state==='syntax'||A.state==='runtime')) || (it && it.kind==='error'))){ const ln = x.line || (x.where && x.where.line); if(ln && !x.neutral) err = {line:ln, msg:x.short}; }
-    ed.marks({err});
+  function marquer(){
+    const A = etat.an; let err = null, trace = null;
+    if(A){
+      const it = A.x ? null : A.tests[etat.sel], x = A.x || (it && it.x);
+      if(etat.vue==='pas'){ if(it && it.T && it.T.steps.length && ed.value===A.src) trace = it.T.steps[Math.min(etat.ti,it.T.steps.length-1)].line; }
+      else if(x && ((A.x && (A.state==='syntax'||A.state==='runtime')) || (it && it.kind==='error'))){ const ln = x.line || (x.where && x.where.line); if(ln && !x.neutral) err = {line:ln, msg:x.short}; }
+    }
+    ed.marks({err, trace});
   }
-  sortie.addEventListener('click', e=>{ const b = e.target.closest('[data-sel]'); if(b){ etat.sel = +b.dataset.sel; peindre(); } });
+  function majPas(){
+    const A = etat.an, it = A.tests[etat.sel], T = it.T, n = T.steps.length, boite = sortie.querySelector('#ceTrVue'); if(!boite) return;
+    const i = etat.ti = Math.max(0, Math.min(etat.ti, n-1));
+    boite.innerHTML = ceEtape(T, i, A, it.want, telephone() || ed.value!==A.src);
+    /* Liste plus large que l'écran : la case en cours reste visible */
+    boite.querySelectorAll('.ce-cells').forEach(cs=>{ if(cs.scrollWidth<=cs.clientWidth) return; const v = cs.querySelectorAll('.ce-cell.chg, .ce-cell.p'), p = v[v.length-1]; if(p) cs.scrollLeft = Math.max(0, p.offsetLeft - cs.offsetLeft - cs.clientWidth/2 + p.offsetWidth/2); });
+    const r = sortie.querySelector('#ceTrRange'), c = sortie.querySelector('#ceTrN');
+    if(r && +r.value!==i) r.value = i;
+    if(c) c.textContent = (i+1)+' / '+n;
+    sortie.querySelectorAll('[data-tr="first"],[data-tr="prev"]').forEach(b=>{ b.disabled = i===0; });
+    sortie.querySelectorAll('[data-tr="next"],[data-tr="last"]').forEach(b=>{ b.disabled = i===n-1; });
+    const p = sortie.querySelector('[data-tr="play"] use'); if(p) p.setAttribute('href', ceLecture?'#i-pause':'#i-play');
+    marquer();
+  }
+  function vuePas(vue){
+    const A = etat.an;
+    if(!A.tests[etat.sel].T || !A.tests[etat.sel].T.steps.length) etat.sel = A.tests.findIndex(t=>t.T&&t.T.steps.length);
+    const n = A.tests[etat.sel].T.steps.length;
+    vue.innerHTML = '<div class="ce-tr-top"><select id="ceTrSel" aria-label="Test à dérouler">'
+      + A.tests.map(t=>'<option value="'+t.i+'"'+(t.i===etat.sel?' selected':'')+(t.T&&t.T.steps.length?'':' disabled')+'>'+(t.pass?'✓ ':'✗ ')+escCode(t.code)+'</option>').join('')+'</select>'
+      + '<div class="ce-tr-ctl">'+[['first','Début'],['prev','Précédent'],['play','Lecture'],['next','Suivant'],['last','Fin']].map(([k,t])=>'<button type="button" data-tr="'+k+'" aria-label="'+t+'">'+ceIc(k)+'</button>').join('')
+      + '<input type="range" id="ceTrRange" min="0" max="'+(n-1)+'" value="0" aria-label="Étape"><span id="ceTrN"></span></div></div><div id="ceTrVue" class="ce-out"></div>';
+    majPas();
+  }
+  function peindre(){
+    const A = etat.an;
+    if(!A && !etat.fini) return;
+    const aPas = !!(A && A.tests.some(t=>t.T&&t.T.steps.length));
+    if(etat.vue==='pas' && !aPas) etat.vue = 'res';
+    if(etat.vue==='res' && !A) etat.vue = 'cmp';
+    if(etat.vue==='cmp' && !etat.fini) etat.vue = 'res';
+    const bt = (k,t,off)=>'<button type="button" role="tab" data-v="'+k+'" aria-selected="'+(etat.vue===k?'true':'false')+'" class="'+(etat.vue===k?'on':'')+'"'+(off?' disabled':'')+'>'+t+'</button>';
+    sortie.innerHTML = '<div class="ce-rtabs" role="tablist" aria-label="Exécution">'+bt('res','Résultat',!A)+bt('pas',ceIc('steps')+'Pas à pas',!aPas)+bt('cmp',(etat.fini?'':ceIc('lock'))+'Comparer',!etat.fini)+'</div><div id="ceVue" class="ce-out"></div>';
+    const vue = sortie.querySelector('#ceVue');
+    if(etat.vue==='pas') vuePas(vue);
+    else if(etat.vue==='cmp') vue.innerHTML = ceComparaison(etat.code, spec.sol);
+    else vue.innerHTML = ceSortie(A, etat.sel, etat.essais, etat.fini);
+    wrap.querySelector('#ceTries').innerHTML = '<span>Essais</span>'+[0,1,2].map(i=>'<i class="'+(i<etat.essais?((i===etat.essais-1&&A&&A.rep.ok)?'ok':'ko'):'')+'"></i>').join('');
+    note.innerHTML = (A && A.free && A.x) ? '<div class="ce-avis"><span>'+((A.x.line||(A.x.where&&A.x.where.line))?'<b>Ligne '+(A.x.line||A.x.where.line)+'.</b> ':'')+A.x.t+'. <b>Cet essai ne compte pas.</b></span></div>' : '';
+    const pa = tabs.querySelector('.ce-pastille');
+    if(pa && A){ pa.hidden = false; pa.className = 'ce-pastille '+(A.free?'warn':A.rep.ok?'ok':'ko'); }
+    if(etat.vue!=='pas') marquer();
+  }
+  /* Indices : l'idée (phrase d'introduction de la réponse), puis la structure (solution masquée) */
+  const niveaux = [], idee = String(q.answer||'').replace(/<pre class="pycode">[\s\S]*$/,'').trim().replace(/\s*:$/,'');
+  if(idee) niveaux.push(['L’idée','<p>'+idee+'</p>']);
+  if(spec.sol) niveaux.push(['La structure','<pre>'+ceHlBloc(ceSquelette(spec.sol))+'</pre>']);
+  function peindreIndices(){
+    const el = cote.querySelector('#ceHints');
+    if(etat.fini || !niveaux.length){ el.innerHTML = ''; return; }
+    let h = '<span class="ce-l">Besoin d’aide ?</span>';
+    niveaux.slice(0,etat.indices).forEach(([t,c])=>{ h += '<div class="ce-hint"><h5>'+ceIc('bulb')+t+'</h5>'+c+'</div>'; });
+    if(etat.indices<niveaux.length) h += '<button type="button" class="ce-hint" data-hint="1"><h5>'+ceIc('bulb')+'Indice '+(etat.indices+1)+' : '+niveaux[etat.indices][0].toLowerCase()+'</h5></button>';
+    h += '<p class="ce-note2">'+(etat.indices?'Avec un indice, la note proposée descend à Difficile.':'Un indice fait descendre la note proposée à Difficile.')+'</p>';
+    el.innerHTML = h;
+    if(etat.indices) typeset(el);
+  }
+  cote.addEventListener('click', e=>{ if(e.target.closest('[data-hint]')){ etat.indices = Math.min(etat.indices+1, niveaux.length); peindreIndices(); } });
+  peindreIndices();
+
+  sortie.addEventListener('click', e=>{
+    const b = e.target.closest('[data-sel],[data-v],[data-jump],[data-tr]'); if(!b || b.disabled) return;
+    if(b.dataset.sel!==undefined){ etat.sel = +b.dataset.sel; etat.ti = 0; peindre(); return; }
+    if(b.dataset.v){ ceStopLecture(); etat.vue = b.dataset.v; etat.ti = 0; peindre(); return; }
+    if(b.dataset.jump){ ceStopLecture(); const [i,k] = b.dataset.jump.split(':').map(Number); etat.sel = i; etat.ti = k; etat.vue = 'pas'; peindre(); return; }
+    const T = etat.an.tests[etat.sel].T, n = T.steps.length, a = b.dataset.tr;
+    if(a==='play'){
+      if(ceLecture){ ceStopLecture(); majPas(); return; }
+      if(etat.ti>=n-1) etat.ti = 0;
+      ceLecture = setInterval(()=>{ if(!document.body.contains(sortie) || etat.vue!=='pas' || etat.ti>=n-1){ ceStopLecture(); if(document.body.contains(sortie)) majPas(); return; } etat.ti++; majPas(); }, 750);
+      majPas(); return;
+    }
+    ceStopLecture();
+    etat.ti = a==='first' ? 0 : a==='last' ? n-1 : etat.ti+(a==='next'?1:-1);
+    majPas();
+  });
+  sortie.addEventListener('input', e=>{ if(e.target.id==='ceTrRange'){ ceStopLecture(); etat.ti = +e.target.value; majPas(); } });
+  sortie.addEventListener('change', e=>{ if(e.target.id==='ceTrSel'){ ceStopLecture(); etat.sel = +e.target.value; etat.ti = 0; peindre(); } });
 
   function verifier(){
     const src = ed.value, debut = String(spec.start||'').trim();
     let A;
     if(!etat.fini && debut && src.trim()===debut) A = libre('Tu n’as encore rien modifié', 'L’amorce seule ne peut pas réussir : complète-la, puis relance.');
     else { try{ A = DIAG.run(spec, src, {timeout:2500}); }catch(e){ A = libre('Erreur interne de l’exécuteur', codeErreur(e)); } }
-    etat.an = A; etat.sel = (A.first!=null && A.first>=0) ? A.first : 0;
+    ceStopLecture();
+    etat.an = A; etat.sel = (A.first!=null && A.first>=0) ? A.first : 0; etat.ti = 0; etat.vue = 'res';
     let gagne = false;
     if(!A.free && !etat.fini){ etat.essais++; if(A.rep.ok){ etat.fini = true; gagne = true; } }
+    if(!A.free && etat.fini) etat.code = src;
     peindre();
+    if(gagne) peindreIndices();
     if(!A.free && telephone()) onglet('res');
     if(gagne){
       wrap.querySelector('#runLbl').textContent = 'Ré-exécuter (hors notation)';
       run.classList.add('ghost');   // l'action principale est désormais la note
       dunno.classList.add('hidden');
-      revealCode(q, etat.essais);
+      revealCode(q, etat.essais, etat.indices);
     }
   }
   function codeErreur(e){ return escCode((e && e.message) || e); }
   run.onclick = verifier;
   dunno.onclick = ()=>{
     if(answeredFlag) return;
-    etat.fini = true;
+    ceStopLecture();
+    etat.fini = true; etat.code = ed.value; etat.vue = 'cmp';
     wrap.querySelector('#runLbl').textContent = 'Essayer quand même';
     run.classList.add('ghost');
     dunno.classList.add('hidden');
     revealUnknown(q);
+    peindre(); peindreIndices();
     if(telephone()) onglet('res');
   };
 }
 
-function revealCode(q, essais){
+function revealCode(q, essais, indices){
   answeredFlag = true;
   const fb = $('#feedback');
   let html = '<div class="reveal-ans"><span class="rl">Solution de référence</span>'+(q.answer||'')+'</div>';
@@ -18378,9 +18622,9 @@ function revealCode(q, essais){
   if(q.vig) html += f3Vig(q.vig);
   html += courseLink(q) + annalesLine(q);
   fb.innerHTML = html; fb.className='feedback';
-  /* Réussi du premier coup : Entrée garde « Correct ». Sinon « Difficile » est proposé et Entrée ne choisit rien : l'élève garde le dernier mot. */
-  const premier = essais <= 1;
-  finalizeSelf(q, true, {verdict:false, sansDefaut:!premier, consigne: premier ? 'Réussi du premier coup. Affine si besoin :' : 'Réussi au '+essais+'e essai : « Difficile » est proposé, à toi de juger.'});
+  /* Réussi du premier coup et sans indice : Entrée garde « Correct ». Sinon « Difficile » est proposé et Entrée ne choisit rien : l'élève garde le dernier mot. */
+  const premier = essais <= 1 && !indices;
+  finalizeSelf(q, true, {verdict:false, sansDefaut:!premier, consigne: premier ? 'Réussi du premier coup. Affine si besoin :' : (indices ? 'Réussi avec '+(indices>1?'des indices':'un indice') : 'Réussi au '+essais+'e essai')+' : « Difficile » est proposé, à toi de juger.'});
   if(!premier){ const g = fb.querySelector('.srs-grade .sg2.g1'); if(g) g.classList.add('ce-propose'); }
   typeset(fb);
 }
