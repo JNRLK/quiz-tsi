@@ -3379,6 +3379,35 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
   .ce-hint .ce-ig{height:19px}
   button.ce-hint{cursor:pointer; width:100%; background:var(--tile); min-height:40px}
   button.ce-hint:hover{border-color:var(--accent)}
+  /* Niveaux : ordre des lignes, trous, squelette, page blanche */
+  .ce-head{flex-wrap:wrap}
+  .ce-niveaux{display:flex; gap:2px; padding:3px; border-radius:12px; background:var(--inset-soft); min-width:0; max-width:100%; overflow-x:auto; scrollbar-width:none}
+  .ce-niveaux::-webkit-scrollbar{display:none}
+  .ce-niveaux button{border:0; background:none; cursor:pointer; padding:6px 10px; border-radius:9px; font:500 12.5px 'Lexend',sans-serif; color:var(--muted); white-space:nowrap; display:flex; align-items:center; gap:6px; min-height:36px}
+  .ce-niveaux button b{font:600 11px/1 'JetBrains Mono',monospace; opacity:.7}
+  .ce-niveaux button.on{background:var(--panel); color:var(--ink); font-weight:600; box-shadow:0 1px 3px rgba(30,20,90,.14)}
+  .ce-niveaux button:disabled{cursor:default}
+  .ce-niveaux button:disabled:not(.on){opacity:.45}
+  .ce-court{display:none}
+  .ce-aide-niv{margin:0; font-size:13px; color:var(--muted)}
+  .ce-aide-niv:empty{display:none}
+  .ce-off{display:none !important}
+  .ce-ph{position:absolute; left:14px; top:12px; color:var(--muted); pointer-events:none; opacity:.8}
+  .ce-pars{display:grid; gap:8px; grid-template-columns:minmax(0,1fr)}
+  .ce-pz{display:grid; gap:5px; padding:9px; border-radius:13px; background:var(--bg-deep); border:1.5px solid var(--line); min-height:48px; grid-template-columns:minmax(0,1fr)}
+  .ce-tuile{display:block; width:100%; text-align:left; cursor:pointer; background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:9px; padding:8px 10px; font:400 13px/18px 'JetBrains Mono',monospace; white-space:pre-wrap; overflow-wrap:anywhere; min-height:40px}
+  .ce-tuile:hover{border-color:var(--accent)}
+  .ce-tuile.fix{cursor:default; background:none; border-style:dashed; color:var(--muted); min-height:0}
+  .ce-tuile.fix:hover{border-color:var(--line)}
+  .ce-tuile .ce-ig{height:18px}
+  .ce-pars-aide{font-size:12.5px; color:var(--muted); padding:3px 4px}
+  .ce-cloze{--ce-s:.875; border:1.5px solid var(--line); border-radius:14px; background:var(--bg-deep); overflow:hidden}
+  .ce-cloze-sc{width:calc(100% / var(--ce-s)); transform:scale(var(--ce-s)); transform-origin:0 0; overflow-x:auto; overflow-y:hidden; scrollbar-width:thin}
+  .ce-cloze-in{width:max-content; min-width:100%; padding:12px 14px; font:400 16px/30px 'JetBrains Mono',ui-monospace,Menlo,monospace; color:var(--ink)}
+  .ce-cl{display:block; white-space:pre; min-height:30px}
+  .ce-cloze .ce-ig{height:30px}
+  .ce-blank{font:600 16px/24px 'JetBrains Mono',monospace; color:var(--ink); background:color-mix(in srgb,var(--accent) 11%,var(--panel)); border:0; border-bottom:2px solid var(--accent); border-radius:5px 5px 0 0; padding:0 6px; height:26px; min-width:5ch}
+  .ce-blank:focus{outline:none; background:color-mix(in srgb,var(--accent) 22%,var(--panel))}
   /* Onglets de la console, pas à pas, comparaison */
   .ce-rtabs{display:flex; gap:18px; border-bottom:1px solid var(--line); overflow-x:auto; scrollbar-width:none}
   .ce-rtabs::-webkit-scrollbar{display:none}
@@ -3439,6 +3468,10 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
     #aurCard.aur-m-code[data-ce-tab="code"] :is(#qText, .ce-p-enonce, .ce-p-res, #feedback){display:none}
     #aurCard.aur-m-code[data-ce-tab="res"] :is(#qText, .ce-p-enonce, .ce-p-code){display:none}
     .ce-ed{--ce-s:.8; margin-inline:-12px; border-radius:0; border-inline:0}
+    .ce-cloze{--ce-s:.8; margin-inline:-12px; border-radius:0; border-inline:0}
+    .ce-long{display:none}
+    .ce-court{display:inline}
+    .ce-ph{left:10px}
     .ce-gut{padding:12px 5px 12px 6px}
     .ce-ta{padding:12px 10px}
     .ce-miroir .ce-ln{padding:0 10px}
@@ -3638,6 +3671,7 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
         <button class="mode" data-mode="trou">À trou</button>
         <button class="mode" data-mode="saisie">Réponse libre</button>
         <button class="mode" data-mode="flash">Flashcard</button>
+<button class="mode" data-mode="code">Code Python</button>
       </div>
       <p id="modeDesc" style="color:var(--muted); font-size:12.5px; line-height:1.4; margin:0 18px 20px"></p>
 
@@ -17869,11 +17903,12 @@ if(_advLegend){ _advLegend.onclick = _toggleAdv; _advLegend.onkeydown = (e)=>{ i
 
 /* P1 — description courte du mode sélectionné */
 const MODE_DESC = {
-  all:'Formes mélangées : QCM, à trou, réponse libre et flashcard.',
+  all:'Formes mélangées : QCM, à trou, réponse libre, flashcard et code.',
   qcm:'Choix multiple : 4 propositions, une seule bonne réponse.',
   trou:'Compléter le blanc (□) dans la formule ou la phrase.',
   saisie:'Taper la réponse au clavier (clavier maths intégré).',
-  flash:'Retourner la carte, puis auto-évaluation de ta mémoire.'
+  flash:'Retourner la carte, puis auto-évaluation de ta mémoire.',
+  code:'Écrire de vrais programmes Python, exécutés et corrigés sur des tests.'
 };
 function updateModeDesc(){ const el=$('#modeDesc'); if(el) el.textContent = MODE_DESC[selectedMode]||''; }
 
@@ -18192,6 +18227,7 @@ const ceHlBloc = src => String(src).replace(/\n$/,'').split('\n').map(l => '<spa
 const CE_OPEN = {'(':')','[':']','{':'}'};
 function ceSaisie(el, o){
   let busy = false;
+  const multi = o.multi !== false;
   function ins(t){
     busy = true;
     let ok = false; try{ ok = document.execCommand('insertText', false, t); }catch(e){}
@@ -18241,24 +18277,24 @@ function ceSaisie(el, o){
     if((c===')'||c===']'||c==='}'||guil) && nx===c && s===e){ el.setSelectionRange(s+1,s+1); return true; }
     if(CE_OPEN[c] && libre){ ins(c+CE_OPEN[c]); el.setSelectionRange(s+1,s+1); return true; }
     if(guil && libre && !(pv && /\w/.test(pv))){ ins(c+c); el.setSelectionRange(s+1,s+1); return true; }
-    if(c===':'){ aligneElse(); ins(':'); return true; }
+    if(c===':' && multi){ aligneElse(); ins(':'); return true; }
     return false;
   }
   el.addEventListener('beforeinput', ev=>{
     if(busy || ev.isComposing) return;
     const t = ev.inputType, s = el.selectionStart, e = el.selectionEnd, v = el.value;
-    if(t==='insertLineBreak' || t==='insertParagraph'){ ev.preventDefault(); nouvelleLigne(); return; }
+    if(multi && (t==='insertLineBreak' || t==='insertParagraph')){ ev.preventDefault(); nouvelleLigne(); return; }
     if(t==='deleteContentBackward' && s===e && s>0){
       const paire = (CE_OPEN[v[s-1]]===v[s]) || ((v[s-1]==='"'||v[s-1]==="'") && v[s]===v[s-1]);
       if(paire){ ev.preventDefault(); el.setSelectionRange(s-1,s+1); del(); return; }
       const ls = v.lastIndexOf('\n',s-1)+1, tete = v.slice(ls,s);
-      if(tete.length && !tete.trim()){ const n = tete.length%4 || 4; ev.preventDefault(); el.setSelectionRange(s-n,s); del(); return; }
+      if(multi && tete.length && !tete.trim()){ const n = tete.length%4 || 4; ev.preventDefault(); el.setSelectionRange(s-n,s); del(); return; }
     }
     if(t==='insertText' && ev.data && ev.data.length===1){ if(caractere(ev.data)) ev.preventDefault(); }
   });
   el.addEventListener('keydown', ev=>{
     if((ev.metaKey||ev.ctrlKey) && ev.key==='Enter'){ ev.preventDefault(); if(o.lancer) o.lancer(); return; }
-    if(ev.key==='Tab'){
+    if(multi && ev.key==='Tab'){
       ev.preventDefault();
       if(ev.shiftKey){ decaler(-1); return; }
       if(el.selectionStart!==el.selectionEnd && el.value.slice(el.selectionStart,el.selectionEnd).includes('\n')){ decaler(1); return; }
@@ -18271,12 +18307,12 @@ function ceSaisie(el, o){
 /* --- Éditeur : police réelle de 16 px (pas de zoom iOS), réduite à l'écran par --ce-s --- */
 let ceEdActuel = null, ceMajTouches = null, ceLecture = null;
 function ceStopLecture(){ if(ceLecture){ clearInterval(ceLecture); ceLecture = null; } }
-document.addEventListener('selectionchange', ()=>{ if(ceMajTouches && document.activeElement && document.activeElement.id==='codeEd') ceMajTouches(); });
+document.addEventListener('selectionchange', ()=>{ const a = document.activeElement; if(ceMajTouches && a && (a.id==='codeEd' || (a.classList && a.classList.contains('ce-blank')))) ceMajTouches(); });
 window.addEventListener('resize', ()=>{ if(ceEdActuel) ceEdActuel.layout(); });
 function ceEditeur(mount, valeur, o){
   mount.innerHTML = '<div class="ce-ed"><div class="ce-in"><div class="ce-gut" aria-hidden="true"></div><div class="ce-code"><pre class="ce-miroir" aria-hidden="true"></pre>'
-    + '<textarea class="ce-ta" id="codeEd" spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off" wrap="off" aria-label="Éditeur Python"></textarea></div></div></div>';
-  const box = mount.querySelector('.ce-ed'), inner = mount.querySelector('.ce-in'), ta = mount.querySelector('.ce-ta'), hl = mount.querySelector('.ce-miroir'), gut = mount.querySelector('.ce-gut');
+    + '<textarea class="ce-ta" id="codeEd" spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off" wrap="off" aria-label="Éditeur Python"></textarea>'+(o.ph?'<div class="ce-ph">'+escCode(o.ph)+'</div>':'')+'</div></div></div>';
+  const box = mount.querySelector('.ce-ed'), inner = mount.querySelector('.ce-in'), ta = mount.querySelector('.ce-ta'), hl = mount.querySelector('.ce-miroir'), gut = mount.querySelector('.ce-gut'), ph = mount.querySelector('.ce-ph');
   ta.value = valeur;
   let marques = {}, actif = 0, nbLignes = -1;
   function layout(){
@@ -18289,6 +18325,7 @@ function ceEditeur(mount, valeur, o){
     hl.innerHTML = L.map((l,i)=>{ const n = i+1, c = ['ce-ln'], er = marques.err && marques.err.line===n; if(n===actif) c.push('act'); if(er) c.push('err'); if(marques.trace===n) c.push('tr');
       return '<span class="'+c.join(' ')+'"'+(er && marques.err.msg ? ' data-msg="'+escCode(marques.err.msg).replace(/"/g,'&quot;')+'"' : '')+'>'+(ceHl(l)||' ')+'</span>'; }).join('');
     gut.innerHTML = L.map((_,i)=>{ const n = i+1, c = []; if(n===actif) c.push('act'); if(marques.err && marques.err.line===n) c.push('err'); if(marques.trace===n) c.push('tr'); return '<span class="'+c.join(' ')+'">'+n+'</span>'; }).join('');
+    if(ph) ph.hidden = !!ta.value;
     if(L.length !== nbLignes) layout();
     hl.scrollLeft = ta.scrollLeft;
   }
@@ -18508,11 +18545,80 @@ function ceEtape(T, i, A, attendu, voirCode){
     + '<div class="ce-frames">'+(coupe?'<div class="ce-fr-plus">'+coupe+' appel'+(coupe>1?'s':'')+' en attente au-dessus</div>':'')+vus.slice(coupe).map((f,k)=>ceCadre(f,k+coupe,vus,st,i,A.src)).join('')+'</div>'+fin;
 }
 
+/* --- Niveaux : tout se déduit de la solution de la carte, aucune donnée à rédiger --- */
+/* Ordre : lignes à replacer. Une instruction écrite sur plusieurs lignes reste d'un seul tenant ; tout ce qui précède le corps de la fonction est donné. */
+function ceTuiles(sol){
+  const out = []; let cur = null, prof = 0;
+  String(sol).replace(/\s+$/,'').split('\n').forEach(l=>{
+    if(cur===null && (!l.trim() || /^\s*#/.test(l))) return;
+    cur = cur===null ? l : cur+'\n'+l;
+    const c = l.replace(/"[^"\n]*"|'[^'\n]*'/g,'').replace(/#.*$/,'');
+    prof += (c.match(/[(\[{]/g)||[]).length - (c.match(/[)\]}]/g)||[]).length;
+    if(prof<=0){ out.push(cur); cur = null; prof = 0; }
+  });
+  if(cur!==null) out.push(cur);
+  const iDef = out.findIndex(t=>/^\s*def\b/.test(t));
+  return {fixes: out.slice(0,iDef+1), mobiles: out.slice(iDef+1)};
+}
+function ceMelange(a){
+  let b = a.slice();
+  for(let essai=0; essai<6; essai++){
+    for(let i=b.length-1; i>0; i--){ const j = Math.floor(Math.random()*(i+1)); [b[i],b[j]] = [b[j],b[i]]; }
+    if(b.some((x,i)=>x!==a[i])) return b;
+  }
+  return b;
+}
+/* Trous : au plus quatre expressions, par intérêt décroissant (condition de boucle, mises à jour, tests, renvoi) */
+function ceBlancs(sol){
+  const lignes = String(sol).replace(/\s+$/,'').split('\n'), c = [];
+  let prof = 0, apresDef = false;
+  lignes.forEach((l,i)=>{
+    const code = l.replace(/\s+#.*$/,''), net = code.replace(/"[^"\n]*"|'[^'\n]*'/g,'');
+    const debut = prof, delta = (net.match(/[(\[{]/g)||[]).length - (net.match(/[)\]}]/g)||[]).length;
+    prof = Math.max(0, prof+delta);
+    if(debut>0 || prof>0) return;              // instruction sur plusieurs lignes : on n'y touche pas
+    if(/^\s*(def|import|from)\b/.test(code)){ if(/^\s*def\b/.test(code)) apresDef = true; return; }
+    if(!code.trim() || /^\s*#/.test(code)) return;
+    let m;
+    const ajoute = (pre,ans,pr)=>c.push({line:i, start:pre.length, end:pre.length+ans.length, ans:ans, pr:pr, val:''});
+    if((m = code.match(/^(\s*(?:while|if|elif)\s+)(.+?)(\s*:\s*)$/))) ajoute(m[1],m[2],/while/.test(m[1])?3:2);
+    else if((m = code.match(/^(\s*for\s+.+?\s+in\s+)(.+?)(\s*:\s*)$/))) ajoute(m[1],m[2],2);
+    else if((m = code.match(/^(\s*return\s+)(.+)$/))){ if(!/^(True|False|None)$/.test(m[2])) ajoute(m[1],m[2],2); }
+    else if((m = code.match(/^(\s*[^=#]*?[^=!<>+\-*\/\s]\s*[+\-*\/]?=\s*)(?!=)(.+)$/))) ajoute(m[1],m[2],apresDef?1:2.5);
+    apresDef = false;
+  });
+  const gardes = new Set(c.map((x,k)=>[x.pr,k]).sort((a,b)=>b[0]-a[0]||a[1]-b[1]).slice(0,4).map(x=>x[1]));
+  return {lignes:lignes, blancs:c.filter((_,k)=>gardes.has(k))};
+}
+function ceAssemble(lignes, blancs){
+  const L = lignes.slice();
+  blancs.slice().sort((a,b)=>b.start-a.start).forEach(b=>{ L[b.line] = L[b.line].slice(0,b.start)+b.val+L[b.line].slice(b.end); });
+  return L.join('\n')+'\n';
+}
+/* Niveau de départ, d'après la mémoire de la carte (lecture seule). Seuils en jours d'intervalle, à régler ici. */
+const CE_SEUILS = {trous:3, squelette:14};
+const CE_NIVEAUX = [['ordre','Ordre','Ordre'],['trous','Trous','Trous'],['squelette','Squelette','Squelette'],['blanche','Page blanche','Blanche']];
+const CE_RANG = {ordre:0, trous:1, squelette:2, blanche:3};
+const CE_AIDE_NIV = {ordre:'Touche les lignes dans le bon ordre. L’indentation se place toute seule.', trous:'Complète les expressions manquantes.', squelette:'', blanche:'Écris toute la fonction de tête, signature comprise.'};
+function ceNiveauAuto(q){
+  let c = null; try{ c = SRS._d().cards[qHash(q.q)]; }catch(e){}
+  if(!c) return 'ordre';
+  const etat = c.state || (((c.reps||0)>0 && (c.interval||0)>0) ? 'review' : 'new');
+  if(etat==='new' || etat==='relearning') return 'ordre';
+  const iv = c.interval || 0;
+  return iv < CE_SEUILS.trous ? 'trous' : (iv <= CE_SEUILS.squelette ? 'squelette' : 'blanche');
+}
+
 const CE_SYMBOLES = [['⇥','in'],['⇤','out'],['◂','g'],['▸','d'],['↶','u'],':','(',')','[',']',',','=','==','!=','<','>','<=','>=','+','-','*','/','//','%','"','.','_','{','}','#'];
 
+const CE_VIDE = '<p class="ce-vide">Vérifier exécute ton code sur les tests de la carte. Une faute de frappe ne coûte aucun essai.</p>';
 function renderCode(zone, q){
   const spec = q.code || {};
-  const carte = $('#aurCard'), etat = {essais:0, fini:false, an:null, sel:0, vue:'res', ti:0, indices:0, code:null};
+  const carte = $('#aurCard'), etat = {essais:0, fini:false, an:null, sel:0, vue:'res', ti:0, indices:0, code:null, niv:'squelette', auto:'squelette', ord:null, trous:null, brouillon:{squelette:spec.start||'', blanche:''}};
+  let ed = null;
+  /* Niveaux possibles pour cette carte : une solution trop courte n'a rien à remettre dans l'ordre */
+  const dispo = {ordre: ceTuiles(spec.sol).mobiles.length>=3, trous: ceBlancs(spec.sol).blancs.length>0, squelette:true, blanche:true};
+  { let n = ceNiveauAuto(q); if(!dispo[n]) n = dispo.trous && n==='ordre' ? 'trous' : 'squelette'; etat.niv = etat.auto = n; }
   const telephone = () => window.matchMedia && window.matchMedia('(max-width: 760px)').matches;
 
   /* Onglets du téléphone : au-dessus de l'énoncé, donc dans la carte (retirés par renderQuestion pour les autres modes) */
@@ -18545,7 +18651,8 @@ function renderCode(zone, q){
     + '</div>'
     + '<div class="ce-p ce-p-code">'
     +   '<button type="button" class="ce-rappel" data-ce-t="enonce">'+escCode(rappel)+'</button>'
-    +   '<div class="ce-head"><span class="ce-l">Ton code</span><div class="ce-tries" id="ceTries"></div></div>'
+    +   '<div class="ce-head"><div class="ce-niveaux" id="ceNiv" role="group" aria-label="Niveau d’aide">'+CE_NIVEAUX.map(([k,l,c],i)=>'<button type="button" data-niv="'+k+'"'+(dispo[k]?'':' disabled title="Pas disponible sur cette carte, trop courte"')+'><b>'+(i+1)+'</b><span class="ce-long">'+l+'</span><span class="ce-court">'+c+'</span></button>').join('')+'</div><div class="ce-tries" id="ceTries"></div></div>'
+    +   '<p class="ce-aide-niv" id="ceAideNiv"></p>'
     +   '<div class="ce-keys" role="toolbar" aria-label="Touches de code"><div class="ce-krow" id="ceSugg"></div><div class="ce-krow">'
     +     CE_SYMBOLES.map(k=>Array.isArray(k)?'<button type="button" class="ce-key a" data-a="'+k[1]+'" aria-label="'+({in:'Indenter',out:'Désindenter',g:'Curseur à gauche',d:'Curseur à droite',u:'Annuler'})[k[1]]+'">'+k[0]+'</button>':'<button type="button" class="ce-key" data-k="'+escCode(k).replace(/"/g,'&quot;')+'">'+escCode(k)+'</button>').join('')
     +   '</div></div>'
@@ -18555,27 +18662,29 @@ function renderCode(zone, q){
     +     '<button class="aur-mini-btn" id="dunnoBtn" type="button">'+ceIc('help')+'<span>Voir la solution</span></button>'
     +   '</div>'
     + '</div>'
-    + '<div class="ce-p ce-p-res"><div id="codeOut" class="ce-out"><p class="ce-vide">Vérifier exécute ton code sur les tests de la carte. Une faute de frappe ne coûte aucun essai.</p></div></div>';
+    + '<div class="ce-p ce-p-res"><div id="codeOut" class="ce-out">'+CE_VIDE+'</div></div>';
   zone.appendChild(wrap);
   wrap.addEventListener('click', e=>{ const b = e.target.closest('[data-ce-t]'); if(b) onglet(b.dataset.ceT); });
 
   const sortie = wrap.querySelector('#codeOut'), note = wrap.querySelector('#ceNote'), run = wrap.querySelector('#runBtn'), dunno = wrap.querySelector('#dunnoBtn');
-  const zoneTouches = wrap.querySelector('.ce-keys'), sugg = wrap.querySelector('#ceSugg');
+  const zoneTouches = wrap.querySelector('.ce-keys'), sugg = wrap.querySelector('#ceSugg'), mont = wrap.querySelector('#ceEdMount');
+  const champ = () => { const a = document.activeElement; if(a && a.classList && a.classList.contains('ce-blank') && wrap.contains(a)) return a; return ed ? ed.el : wrap.querySelector('.ce-blank'); };
 
   /* Touches du téléphone : la première rangée suit ce qu'on est en train d'écrire */
   function noms(){
-    const tout = ((spec.setup||'')+'\n'+ed.value).replace(/#.*$/gm,'').replace(/"[^"\n]*"|'[^'\n]*'/g,'');
+    const tout = ((spec.setup||'')+'\n'+(ed ? ed.value : (spec.sol||''))).replace(/#.*$/gm,'').replace(/"[^"\n]*"|'[^'\n]*'/g,'');
     const f = new Map();
     (tout.match(/[A-Za-z_]\w*/g)||[]).forEach(w=>{ if(!CE_KW.has(w)&&!CE_BI.has(w)&&!CE_CONST.has(w)) f.set(w,(f.get(w)||0)+1); });
     return [...f.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
   }
   function suggestions(){
-    const el = ed.el, avant = el.value.slice(0,el.selectionStart), ligne = avant.slice(avant.lastIndexOf('\n')+1), t = ligne.trimStart();
+    const el = champ(); if(!el) return {l:[], p:''};
+    const multi = el.tagName==='TEXTAREA', avant = el.value.slice(0,el.selectionStart), ligne = multi ? avant.slice(avant.lastIndexOf('\n')+1) : avant, t = ligne.trimStart();
     const pm = /[A-Za-zÀ-ÿ_]\w*$/.exec(ligne), pre = pm ? pm[0] : '', N = noms();
     if(/\.\w*$/.test(ligne)) return {l:['append(','pop(','get(','keys()','values()','items()'].filter(x=>x.startsWith(pre)), p:pre};
     if(/^\s*for\s+[\w, ]+\s+$/.test(ligne)) return {l:['in range(','in enumerate(','in '], p:''};
-    if(pre){ const g = [...N,'len(','range(','enumerate(','sum(','min(','max(','abs(','return ','True','False','None','and ','or ','not ','for ','while ','if ','elif ','else:','def ']; return {l:g.filter(x=>x.startsWith(pre)&&x!==pre).slice(0,10), p:pre}; }
-    if(t==='') return {l:['if ','for ','while ','return ','elif ','else:','def ',...N.slice(0,4)], p:''};
+    if(pre){ const g = multi ? [...N,'len(','range(','enumerate(','sum(','min(','max(','abs(','return ','True','False','None','and ','or ','not ','for ','while ','if ','elif ','else:','def '] : [...N,'len(','range(','sum(','min(','max(','abs(','True','False','None','and ','or ','not ','in ']; return {l:g.filter(x=>x.startsWith(pre)&&x!==pre).slice(0,10), p:pre}; }
+    if(t==='' && multi) return {l:['if ','for ','while ','return ','elif ','else:','def ',...N.slice(0,4)], p:''};
     if(/^\s*return\b/.test(ligne)) return {l:[...N.slice(0,5),'True','False','None','len('], p:''};
     return {l:[...N.slice(0,6),'len(','range(','and ','or ','not ','True','False'], p:''};
   }
@@ -18589,7 +18698,8 @@ function renderCode(zone, q){
   zoneTouches.addEventListener('mousedown', ev=>{ if(ev.target.closest('.ce-key')) ev.preventDefault(); });
   zoneTouches.addEventListener('click', ev=>{
     const b = ev.target.closest('.ce-key'); if(!b) return;
-    const el = ed.el, sm = el._ce;
+    const el = champ(); if(!el) return;
+    const sm = el._ce, multi = el.tagName==='TEXTAREA';
     if(document.activeElement!==el) el.focus();
     if(b.dataset.w!==undefined){
       const w = b.dataset.w, p = +b.dataset.p||0;
@@ -18597,8 +18707,8 @@ function renderCode(zone, q){
       if(w.endsWith('(')){ sm.ins(w+')'); const c = el.selectionStart-1; el.setSelectionRange(c,c); } else sm.ins(w);
     } else {
       const a = b.dataset.a, k = b.dataset.k;
-      if(a==='in') sm.decaler(1);
-      else if(a==='out') sm.decaler(-1);
+      if(a==='in'){ if(multi) sm.decaler(1); }
+      else if(a==='out'){ if(multi) sm.decaler(-1); }
       else if(a==='g'){ const c = Math.max(0,el.selectionStart-1); el.setSelectionRange(c,c); }
       else if(a==='d'){ const c = Math.min(el.value.length,el.selectionEnd+1); el.setSelectionRange(c,c); }
       else if(a==='u') document.execCommand('undo');
@@ -18607,16 +18717,77 @@ function renderCode(zone, q){
     majTouches();
   });
 
-  const ed = ceEditeur(wrap.querySelector('#ceEdMount'), spec.start || '', {lancer:verifier, touches:majTouches});
-  ceEdActuel = ed; ceMajTouches = majTouches;
-  majTouches();
+  function monterOrdre(){
+    if(!etat.ord){ const t = ceTuiles(spec.sol); etat.ord = {fixes:t.fixes, pose:[], reste:ceMelange(t.mobiles)}; }
+    const O = etat.ord, joli = x=>x.split('\n').map(l=>ceHl(l)).join('\n'), brut = x=>x.split('\n').map(l=>ceHl(l.trim())).join('\n');
+    mont.innerHTML = '<div class="ce-pars"><span class="ce-l">Ton programme</span><div class="ce-pz">'
+      + O.fixes.map(x=>'<div class="ce-tuile fix">'+joli(x)+'</div>').join('')
+      + O.pose.map((x,k)=>'<button type="button" class="ce-tuile" data-out="'+k+'">'+joli(x)+'</button>').join('')
+      + (O.reste.length ? '<div class="ce-pars-aide">Touche une ligne ci-dessous pour l’ajouter ici.</div>' : '')+'</div>'
+      + (O.reste.length ? '<span class="ce-l">Lignes disponibles</span><div class="ce-pz">'+O.reste.map((x,k)=>'<button type="button" class="ce-tuile" data-in="'+k+'">'+brut(x)+'</button>').join('')+'</div>' : '')+'</div>';
+  }
+  mont.addEventListener('click', e=>{
+    const b = e.target.closest('[data-in],[data-out]'); if(!b || etat.niv!=='ordre') return;
+    const O = etat.ord;
+    if(b.dataset.in!==undefined) O.pose.push(O.reste.splice(+b.dataset.in,1)[0]);
+    else O.reste.push(O.pose.splice(+b.dataset.out,1)[0]);
+    monterOrdre();
+  });
+  function monterTrous(){
+    if(!etat.trous) etat.trous = ceBlancs(spec.sol);
+    const {lignes, blancs} = etat.trous, s0 = 'spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off"';
+    mont.innerHTML = '<div class="ce-cloze"><div class="ce-cloze-sc"><div class="ce-cloze-in">'+lignes.map((l,i)=>{
+      const k = blancs.findIndex(x=>x.line===i);
+      if(k<0) return '<span class="ce-cl">'+(ceHl(l)||' ')+'</span>';
+      const b = blancs[k];
+      return '<span class="ce-cl">'+ceHl(l.slice(0,b.start))+'<input class="ce-blank" id="ceBlank'+k+'" data-b="'+k+'" '+s0+' aria-label="Trou '+(k+1)+'" style="width:'+Math.max(6,b.ans.length+2)+'ch" value="'+escCode(b.val).replace(/"/g,'&quot;')+'">'+ceHl(l.slice(b.end))+'</span>';
+    }).join('')+'</div></div></div>';
+    const box = mont.querySelector('.ce-cloze'), s = parseFloat(getComputedStyle(box).getPropertyValue('--ce-s')) || .875;
+    box.style.height = ((lignes.length*30+24)*s+4)+'px';      // calculé : le volet peut être masqué sur téléphone
+    mont.querySelectorAll('.ce-blank').forEach((el,k,tous)=>{
+      ceSaisie(el, {multi:false, lancer:verifier});
+      el.addEventListener('input', ()=>{ blancs[+el.dataset.b].val = el.value; majTouches(); });
+      ['focus','click','keyup'].forEach(ev=>el.addEventListener(ev, majTouches));
+      el.addEventListener('keydown', ev=>{ if(ev.key==='Enter' && !ev.metaKey && !ev.ctrlKey){ ev.preventDefault(); if(tous[k+1]) tous[k+1].focus(); else verifier(); } });
+    });
+  }
+  function source(){
+    if(etat.niv==='ordre') return [...etat.ord.fixes, ...etat.ord.pose].join('\n')+'\n';
+    if(etat.niv==='trous') return ceAssemble(etat.trous.lignes, etat.trous.blancs);
+    return ed.value;
+  }
+  function monter(){
+    ed = null; ceEdActuel = null;
+    const n = etat.niv;
+    zoneTouches.classList.toggle('ce-off', n==='ordre');
+    if(n==='ordre') monterOrdre();
+    else if(n==='trous') monterTrous();
+    else { ed = ceEditeur(mont, etat.brouillon[n], {lancer:verifier, touches:majTouches, ph:n==='blanche'?'Écris toute la fonction de tête':''}); ceEdActuel = ed; }
+    wrap.querySelectorAll('#ceNiv [data-niv]').forEach(b=>{ const on = b.dataset.niv===n; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false'); if(etat.fini) b.disabled = true; });
+    wrap.querySelector('#ceAideNiv').textContent = CE_AIDE_NIV[n];
+    majTouches();
+  }
+  ceMajTouches = majTouches;
+  monter();
+  wrap.querySelector('#ceNiv').addEventListener('click', e=>{
+    const b = e.target.closest('[data-niv]'); if(!b || b.disabled || etat.fini || b.dataset.niv===etat.niv) return;
+    if(ed) etat.brouillon[etat.niv] = ed.value;
+    ceStopLecture();
+    etat.niv = b.dataset.niv; etat.an = null; etat.vue = 'res'; etat.ti = 0; etat.sel = 0;
+    monter();
+    sortie.innerHTML = CE_VIDE; note.innerHTML = '';
+    const pa = tabs.querySelector('.ce-pastille'); if(pa) pa.hidden = true;
+    if(window.matchMedia('(min-width: 761px)').matches){ const f = ed ? ed.el : mont.querySelector('.ce-blank'); if(f) try{ f.focus({preventScroll:true}); }catch(err){} }
+    peindreIndices();
+  });
   /* Téléphone : on ouvre sur l'énoncé, à lire avant d'écrire. Grand écran : le curseur est déjà dans l'éditeur. */
   onglet('enonce', false);
   if(window.matchMedia && window.matchMedia('(min-width: 761px)').matches)
-    setTimeout(()=>{ try{ ed.el.focus({preventScroll:true}); ed.el.setSelectionRange(ed.el.value.length, ed.el.value.length); }catch(e){} }, 30);
+    setTimeout(()=>{ try{ if(ed){ ed.el.focus({preventScroll:true}); ed.el.setSelectionRange(ed.el.value.length, ed.el.value.length); } else { const b = mont.querySelector('.ce-blank'); if(b) b.focus({preventScroll:true}); } }catch(e){} }, 30);
 
   function libre(titre, lead){ return {state:'todo', free:true, x:{t:titre, lead:lead}, rep:{ok:false,results:[],out:[]}, tests:[], first:-1, lines:[]}; }
   function marquer(){
+    if(!ed) return;
     const A = etat.an; let err = null, trace = null;
     if(A){
       const it = A.x ? null : A.tests[etat.sel], x = A.x || (it && it.x);
@@ -18628,7 +18799,7 @@ function renderCode(zone, q){
   function majPas(){
     const A = etat.an, it = A.tests[etat.sel], T = it.T, n = T.steps.length, boite = sortie.querySelector('#ceTrVue'); if(!boite) return;
     const i = etat.ti = Math.max(0, Math.min(etat.ti, n-1));
-    boite.innerHTML = ceEtape(T, i, A, it.want, telephone() || ed.value!==A.src);
+    boite.innerHTML = ceEtape(T, i, A, it.want, telephone() || !ed || ed.value!==A.src);
     /* Liste plus large que l'écran : la case en cours reste visible */
     boite.querySelectorAll('.ce-cells').forEach(cs=>{ if(cs.scrollWidth<=cs.clientWidth) return; const v = cs.querySelectorAll('.ce-cell.chg, .ce-cell.p'), p = v[v.length-1]; if(p) cs.scrollLeft = Math.max(0, p.offsetLeft - cs.offsetLeft - cs.clientWidth/2 + p.offsetWidth/2); });
     const r = sortie.querySelector('#ceTrRange'), c = sortie.querySelector('#ceTrN');
@@ -18649,6 +18820,7 @@ function renderCode(zone, q){
       + '<input type="range" id="ceTrRange" min="0" max="'+(n-1)+'" value="0" aria-label="Étape"><span id="ceTrN"></span></div></div><div id="ceTrVue" class="ce-out"></div>';
     majPas();
   }
+  function peindreEssais(){ const A = etat.an; wrap.querySelector('#ceTries').innerHTML = '<span>Essais</span>'+[0,1,2].map(i=>'<i class="'+(i<etat.essais?((i===etat.essais-1&&etat.fini&&A&&A.rep.ok)?'ok':'ko'):'')+'"></i>').join(''); }
   function peindre(){
     const A = etat.an;
     if(!A && !etat.fini) return;
@@ -18662,7 +18834,7 @@ function renderCode(zone, q){
     if(etat.vue==='pas') vuePas(vue);
     else if(etat.vue==='cmp') vue.innerHTML = ceComparaison(etat.code, spec.sol);
     else vue.innerHTML = ceSortie(A, etat.sel, etat.essais, etat.fini);
-    wrap.querySelector('#ceTries').innerHTML = '<span>Essais</span>'+[0,1,2].map(i=>'<i class="'+(i<etat.essais?((i===etat.essais-1&&A&&A.rep.ok)?'ok':'ko'):'')+'"></i>').join('');
+    peindreEssais();
     note.innerHTML = (A && A.free && A.x) ? '<div class="ce-avis"><span>'+((A.x.line||(A.x.where&&A.x.where.line))?'<b>Ligne '+(A.x.line||A.x.where.line)+'.</b> ':'')+A.x.t+'. <b>Cet essai ne compte pas.</b></span></div>' : '';
     const pa = tabs.querySelector('.ce-pastille');
     if(pa && A){ pa.hidden = false; pa.className = 'ce-pastille '+(A.free?'warn':A.rep.ok?'ok':'ko'); }
@@ -18672,8 +18844,9 @@ function renderCode(zone, q){
   const niveaux = [], idee = String(q.answer||'').replace(/<pre class="pycode">[\s\S]*$/,'').trim().replace(/\s*:$/,'');
   if(idee) niveaux.push(['L’idée','<p>'+idee+'</p>']);
   if(spec.sol) niveaux.push(['La structure','<pre>'+ceHlBloc(ceSquelette(spec.sol))+'</pre>']);
+  const listeIndices = () => (etat.niv==='ordre' || etat.niv==='trous') ? niveaux.slice(0, idee?1:0) : niveaux;
   function peindreIndices(){
-    const el = cote.querySelector('#ceHints');
+    const el = cote.querySelector('#ceHints'), niveaux = listeIndices();
     if(etat.fini || !niveaux.length){ el.innerHTML = ''; return; }
     let h = '<span class="ce-l">Besoin d’aide ?</span>';
     niveaux.slice(0,etat.indices).forEach(([t,c])=>{ h += '<div class="ce-hint"><h5>'+ceIc('bulb')+t+'</h5>'+c+'</div>'; });
@@ -18682,7 +18855,7 @@ function renderCode(zone, q){
     el.innerHTML = h;
     if(etat.indices) typeset(el);
   }
-  cote.addEventListener('click', e=>{ if(e.target.closest('[data-hint]')){ etat.indices = Math.min(etat.indices+1, niveaux.length); peindreIndices(); } });
+  cote.addEventListener('click', e=>{ if(e.target.closest('[data-hint]')){ etat.indices = Math.min(etat.indices+1, listeIndices().length); peindreIndices(); } });
   peindreIndices();
 
   sortie.addEventListener('click', e=>{
@@ -18705,9 +18878,11 @@ function renderCode(zone, q){
   sortie.addEventListener('change', e=>{ if(e.target.id==='ceTrSel'){ ceStopLecture(); etat.sel = +e.target.value; etat.ti = 0; peindre(); } });
 
   function verifier(){
-    const src = ed.value, debut = String(spec.start||'').trim();
+    const pre = etat.niv==='ordre' ? (etat.ord.reste.length ? 'Il reste des lignes à placer' : null) : (etat.niv==='trous' && etat.trous.blancs.some(b=>!b.val.trim()) ? 'Il reste des trous à compléter' : null);
+    const src = pre ? '' : source(), debut = String(spec.start||'').trim();
     let A;
-    if(!etat.fini && debut && src.trim()===debut) A = libre('Tu n’as encore rien modifié', 'L’amorce seule ne peut pas réussir : complète-la, puis relance.');
+    if(pre) A = libre(pre, 'Termine la carte, puis relance la vérification.');
+    else if(!etat.fini && etat.niv==='squelette' && debut && src.trim()===debut) A = libre('Tu n’as encore rien modifié', 'L’amorce seule ne peut pas réussir : complète-la, puis relance.');
     else { try{ A = DIAG.run(spec, src, {timeout:2500}); }catch(e){ A = libre('Erreur interne de l’exécuteur', codeErreur(e)); } }
     ceStopLecture();
     etat.an = A; etat.sel = (A.first!=null && A.first>=0) ? A.first : 0; etat.ti = 0; etat.vue = 'res';
@@ -18721,7 +18896,8 @@ function renderCode(zone, q){
       wrap.querySelector('#runLbl').textContent = 'Ré-exécuter (hors notation)';
       run.classList.add('ghost');   // l'action principale est désormais la note
       dunno.classList.add('hidden');
-      revealCode(q, etat.essais, etat.indices);
+      monter();   // sélecteur de niveau figé une fois la carte jouée
+      revealCode(q, {essais:etat.essais, indices:etat.indices, baisse:CE_RANG[etat.niv]<CE_RANG[etat.auto], plafond:CE_RANG[etat.niv]<2});
     }
   }
   function codeErreur(e){ return escCode((e && e.message) || e); }
@@ -18729,17 +18905,18 @@ function renderCode(zone, q){
   dunno.onclick = ()=>{
     if(answeredFlag) return;
     ceStopLecture();
-    etat.fini = true; etat.code = ed.value; etat.vue = 'cmp';
+    etat.code = source(); etat.fini = true; etat.vue = 'cmp';
     wrap.querySelector('#runLbl').textContent = 'Essayer quand même';
     run.classList.add('ghost');
     dunno.classList.add('hidden');
     revealUnknown(q);
+    wrap.querySelectorAll('#ceNiv [data-niv]').forEach(b=>{ b.disabled = true; });
     peindre(); peindreIndices();
     if(telephone()) onglet('res');
   };
 }
 
-function revealCode(q, essais, indices){
+function revealCode(q, o){
   answeredFlag = true;
   const fb = $('#feedback');
   let html = '<div class="reveal-ans"><span class="rl">Solution de référence</span>'+(q.answer||'')+'</div>';
@@ -18747,10 +18924,13 @@ function revealCode(q, essais, indices){
   if(q.vig) html += f3Vig(q.vig);
   html += courseLink(q) + annalesLine(q);
   fb.innerHTML = html; fb.className='feedback';
-  /* Réussi du premier coup et sans indice : Entrée garde « Correct ». Sinon « Difficile » est proposé et Entrée ne choisit rien : l'élève garde le dernier mot. */
-  const premier = essais <= 1 && !indices;
-  finalizeSelf(q, true, {verdict:false, sansDefaut:!premier, consigne: premier ? 'Réussi du premier coup. Affine si besoin :' : (indices ? 'Réussi avec '+(indices>1?'des indices':'un indice') : 'Réussi au '+essais+'e essai')+' : « Difficile » est proposé, à toi de juger.'});
+  /* Réussi du premier coup, sans aide : Entrée garde « Correct ». Sinon « Difficile » est proposé et Entrée ne choisit rien : l'élève garde le dernier mot. */
+  const premier = o.essais <= 1 && !o.indices && !o.baisse;
+  const raison = o.baisse ? 'Réussi à un niveau plus facile que prévu' : (o.indices ? 'Réussi avec '+(o.indices>1?'des indices':'un indice') : 'Réussi au '+o.essais+'e essai');
+  finalizeSelf(q, true, {verdict:false, sansDefaut:!premier, consigne:(premier ? 'Réussi du premier coup. Affine si besoin :' : raison+' : « Difficile » est proposé, à toi de juger.')+(o.plafond ? ' « Facile » est réservé aux niveaux Squelette et Page blanche.' : '')});
   if(!premier){ const g = fb.querySelector('.srs-grade .sg2.g1'); if(g) g.classList.add('ce-propose'); }
+  /* Remettre des lignes dans l'ordre ne vaut pas un long intervalle */
+  if(o.plafond){ const f = fb.querySelector('.srs-grade .sg2.g3'); if(f){ f.disabled = true; f.style.opacity = '.4'; f.title = 'Réservé aux niveaux Squelette et Page blanche'; } }
   typeset(fb);
 }
 
