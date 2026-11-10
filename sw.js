@@ -15,7 +15,7 @@
      Leur nom contient l'empreinte du contenu, donc elles sont immuables : un déploiement ne les fait
      pas retélécharger. La page les précharge au repos (prechargerImages) pour le hors-ligne.
    - Firebase / Google : jamais en cache. */
-const CACHE = 'quiz-tsi-v446';
+const CACHE = 'quiz-tsi-v447';
 const IMG_CACHE = 'quiz-tsi-img';
 
 const CORE = [
@@ -50,11 +50,13 @@ self.addEventListener('fetch', (e) => {
 
   const url = new URL(req.url);
 
-  // Ne jamais mettre en cache Firebase (auth + Firestore en temps réel)
-  if (url.hostname.includes('firebase') ||
+  // Ne jamais mettre en cache Firebase (auth + Firestore en temps réel).
+  // Seule exception Google : la feuille des polices (fonts.googleapis.com), confiée à la branche CDN.
+  const policesGoogle = url.hostname === 'fonts.googleapis.com';
+  if (!policesGoogle && (url.hostname.includes('firebase') ||
       url.hostname.includes('googleapis') ||
       url.pathname.includes('/recaptcha/') ||   // v313 : reCAPTCHA (App Check) toujours du réseau, jamais du cache
-      (!url.hostname.includes('gstatic') && url.hostname.includes('google'))) {
+      (!url.hostname.includes('gstatic') && url.hostname.includes('google')))) {
     return; // laisse passer vers le réseau normalement
   }
 
