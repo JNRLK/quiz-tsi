@@ -4025,7 +4025,7 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
 import { initializeAppCheck, ReCaptchaV3Provider, getToken as acGetToken } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app-check.js";
 import { getAuth, setPersistence, browserLocalPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, sendEmailVerification } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, updateDoc, getDoc, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp, runTransaction, deleteDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, updateDoc, getDoc, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp, runTransaction, deleteDoc, Timestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 /* Cloud Functions RETIRÉES : l'app fonctionne sur le tier GRATUIT Firebase (Spark). L'approbation de
    classe et la suppression de compte sont 100 % côté client (voir setMemberStatus / admDeleteOne).
    Seule limite du gratuit : le login Firebase d'un compte supprimé reste à retirer manuellement
@@ -4112,12 +4112,15 @@ const Cloud = {
     }
     return c.user; },
   async signIn(email, pass){ return (await signInWithEmailAndPassword(auth, email, pass)).user; },
-  async signOut(){ return signOut(auth); },
+  /* v455 : une déconnexion VOULUE (bouton « Me déconnecter », gates) pose ce drapeau pour que onAuthStateChanged la
+     distingue d'une déconnexion SUBIE (décidée par le SDK ou le stockage) — seule la première purge l'appareil. */
+  async signOut(){ _deconnexionVoulue = true; try{ return await signOut(auth); }catch(e){ _deconnexionVoulue = false; throw e; } },
   async saveSession(s){
     if(!currentUser) return;
     const uid = currentUser.uid;
     await addDoc(collection(db,'users',uid,'sessions'), {
-      date: serverTimestamp(), score:s.score, total:s.total, mode:s.mode, topics:s.topics, details:s.details, bestStreak:s.bestStreak||0
+      /* v455 : une séance envoyée APRÈS COUP (restée en attente sur l'appareil) garde sa vraie date. */
+      date: (s.enAttente && s.date) ? Timestamp.fromMillis(s.date) : serverTimestamp(), score:s.score, total:s.total, mode:s.mode, topics:s.topics, details:s.details, bestStreak:s.bestStreak||0
     });
     const uref = doc(db,'users',uid);
     const snap = await getDoc(uref);
@@ -4327,6 +4330,7 @@ async function avecReprise(fn, uid){
     catch(e2){ e2._diag = diag; throw e2; }
   }
 }
+const _T0 = Date.now();   // chargement de la page (âge des événements du journal)
 const SyncDiag = {
   CLE: 'quiztsi_sync_diag',
   noter(evt, e, diag){
@@ -4335,7 +4339,12 @@ const SyncDiag = {
       couche: (diag && diag.couche) || null, ac: (diag && (diag.code2 || diag.code)) || null,
       http: (diag && (diag.http2 || diag.http)) || null, repare: diag ? (diag.repare == null ? null : !!diag.repare) : null,
       enLigne: typeof navigator !== 'undefined' ? navigator.onLine : null,
-      pwa: !!(typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) };
+      pwa: !!(typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(display-mode: standalone)').matches),
+      /* v455 : contexte d'une déconnexion subie — page visible ou cachée, âge de la page (s), et surtout la clé de
+         session du SDK Auth est-elle encore dans localStorage à cet instant (sinon : lecture vide du stockage). */
+      vis: (typeof document !== 'undefined' && document.visibilityState) || null,
+      age: Math.round((Date.now() - _T0) / 1000),
+      cleAuth: this.cleAuthPresente() };
     try{
       const l = JSON.parse(localStorage.getItem(this.CLE) || '[]');
       l.push(x); localStorage.setItem(this.CLE, JSON.stringify(l.slice(-30)));
@@ -4343,7 +4352,23 @@ const SyncDiag = {
     console.warn('Synchro :', x);
     return x;
   },
-  lire(){ try{ return JSON.parse(localStorage.getItem(this.CLE) || '[]'); }catch(_){ return []; } }
+  lire(){ try{ return JSON.parse(localStorage.getItem(this.CLE) || '[]'); }catch(_){ return []; } },
+  cleAuthPresente(){
+    try{ for(let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if(k && k.indexOf('firebase:authUser:') === 0) return true; } return false; }
+    catch(_){ return null; }
+  },
+  /* v455 : le journal part au cloud à chaque connexion (users/{uid}.diag, 30 dernières lignes) : une déconnexion
+     subie sur un téléphone se lit ensuite depuis la console, sans toucher à l'appareil. Silencieux. */
+  async envoyer(uid){
+    try{
+      const l = this.lire(); if(!uid || !l.length) return;
+      const dernier = l[l.length - 1].t || 0;
+      let envoye = 0; try{ envoye = +(localStorage.getItem(this.CLE + '_envoye') || 0); }catch(_){}
+      if(!(dernier > envoye)) return;
+      await setDoc(doc(db, 'users', uid), {diag: l.slice(-30), diagMaj: serverTimestamp()}, {merge:true});
+      try{ localStorage.setItem(this.CLE + '_envoye', String(dernier)); }catch(_){}
+    }catch(e){ console.warn('journal synchro : envoi impossible', e); }
+  }
 };
 if(typeof window !== 'undefined') window.diagSynchro = () => {
   const l = SyncDiag.lire();
@@ -4368,10 +4393,64 @@ const SRS_OWNER_KEY = 'quiztsi_srs_owner';
 /* Progression pas encore synchronisée d'un compte qui se déconnecte (v313) : mise de côté sous
    cette clé, réintégrée à sa prochaine connexion, jamais fusionnée dans un autre compte. */
 const SRS_STASH_PREFIX = 'quiztsi_srs_stash_';
+
+/* ==== DÉCONNEXION SUBIE (v455) ================================================================
+   Incident du 14/11/2026 : séance de 119 cartes sur téléphone, fenêtre de connexion à la sortie de la séance,
+   « rien n'a été enregistré ». Le SDK Auth peut décider SEUL de déconnecter : sur téléphone (fallbackToPolling),
+   il relit localStorage chaque seconde et une lecture vide passagère de sa clé de session lui fait annoncer une
+   déconnexion, puis une reconnexion quand la valeur revient. L'ancien code purgeait aussitôt la progression
+   locale et son propriétaire, ouvrait la fenêtre de connexion (INVISIBLE sous le quiz en plein écran : z-index
+   50 contre 1000) ; les notes prises ensuite n'avaient plus de propriétaire et la reconnexion les effaçait.
+   Désormais : une déconnexion subie ne purge RIEN (la progression garde son propriétaire ; _ouvrirCompte protège
+   toujours un autre compte), elle est journalisée (SyncDiag), on attend quelques secondes avant de déranger
+   l'élève, et jamais en pleine séance : un bandeau dans la séance, la fenêtre de connexion à la fin. Les bilans
+   qui n'ont pas pu partir attendent sur l'appareil (SRS._garderSeance) et partent à la reconnexion. */
+let _deconnexionVoulue = false;          // posé par Cloud.signOut juste avant signOut()
+let _authInitiale = true;                // le premier événement Auth décrit l'état au chargement, pas une déconnexion
+let _authGraceTimer = null, _authNullAt = 0, _authDifferee = false, _authExpireeOuverte = false;
+function authPleinEcran(){ try{ return !!document.querySelector('.fs-active'); }catch(e){ return false; } }
+function authSeanceEnCours(){ try{ return (typeof window._seanceEnCours === 'function' && window._seanceEnCours()) || authPleinEcran(); }catch(e){ return false; } }
+/* Quelques secondes après une déconnexion subie, si le compte n'est pas revenu de lui-même. */
+function authExpiree(){
+  _authGraceTimer = null;
+  if(auth.currentUser || currentUser) return;
+  if(authSeanceEnCours()){ _authDifferee = true; annoncerSessionExpiree(); return; }
+  _authDifferee = false;
+  if(typeof openAuth === 'function') openAuth('expiree');
+}
+/* Fin de la séance (ou du plein écran) : la fenêtre différée s'ouvre. Appelée par aurSyncNav et un rattrapage. */
+function authReprendreSiDifferee(){
+  if(!_authDifferee || currentUser) return;
+  if(authSeanceEnCours()) return;
+  _authDifferee = false;
+  try{ const b = document.getElementById('authExpBanniere'); if(b) b.remove(); }catch(e){}
+  if(typeof openAuth === 'function') openAuth('expiree');
+}
+/* Bandeau DANS la séance (même rangement que « Nouvelle version prête » : au bas de l'écran de séance, jamais
+   par-dessus les boutons ; le plein écran z-index 1000 masquerait un bandeau fixé au corps de la page). */
+function annoncerSessionExpiree(){
+  try{
+    if(document.getElementById('authExpBanniere')) return;
+    const b = document.createElement('div');
+    b.id = 'authExpBanniere'; b.className = 'aur-toast aur-toast-inline'; b.setAttribute('role', 'status');
+    b.innerHTML = '<svg class="i" aria-hidden="true"><use href="#i-alert"/></svg><span>Session expirée : tes notes sont gardées sur cet appareil, tu te reconnecteras à la fin de la séance.</span>';
+    const hote = document.querySelector('.fs-active')
+      || ['quizScreen','examScreen','colleScreen','oralScreen','dsScreen'].map(id => document.getElementById(id)).find(e => e && !e.classList.contains('hidden'));
+    if(hote) hote.appendChild(b); else { b.classList.remove('aur-toast-inline'); document.body.appendChild(b); }
+  }catch(e){}
+}
+setInterval(()=>{ try{ authReprendreSiDifferee(); }catch(e){} }, 15000);   // rattrapage si aucun changement d'écran ne l'a fait
 onAuthStateChanged(auth, async (user)=>{
   currentUser = user;
   isAdmin = !!(user && ADMIN_EMAILS.map(e=>e.toLowerCase()).includes((user.email||'').toLowerCase()));
+  const authInitiale = _authInitiale; _authInitiale = false;
   if(user){
+    /* v455 : le compte est là (reconnexion de l'élève, ou le SDK qui revient sur sa « déconnexion ») : plus de
+       fenêtre différée ni de délai de grâce, et le journal note au bout de combien de temps il est revenu. */
+    clearTimeout(_authGraceTimer); _authGraceTimer = null; _authDifferee = false;
+    try{ const b = document.getElementById('authExpBanniere'); if(b) b.remove(); }catch(e){}
+    if(_authNullAt){ SyncDiag.noter('auth:connexion', null, {couche:'session', code:'apres-' + Math.round((Date.now() - _authNullAt)/1000) + 's'}); _authNullAt = 0; }
+    if(_authExpireeOuverte && typeof closeAuth === 'function'){ try{ closeAuth(); }catch(e){} }
     try{
       // Isolation par compte : si la progression locale appartient à un AUTRE
       // utilisateur (ou à personne), on la purge AVANT de charger le cloud de ce
@@ -4393,6 +4472,8 @@ onAuthStateChanged(auth, async (user)=>{
       if(typeof SRS!=='undefined' && auth.currentUser && auth.currentUser.uid === user.uid){
         SRS._ouvrirCompte(user.uid, cloud);
         if(cloud || SRS._etatSale()) SRS._syncCloud();
+        SRS._envoyerSeancesEnAttente();     // v455 : bilans restés sur l'appareil (déconnecté, refus, réseau)
+        SyncDiag.envoyer(user.uid);         // v455 : journal technique lisible depuis la console Firebase
       }
     }catch(e){
       console.warn('SRS cloud load', e);
@@ -4457,20 +4538,37 @@ onAuthStateChanged(auth, async (user)=>{
       }
     }
   } else {
-    // Déconnexion : purge de la progression locale pour empêcher toute fuite entre comptes
-    // et REFERMETURE du verrou d'écriture (le compte suivant devra lire son cloud avant d'écrire).
-    /* v313 : une déconnexion peut être SUBIE (au chargement, Auth déconnecte si sa vérification de
-       compte échoue — App Check compris). La progression pas encore synchronisée est donc mise de
-       côté pour son propriétaire avant la purge, et réintégrée à sa prochaine connexion. */
-    if(typeof SRS!=='undefined'){
-      let proprio = null; try{ proprio = localStorage.getItem(SRS_OWNER_KEY); }catch(e){}
-      SRS._mettreDeCote(proprio);
-      SRS.clear(); SRS._cloudRead = false; SRS._reinitSynchro();
-    }
-    try{ localStorage.removeItem(SRS_OWNER_KEY); }catch(e){}
+    const voulue = _deconnexionVoulue; _deconnexionVoulue = false;
     myClassStatus = null;
-    // Connexion obligatoire : ouvrir la modale, non fermable
-    if(typeof openAuth === 'function') openAuth();
+    // REFERMETURE du verrou d'écriture dans tous les cas : le compte suivant relit son cloud avant d'écrire.
+    if(typeof SRS!=='undefined'){ SRS._cloudRead = false; SRS._reinitSynchro(); }
+    if(voulue){
+      /* DÉCONNEXION VOULUE (bouton « Me déconnecter », gates) : purge de la progression locale pour empêcher
+         toute fuite entre comptes sur un appareil partagé. v313 : les notes pas encore synchronisées (et, v455,
+         les bilans en attente) sont mises de côté pour leur propriétaire et réintégrées à sa prochaine connexion. */
+      if(typeof SRS!=='undefined'){
+        let proprio = null; try{ proprio = localStorage.getItem(SRS_OWNER_KEY); }catch(e){}
+        SRS._mettreDeCote(proprio);
+        SRS.clear();
+      }
+      try{ localStorage.removeItem(SRS_OWNER_KEY); }catch(e){}
+      SyncDiag.noter('auth:deconnexion', null, {couche:'session', code:'voulue'});
+      // Connexion obligatoire : ouvrir la modale, non fermable
+      if(typeof openAuth === 'function') openAuth();
+    } else if(authInitiale){
+      /* ÉTAT AU CHARGEMENT sans compte (v455) : rien n'est purgé. La progression locale reste à son propriétaire
+         (SRS_OWNER_KEY) : s'il se reconnecte il la retrouve telle quelle ; si un autre compte se connecte,
+         _ouvrirCompte la met de côté et repart à vide. Avant, la purge au chargement suffisait à vider l'appareil
+         dès que la session Auth manquait au démarrage. */
+      if(typeof openAuth === 'function') openAuth();
+    } else {
+      /* DÉCONNEXION SUBIE (v455, voir le bloc « DÉCONNEXION SUBIE » plus haut) : rien n'est purgé, on journalise,
+         et on laisse quelques secondes au SDK pour revenir sur sa décision avant de déranger l'élève. */
+      _authNullAt = Date.now();
+      SyncDiag.noter('auth:deconnexion-subie', null, {couche:'session', code: authSeanceEnCours() ? 'seance' : 'calme'});
+      clearTimeout(_authGraceTimer);
+      _authGraceTimer = setTimeout(authExpiree, 4000);
+    }
   }
   if(typeof updateAccountUI === 'function') updateAccountUI();
   if(typeof updateSrsBar === 'function') updateSrsBar();
@@ -14784,6 +14882,7 @@ const SRS = {
     if(niveau >= 2){
       if(Array.isArray(d.sessions) && d.sessions.length > 60) d.sessions = d.sessions.slice(-60);
       if(Array.isArray(d.reviewLog) && d.reviewLog.length > 500) d.reviewLog = d.reviewLog.slice(-500);
+      if(Array.isArray(d.seancesEnAttente) && d.seancesEnAttente.length > 5) d.seancesEnAttente = d.seancesEnAttente.slice(-5);
     }
     if(niveau >= 3){
       try{
@@ -14798,6 +14897,43 @@ const SRS = {
   /* Détail d'une séance tel que le gardent les statistiques locales (renderStats : chapitre, juste/faux) ;
      le détail complet (énoncé, choix, temps) part au cloud par Cloud.saveSession, inchangé. */
   _detailLocal(it){ return {h: it && it.h, topic: it && it.topic, correct: !!(it && it.correct)}; },
+  /* SÉANCES EN ATTENTE (v455) : bilans qui n'ont pas pu partir (déconnecté, refus, réseau). Détail COMPLET —
+     c'est ce que reçoit le cloud —, 20 au plus, chacune marquée de son propriétaire ; un visiteur sans compte
+     n'a rien à rattacher. Envoyées par _envoyerSeancesEnAttente à la connexion et après chaque synchro réussie.
+     Jamais dans _paquetCloud (le champ `srs` du cloud) ; en revanche dans la mise de côté d'une déconnexion. */
+  _garderSeance(rec){
+    let owner = null; try{ owner = localStorage.getItem(SRS_OWNER_KEY); }catch(_){}
+    if(!owner || !rec || !rec.date) return false;
+    const d = this._d();
+    const q = Array.isArray(d.seancesEnAttente) ? d.seancesEnAttente : (d.seancesEnAttente = []);
+    if(q.some(s => s && s.date === rec.date && s.proprio === owner)) return true;
+    q.push(Object.assign({}, rec, {proprio: owner, enAttente: true}));
+    if(q.length > 20) d.seancesEnAttente = q.slice(-20);
+    this._save(d);
+    return true;
+  },
+  _seancesEnVol: false,
+  async _envoyerSeancesEnAttente(){
+    if(this._seancesEnVol || typeof currentUser === 'undefined' || !currentUser) return;
+    const uid = currentUser.uid;
+    const q = (this._d().seancesEnAttente || []).filter(s => s && s.proprio === uid);
+    if(!q.length) return;
+    this._seancesEnVol = true;
+    let n = 0;
+    try{
+      for(const s of q){
+        if(!currentUser || currentUser.uid !== uid) break;
+        await Cloud.saveSession(s);
+        n++;
+        const d = this._d();
+        d.seancesEnAttente = (d.seancesEnAttente || []).filter(x => !(x && x.date === s.date && x.proprio === uid));
+        if(!d.seancesEnAttente.length) delete d.seancesEnAttente;
+        this._save(d);
+      }
+      if(n) cloudOk(n > 1 ? '☁️ ' + n + ' séances en attente envoyées' : '☁️ Séance en attente envoyée', true);
+    }catch(e){ console.warn('SRS : séances en attente', e); }
+    finally{ this._seancesEnVol = false; }
+  },
   _compacteSessions(d){
     let change = false;
     (d.sessions || []).forEach(s => {
@@ -14993,6 +15129,7 @@ const SRS = {
      remplace tout le champ `srs`). Seul _ouvrirCompte l'ouvre, apres une lecture reussie. */
   _cloudRead: false,
   _cloudTimer: null,
+  _cartesLues: 0,     // v455 : cartes dans le magasin local après la dernière lecture/écriture du cloud (garde anti-écrasement)
 
   /* ==== GESTIONNAIRE DE SYNCHRO (v313) ====
      Avant : une écriture refusée était abandonnée (le SDK ne rejoue jamais un PERMISSION_DENIED),
@@ -15027,13 +15164,19 @@ const SRS = {
   _mettreDeCote(owner){
     if(!owner) return;
     const s = this._etatSale();
-    if(!s || s.owner !== owner) return;
+    let enAttente = []; try{ enAttente = (this._d().seancesEnAttente || []).filter(x => x && x.proprio === owner); }catch(_){}
+    if((!s || s.owner !== owner) && !enAttente.length) return;
     const cle = SRS_STASH_PREFIX + owner;
     /* Une mise de côté précédente du MÊME compte (déconnecté deux fois sans synchro entre-temps) est
        fusionnée d'abord : l'écraser perdait les notes de la première séance. */
     try{ const ancien = JSON.parse(localStorage.getItem(cle) || 'null'); if(ancien && typeof ancien === 'object') this.mergeCloud(ancien); }catch(_){}
     let json = null;
-    try{ json = JSON.stringify(this._paquetCloud()); }catch(e){ console.warn('SRS : mise de côté impossible', e); return; }
+    try{
+      const p = this._paquetCloud();
+      try{ enAttente = (this._d().seancesEnAttente || []).filter(x => x && x.proprio === owner); }catch(_){}
+      if(enAttente.length) p.seancesEnAttente = enAttente;   // v455 : les bilans en attente suivent leur propriétaire
+      json = JSON.stringify(p);
+    }catch(e){ console.warn('SRS : mise de côté impossible', e); return; }
     try{ localStorage.setItem(cle, json); }
     catch(e){
       /* Stockage plein (~5 Mo sur Safari) : on libère les mises de côté des AUTRES comptes, un essai. */
@@ -15084,6 +15227,7 @@ const SRS = {
     }
     if(cloud) this.mergeCloud(cloud);
     if(cloud || miseDeCote) this.gc();
+    try{ this._cartesLues = Object.keys(this._d().cards || {}).length; }catch(_){ this._cartesLues = 0; }   // v455 : repère anti-écrasement
   },
   _rafraichirUI(){
     try{
@@ -15137,7 +15281,13 @@ const SRS = {
       armer(25000);
       try{
         cloudSync('↑ Synchronisation…');
-        const relire = !this._cloudRead || this._relireAvant ||
+        /* v455 — GARDE ANTI-ÉCRASEMENT. Cloud.saveSRS REMPLACE le champ `srs` du cloud. Si le magasin local a
+           fondu depuis la dernière lecture (stockage du téléphone lu vide par à-coups, purge inattendue), une
+           écriture directe remplacerait la progression de l'élève par ce reste : on relit et on fusionne d'abord. */
+        let nLoc = 0; try{ nLoc = Object.keys(this._d().cards || {}).length; }catch(_){}
+        const fondu = (this._cartesLues || 0) > 20 && nLoc < this._cartesLues * 0.5;
+        if(fondu) SyncDiag.noter('fondu:' + motif, null, {couche:'local', code: nLoc + '/' + this._cartesLues});
+        const relire = fondu || !this._cloudRead || this._relireAvant ||
                        (!this._sansRelire && Date.now() - this._lastReadAt > this._RELIRE_MS);
         if(relire){
           this._relireAvant = false;           // consommée ici ; un échec la repose (_surEchec)
@@ -15152,6 +15302,7 @@ const SRS = {
         const paquet = this._paquetCloud();
         await avecReprise(()=>this._ecrire(paquet, uid), uid);
         if(!actuel()) return false;
+        this._cartesLues = Object.keys(paquet.cards || {}).length;   // v455 : le cloud porte désormais ce nombre de cartes
         const retabli = this._echecs > 0;
         this._echecs = 0; this._raison = null;
         /* Le marqueur n'est effacé que si RIEN n'a changé pendant l'envoi ; sinon on repart. */
@@ -15161,6 +15312,7 @@ const SRS = {
         }catch(_){}
         if(retabli) SyncDiag.noter('retabli:' + motif, null, {couche:'ok', repare:true});
         cloudOk(retabli ? '☁️ Synchro rétablie' : '☁️ SRS sauvegardé', retabli);
+        this._envoyerSeancesEnAttente();   // v455 : la voie est libre, les bilans en attente suivent
         return true;
       }catch(e){
         if(actuel()) this._surEchec(e, motif);
@@ -15335,6 +15487,12 @@ const SRS = {
     if(cloud.oralDernier && typeof cloud.oralDernier === 'object'){
       const od = d.oralDernier || (d.oralDernier = {});
       for(const k in cloud.oralDernier){ if(od[k] == null) od[k] = cloud.oralDernier[k]; }
+    }
+    /* v455 : séances en attente revenues d'une mise de côté (jamais du cloud lui-même) — union par date. */
+    if(Array.isArray(cloud.seancesEnAttente) && cloud.seancesEnAttente.length){
+      const q = Array.isArray(d.seancesEnAttente) ? d.seancesEnAttente : (d.seancesEnAttente = []);
+      cloud.seancesEnAttente.forEach(s => { if(s && s.date && !q.some(x => x && x.date === s.date && x.proprio === s.proprio)) q.push(s); });
+      if(q.length > 20) d.seancesEnAttente = q.slice(-20);
     }
     this._save(d);
   },
@@ -18860,7 +19018,16 @@ function flushSession(reason){
     if(reason==='done') cloudSync('↑ Sauvegarde…');
     Cloud.saveSession(rec)
       .then(()=>{ if(reason==='done') cloudOk('☁️ Session sauvegardée'); })
-      .catch(err=>{ console.warn('flush save', err); if(reason==='done') cloudErr('⚠️ Session non sauvegardée'); });
+      .catch(err=>{
+        /* v455 : une séance refusée ou coupée par le réseau n'est plus perdue pour le cloud (donc pour
+           « Ma progression » et la vue prof) : elle attend sur l'appareil et repart à la prochaine synchro. */
+        console.warn('flush save', err);
+        let gardee = false; try{ gardee = SRS._garderSeance(rec); }catch(e){}
+        if(reason==='done') cloudErr(gardee ? '⚠️ Séance gardée sur cet appareil — elle partira à la prochaine synchro' : '⚠️ Session non sauvegardée');
+      });
+  } else {
+    /* v455 : déconnecté (session Auth expirée en pleine séance) — la séance attend la reconnexion de son propriétaire. */
+    try{ SRS._garderSeance(rec); }catch(e){}
   }
   // Classement d'office : met à jour l'entrée de l'élève (sauf retrait explicite). Silencieux.
   try{ if(currentUser && localStorage.getItem('quiztsi_lb_optin')!=='0' && typeof Leaderboard!=='undefined') Leaderboard.publish(_lbPseudo()).catch(()=>{}); }catch(e){}
@@ -24609,6 +24776,13 @@ let _cloudStatusTimer = null;
 function cloudToast(type, msg){
   const el = $('#cloudStatus');
   if(!el) return;
+  /* v455 : en plein écran (#quizScreen.fs-active, z-index 1000) le bandeau fixé au corps de la page (z-index 70)
+     était INVISIBLE : « Synchro en attente » passait inaperçu pendant toute une séance. Comme aurConfirm, il se
+     range dans l'élément plein écran tant qu'il y en a un, et revient au corps de la page ensuite. */
+  try{
+    const hote = document.querySelector('.fs-active') || document.body;
+    if(el.parentElement !== hote) hote.appendChild(el);
+  }catch(_){}
   // P2 : on n'affiche le bandeau QUE pour les erreurs ; succès/sync restent discrets
   // (le statique « Dernière synchro » suffit). Repositionné pour ne plus couvrir Suivant/Abandonner.
   /* 'ok!' (v313) : succès affiché quand même — le retour à la normale après un incident. */
@@ -24782,8 +24956,12 @@ function updateAccountUI(){
 let authMode = 'login';
 let pendingVerify = false;
 let verifyGateActive = false;
-function openAuth(){ authMode='login'; pendingVerify=false; refreshAuthModal(); const cb=$('#authClose'); if(cb) cb.style.display=currentUser?'':'none'; const am=$('#authModal'); if(am.classList.contains('hidden')) am._aurRetourForce=document.activeElement; am.classList.remove('hidden'); $('#authEmail').focus(); }   // fenetres-v1-01 : déclencheur mémorisé avant le focus
-function closeAuth(){ pendingVerify=false; $('#authModal').classList.add('hidden'); $('#authErr').classList.add('hidden'); $('#authEmail').value=''; $('#authPass').value=''; const p=$('#authPseudo'); if(p) p.value=''; }
+function openAuth(motif){ authMode='login'; pendingVerify=false; refreshAuthModal(); const cb=$('#authClose'); if(cb) cb.style.display=currentUser?'':'none'; const am=$('#authModal'); if(am.classList.contains('hidden')) am._aurRetourForce=document.activeElement; am.classList.remove('hidden'); $('#authEmail').focus();   // fenetres-v1-01 : déclencheur mémorisé avant le focus
+  /* v455 : session expirée (déconnexion subie) — on le dit, et on rassure : rien n'est perdu. */
+  _authExpireeOuverte = (motif === 'expiree');
+  if(_authExpireeOuverte){ try{ const sub=$('#authSub'); if(sub) sub.textContent = 'Ta session a expiré : reconnecte-toi pour continuer.'; authNote('Rien n\'est perdu : ta progression est gardée sur cet appareil et sera synchronisée dès ta reconnexion.'); }catch(e){} }
+}
+function closeAuth(){ pendingVerify=false; _authExpireeOuverte=false; $('#authModal').classList.add('hidden'); $('#authErr').classList.add('hidden'); $('#authEmail').value=''; $('#authPass').value=''; const p=$('#authPseudo'); if(p) p.value=''; }
 function refreshAuthModal(){
   pendingVerify=false; verifyGateActive=false;
   ['authEmail','authPass','authEmailL','authPassL','authSubmit','authSwitchLine'].forEach(id=>{ const e=$('#'+id); if(e) e.style.display=''; });
@@ -25636,6 +25814,7 @@ function aurNavGo(key){
 const AUR_TAB = {home:'home', stats:'stats', jury:'jury', revise:'revise'};   // destinations de la barre d'onglets (le reste : « Plus »)
 let _aurPrevEcran = null;   // écran visible au passage précédent (son id : l'oral et Mes oraux partagent la clé 'histo')
 function aurSyncNav(){
+  if(_authDifferee) setTimeout(authReprendreSiDifferee, 0);   // v455 : fenêtre de connexion différée à la fin de la séance
   const visible = id => { const el = document.getElementById(id); return !!el && !el.classList.contains('hidden'); };
   const ecran = ALL_SCREENS.find(visible);
   const cur = (ecran && AUR_SCREEN_NAV[ecran]) || 'home';
