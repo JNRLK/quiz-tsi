@@ -1,0 +1,104 @@
+<svg version='1.1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='215' height='145' fill='#221e17' viewBox='-72 -72 161.44 108.49'>
+<defs>
+<path id='g0-84' d='M7.24-5.22L7.56-7.16C7.58-7.25 7.58-7.28 7.58-7.31C7.58-7.43 7.52-7.43 7.3-7.43H1.3C1.05-7.43 1.04-7.42 .98-7.22L.31-5.25C.3-5.23 .26-5.1 .26-5.1C.26-5.04 .31-4.99 .37-4.99C.46-4.99 .48-5.03 .53-5.17C.99-6.5 1.22-7.11 2.67-7.11H3.41C3.67-7.11 3.78-7.11 3.78-6.99C3.78-6.96 3.78-6.94 3.73-6.74L2.26-.85C2.15-.43 2.13-.32 .96-.32C.69-.32 .61-.32 .61-.11C.61 0 .73 0 .79 0C1.06 0 1.35-.02 1.62-.02H3.33C3.61-.02 3.9 0 4.18 0C4.3 0 4.41 0 4.41-.21C4.41-.32 4.33-.32 4.04-.32C3.06-.32 3.06-.42 3.06-.58C3.06-.58 3.06-.67 3.1-.84L4.57-6.68C4.64-6.95 4.66-7.05 4.82-7.09C4.91-7.11 5.27-7.11 5.5-7.11C6.6-7.11 7.11-7.07 7.11-6.21C7.11-6.05 7.07-5.63 7-5.23L6.99-5.1C6.99-5.05 7.04-4.99 7.1-4.99C7.21-4.99 7.21-5.04 7.24-5.22Z'/>
+<path id='g0-115' d='M4.25-1.69C4.25-1.85 4.25-2.16 3.9-2.51C3.63-2.77 3.36-2.83 2.77-2.95C2.48-3.01 2.01-3.11 2.01-3.61C2.01-3.82 2.2-4.61 3.24-4.61C3.7-4.61 4.15-4.44 4.26-4.04C3.78-4.04 3.76-3.62 3.76-3.62C3.76-3.39 3.97-3.32 4.07-3.32C4.22-3.32 4.53-3.44 4.53-3.9S4.11-4.83 3.25-4.83C1.82-4.83 1.44-3.7 1.44-3.25C1.44-2.42 2.25-2.25 2.5-2.19C2.68-2.16 2.98-2.09 3.05-2.08C3.19-2.04 3.68-1.86 3.68-1.34C3.68-1 3.38-.11 2.1-.11C1.87-.11 1.05-.14 .83-.75C1.27-.69 1.49-1.03 1.49-1.27C1.49-1.5 1.34-1.62 1.12-1.62C.88-1.62 .56-1.44 .56-.94C.56-.3 1.22 .11 2.09 .11C3.76 .11 4.25-1.12 4.25-1.69Z'/>
+</defs>
+<g id='page1'>
+<g stroke-miterlimit='10' transform='translate(-75.97,36.33)scale(0.996264,-0.996264)'>
+<g fill='#221e17' stroke='#221e17'>
+<g stroke-width='0.4'>
+<g fill='#221e17' stroke='#221e17'>
+<g stroke-linecap='round'>
+<g stroke-linejoin='round'>
+<g stroke-width='1.0'>
+<g stroke-width='1.0'>
+<path d='M14.23 8.54H146.24' fill='none'/>
+<g transform='translate(143.4019,8.5359)'>
+<g stroke-dasharray='none' stroke-dashoffset='0.0'>
+ <g stroke-linejoin='miter'>
+ <path d='M5.87 0L1.7 1.46L3.09 0L1.7-1.46Z'/>
+ </g>
+ </g>
+</g>
+<g transform='translate(154.6326,6.16785)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-75.97,36.33)scale(-1,-1)'>
+<g fill='#221e17'>
+<g stroke='none'>
+<g fill='#221e17'>
+<use x='-75.97' y='36.33' xlink:href='#g0-115' stroke='#221e17' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g stroke-width='1.0'>
+<path d='M14.23 8.54V86.49' fill='none'/>
+<g transform='matrix(0.0,1.0,-1.0,0.0,14.22636,83.65097)'>
+<g stroke-dasharray='none' stroke-dashoffset='0.0'>
+ <g stroke-linejoin='miter'>
+ <path d='M5.87 0L1.7 1.46L3.09 0L1.7-1.46Z'/>
+ </g>
+ </g>
+</g>
+<g transform='translate(10.32199,94.88167)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-75.97,36.33)scale(-1,-1)'>
+<g fill='#221e17'>
+<g stroke='none'>
+<g fill='#221e17'>
+<use x='-75.97' y='36.33' xlink:href='#g0-84' stroke='#221e17' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g stroke-width='1.2'>
+<path d='M36.99 25.61L54.06 71.13' fill='none'/>
+<g transform='matrix(0.35107,0.93628,-0.93628,0.35107,43.57593,43.17491)'>
+<g stroke-dasharray='none' stroke-dashoffset='0.0'>
+ <g stroke-linejoin='miter'>
+ <path d='M6.18 0L2 1.51L3.4 0L2-1.51Z'/>
+ </g>
+ </g>
+</g>
+</g>
+<g stroke-width='1.2'>
+<path d='M54.06 71.13H128.04' fill='none'/>
+<g transform='translate(86.78099,71.13185)'>
+<g stroke-dasharray='none' stroke-dashoffset='0.0'>
+ <g stroke-linejoin='miter'>
+ <path d='M6.18 0L2 1.51L3.4 0L2-1.51Z'/>
+ </g>
+ </g>
+</g>
+</g>
+<g stroke-width='1.2'>
+<path d='M128.04 71.13L110.97 25.61' fill='none'/>
+<g transform='matrix(-0.3511,-0.93628,0.93628,-0.3511,121.44936,53.56387)'>
+<g stroke-dasharray='none' stroke-dashoffset='0.0'>
+ <g stroke-linejoin='miter'>
+ <path d='M6.18 0L2 1.51L3.4 0L2-1.51Z'/>
+ </g>
+ </g>
+</g>
+</g>
+<g stroke-width='1.2'>
+<path d='M110.97 25.61H36.99' fill='none'/>
+<g transform='matrix(-1.0,0.0,0.0,-1.0,78.2448,25.60728)'>
+<g stroke-dasharray='none' stroke-dashoffset='0.0'>
+ <g stroke-linejoin='miter'>
+ <path d='M6.18 0L2 1.51L3.4 0L2-1.51Z'/>
+ </g>
+ </g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</svg>

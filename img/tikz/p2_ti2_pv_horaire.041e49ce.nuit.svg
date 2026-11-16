@@ -1,0 +1,104 @@
+<svg version='1.1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='216' height='145' fill='#f9fafb' viewBox='-72 -72 162.28 108.49'>
+<defs>
+<path id='g0-80' d='M8.11-5.85C8.11-6.71 7.39-7.48 6.01-7.48H2.62C2.41-7.48 2.31-7.48 2.31-7.28C2.31-7.17 2.41-7.17 2.58-7.17C3.24-7.17 3.24-7.08 3.24-6.96C3.24-6.96 3.24-6.87 3.2-6.71L1.72-.81C1.62-.43 1.6-.32 .83-.32C.62-.32 .52-.32 .52-.12C.52 0 .61 0 .68 0C.89 0 1.11-.02 1.32-.02H2.6C2.81-.02 3.04 0 3.24 0C3.33 0 3.45 0 3.45-.21C3.45-.32 3.35-.32 3.19-.32C2.53-.32 2.52-.39 2.52-.5C2.52-.56 2.53-.64 2.54-.69L3.24-3.48H5.08C6.6-3.48 8.11-4.6 8.11-5.85ZM7.19-6.08C7.19-5.8 7.05-4.87 6.54-4.36C6.36-4.16 5.83-3.75 4.83-3.75H3.29L4.03-6.74C4.13-7.15 4.18-7.17 4.6-7.17H5.69C6.51-7.17 7.19-6.9 7.19-6.08Z'/>
+<path id='g0-118' d='M5.01-4.1C5.01-4.79 4.66-4.83 4.57-4.83C4.31-4.83 4.07-4.57 4.07-4.35C4.07-4.22 4.14-4.14 4.19-4.1C4.3-4 4.58-3.7 4.58-3.13C4.58-2.67 3.92-.11 2.61-.11C1.94-.11 1.81-.67 1.81-1.07C1.81-1.62 2.06-2.39 2.36-3.18C2.53-3.63 2.58-3.74 2.58-3.96C2.58-4.42 2.25-4.83 1.71-4.83C.7-4.83 .3-3.24 .3-3.16C.3-3.11 .34-3.06 .42-3.06C.52-3.06 .53-3.1 .57-3.25C.83-4.2 1.26-4.61 1.68-4.61C1.78-4.61 1.96-4.61 1.96-4.25C1.96-3.97 1.84-3.65 1.68-3.23C1.15-1.83 1.15-1.49 1.15-1.23C1.15-.99 1.18-.54 1.52-.23C1.92 .11 2.47 .11 2.56 .11C4.38 .11 5.01-3.47 5.01-4.1Z'/>
+</defs>
+<g id='page1'>
+<g stroke-miterlimit='10' transform='translate(-75.66,36.33)scale(0.996264,-0.996264)'>
+<g fill='#f9fafb' stroke='#f9fafb'>
+<g stroke-width='0.4'>
+<g fill='#f9fafb' stroke='#f9fafb'>
+<g stroke-linecap='round'>
+<g stroke-linejoin='round'>
+<g stroke-width='1.0'>
+<g stroke-width='1.0'>
+<path d='M14.23 8.54H146.24' fill='none'/>
+<g transform='translate(143.4019,8.5359)'>
+<g stroke-dasharray='none' stroke-dashoffset='0.0'>
+ <g stroke-linejoin='miter'>
+ <path d='M5.87 0L1.7 1.46L3.09 0L1.7-1.46Z'/>
+ </g>
+ </g>
+</g>
+<g transform='translate(154.6326,6.16785)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-75.66,36.33)scale(-1,-1)'>
+<g fill='#f9fafb'>
+<g stroke='none'>
+<g fill='#f9fafb'>
+<use x='-75.66' y='36.33' xlink:href='#g0-118' stroke='#f9fafb' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g stroke-width='1.0'>
+<path d='M14.23 8.54V86.49' fill='none'/>
+<g transform='matrix(0.0,1.0,-1.0,0.0,14.22636,83.65097)'>
+<g stroke-dasharray='none' stroke-dashoffset='0.0'>
+ <g stroke-linejoin='miter'>
+ <path d='M5.87 0L1.7 1.46L3.09 0L1.7-1.46Z'/>
+ </g>
+ </g>
+</g>
+<g transform='translate(10.00719,94.88167)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-75.66,36.33)scale(-1,-1)'>
+<g fill='#f9fafb'>
+<g stroke='none'>
+<g fill='#f9fafb'>
+<use x='-75.66' y='36.33' xlink:href='#g0-80' stroke='#f9fafb' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g stroke-width='1.2'>
+<path d='M36.99 25.61L54.06 71.13' fill='none'/>
+<g transform='matrix(0.35107,0.93628,-0.93628,0.35107,43.57593,43.17491)'>
+<g stroke-dasharray='none' stroke-dashoffset='0.0'>
+ <g stroke-linejoin='miter'>
+ <path d='M6.18 0L2 1.51L3.4 0L2-1.51Z'/>
+ </g>
+ </g>
+</g>
+</g>
+<g stroke-width='1.2'>
+<path d='M54.06 71.13H128.04' fill='none'/>
+<g transform='translate(86.78099,71.13185)'>
+<g stroke-dasharray='none' stroke-dashoffset='0.0'>
+ <g stroke-linejoin='miter'>
+ <path d='M6.18 0L2 1.51L3.4 0L2-1.51Z'/>
+ </g>
+ </g>
+</g>
+</g>
+<g stroke-width='1.2'>
+<path d='M128.04 71.13L110.97 25.61' fill='none'/>
+<g transform='matrix(-0.3511,-0.93628,0.93628,-0.3511,121.44936,53.56387)'>
+<g stroke-dasharray='none' stroke-dashoffset='0.0'>
+ <g stroke-linejoin='miter'>
+ <path d='M6.18 0L2 1.51L3.4 0L2-1.51Z'/>
+ </g>
+ </g>
+</g>
+</g>
+<g stroke-width='1.2'>
+<path d='M110.97 25.61H36.99' fill='none'/>
+<g transform='matrix(-1.0,0.0,0.0,-1.0,78.2448,25.60728)'>
+<g stroke-dasharray='none' stroke-dashoffset='0.0'>
+ <g stroke-linejoin='miter'>
+ <path d='M6.18 0L2 1.51L3.4 0L2-1.51Z'/>
+ </g>
+ </g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</svg>
