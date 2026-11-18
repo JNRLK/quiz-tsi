@@ -15,7 +15,7 @@
      Leur nom contient l'empreinte du contenu, donc elles sont immuables : un déploiement ne les fait
      pas retélécharger. La page les précharge au repos (prechargerImages) pour le hors-ligne.
    - Firebase / Google : jamais en cache. */
-const CACHE = 'quiz-tsi-v462';
+const CACHE = 'quiz-tsi-v463';
 const IMG_CACHE = 'quiz-tsi-img';
 
 const CORE = [
