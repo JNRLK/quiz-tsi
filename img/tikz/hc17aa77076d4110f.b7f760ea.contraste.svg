@@ -1,0 +1,257 @@
+<svg version='1.1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='165' height='160' fill='#000000' viewBox='-72 -72 123.81 119.99'>
+<defs>
+<path id='g1-43' d='M6.11-1.99C6.11-2.18 5.93-2.18 5.82-2.18H3.47V-4.53C3.47-4.64 3.47-4.81 3.29-4.81S3.11-4.64 3.11-4.53V-2.18H.76C.65-2.18 .47-2.18 .47-1.99S.65-1.81 .76-1.81H3.11V.54C3.11 .65 3.11 .83 3.29 .83S3.47 .65 3.47 .54V-1.81H5.82C5.93-1.81 6.11-1.81 6.11-1.99Z'/>
+<path id='g0-26' d='M5.87-3.36C5.87-4.64 5.09-5.27 4.27-5.27C3.22-5.27 1.94-4.18 1.54-2.59L.37 2.07C.36 2.13 .33 2.2 .33 2.27C.33 2.45 .48 2.57 .66 2.57S1 2.45 1.08 2.28C1.12 2.18 1.46 .74 1.84-.73C2.08-.13 2.52 .12 2.99 .12C4.34 .12 5.87-1.55 5.87-3.36ZM4.57-1.54C4.21-.72 3.59-.12 2.98-.12C2.16-.12 1.96-1.06 1.96-1.21C1.96-1.28 2.26-2.41 2.3-2.59C2.91-4.97 4.08-5.03 4.26-5.03C4.79-5.03 5.09-4.54 5.09-3.84C5.09-3.23 4.77-2.04 4.57-1.54Z'/>
+<path id='g0-82' d='M7.68-6.58C7.68-5.97 7.36-4.21 4.96-4.21H3.61L4.4-7.35C4.51-7.79 4.55-7.82 5.02-7.82H5.88C6.91-7.82 7.68-7.51 7.68-6.58ZM8.85-1.1C8.85-1.18 8.79-1.22 8.72-1.22C8.62-1.22 8.6-1.15 8.57-1.05C8.28-.2 7.79 .01 7.5 .01S7.01-.12 7.01-.66C7.01-.94 7.15-2.03 7.16-2.09C7.22-2.53 7.22-2.58 7.22-2.68C7.22-3.55 6.52-3.92 6.06-4.06C7.54-4.39 8.7-5.34 8.7-6.37C8.7-7.3 7.76-8.17 6.1-8.17H2.86C2.62-8.17 2.51-8.17 2.51-7.94C2.51-7.82 2.59-7.82 2.82-7.82C3.54-7.82 3.54-7.72 3.54-7.59C3.54-7.59 3.54-7.5 3.49-7.32L1.88-.88C1.77-.47 1.75-.35 .92-.35C.65-.35 .56-.35 .56-.12C.56 0 .69 0 .73 0C.94 0 1.2-.02 1.42-.02H2.83C3.05-.02 3.3 0 3.51 0C3.61 0 3.74 0 3.74-.23C3.74-.35 3.63-.35 3.46-.35C2.73-.35 2.73-.44 2.73-.56C2.73-.56 2.73-.66 2.75-.75L3.55-3.97H4.99C6.12-3.97 6.34-3.25 6.34-2.86C6.34-2.68 6.22-2.21 6.13-1.9C6-1.35 5.97-1.22 5.97-.99C5.97-.14 6.66 .25 7.46 .25C8.43 .25 8.85-.93 8.85-1.1Z'/>
+</defs>
+<g id='page1'>
+<g stroke-miterlimit='10' transform='translate(-80.84,53.46)scale(0.996264,-0.996264)'>
+<g fill='#000000' stroke='#000000'>
+<g stroke-width='0.4'>
+<g fill='#000000' stroke='#000000'>
+<g stroke-linecap='round'>
+<g stroke-linejoin='round'>
+<g stroke-width='1.2'>
+<path d='M129.55 63.64C129.55 93.76 105.13 118.18 75 118.18S20.45 93.76 20.45 63.64S44.87 9.09 75 9.09S129.55 33.51 129.55 63.64ZM75 63.64' fill='none'/>
+</g>
+<g stroke-width='1.2'>
+<path d='M20.45 63.64L20.91 61.37L22.28 59.54L24.55 57.27L27.73 55.46L31.81 53.64L36.36 52.28L41.82 50.45L47.73 49.55L54.09 48.64L60.91 47.73L67.72 47.27H75H82.28L89.09 47.73L95.91 48.64L102.27 49.55L108.18 50.45L113.64 52.28L118.19 53.64L122.27 55.46L125.45 57.27L127.72 59.54L129.09 61.37L129.55 63.64' fill='none'/>
+</g>
+<g fill='#1f2430' stroke='#1f2430'>
+<g stroke-dasharray='3.0,3.0' stroke-dashoffset='0.0'>
+<g stroke-width='0.83'>
+<path d='M129.55 63.64L129.09 65.91L127.72 67.72L125.45 70L122.27 71.82L118.19 73.64L113.64 75L108.18 76.81L102.27 77.73L95.91 78.64L89.09 79.55L82.28 80H75H67.72L60.91 79.55L54.09 78.64L47.73 77.73L41.82 76.81L36.36 75L31.81 73.64L27.73 71.82L24.55 70L22.28 67.72L20.91 65.91L20.45 63.64' fill='none'/>
+</g>
+</g>
+</g>
+<g stroke-width='1.2'>
+<path d='M75 63.64L122.27 90.91' fill='none'/>
+</g>
+<g transform='translate(89.56635,80.8975)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-80.84,53.46)scale(-1,-1)'>
+<g fill='#000000'>
+<g stroke='none'>
+<g fill='#000000'>
+<use x='-80.84' y='53.46' xlink:href='#g0-82' stroke='#000000' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g transform='translate(12.87732,116.76833)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-80.84,53.46)scale(-1,-1)'>
+<g fill='#000000'>
+<g stroke='none'>
+<g fill='#000000'>
+<use x='-80.84' y='53.46' xlink:href='#g0-26' stroke='#000000' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g transform='translate(62.6045,22.9615)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-80.84,53.46)scale(-1,-1)'>
+<g fill='#000000'>
+<g stroke='none'>
+<g fill='#000000'>
+<use x='-80.84' y='53.46' xlink:href='#g1-43' stroke='#000000' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g transform='translate(80.7845,22.9615)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-80.84,53.46)scale(-1,-1)'>
+<g fill='#000000'>
+<g stroke='none'>
+<g fill='#000000'>
+<use x='-80.84' y='53.46' xlink:href='#g1-43' stroke='#000000' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g transform='translate(35.3345,38.419)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-80.84,53.46)scale(-1,-1)'>
+<g fill='#000000'>
+<g stroke='none'>
+<g fill='#000000'>
+<use x='-80.84' y='53.46' xlink:href='#g1-43' stroke='#000000' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g transform='translate(53.5145,38.419)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-80.84,53.46)scale(-1,-1)'>
+<g fill='#000000'>
+<g stroke='none'>
+<g fill='#000000'>
+<use x='-80.84' y='53.46' xlink:href='#g1-43' stroke='#000000' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g transform='translate(71.6945,38.419)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-80.84,53.46)scale(-1,-1)'>
+<g fill='#000000'>
+<g stroke='none'>
+<g fill='#000000'>
+<use x='-80.84' y='53.46' xlink:href='#g1-43' stroke='#000000' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g transform='translate(89.8745,38.419)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-80.84,53.46)scale(-1,-1)'>
+<g fill='#000000'>
+<g stroke='none'>
+<g fill='#000000'>
+<use x='-80.84' y='53.46' xlink:href='#g1-43' stroke='#000000' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g transform='translate(108.05449,38.419)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-80.84,53.46)scale(-1,-1)'>
+<g fill='#000000'>
+<g stroke='none'>
+<g fill='#000000'>
+<use x='-80.84' y='53.46' xlink:href='#g1-43' stroke='#000000' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g transform='translate(44.4245,54.32649)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-80.84,53.46)scale(-1,-1)'>
+<g fill='#000000'>
+<g stroke='none'>
+<g fill='#000000'>
+<use x='-80.84' y='53.46' xlink:href='#g1-43' stroke='#000000' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g transform='translate(62.6045,54.32649)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-80.84,53.46)scale(-1,-1)'>
+<g fill='#000000'>
+<g stroke='none'>
+<g fill='#000000'>
+<use x='-80.84' y='53.46' xlink:href='#g1-43' stroke='#000000' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g transform='translate(80.7845,54.32649)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-80.84,53.46)scale(-1,-1)'>
+<g fill='#000000'>
+<g stroke='none'>
+<g fill='#000000'>
+<use x='-80.84' y='53.46' xlink:href='#g1-43' stroke='#000000' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g transform='translate(98.9645,54.32649)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-80.84,53.46)scale(-1,-1)'>
+<g fill='#000000'>
+<g stroke='none'>
+<g fill='#000000'>
+<use x='-80.84' y='53.46' xlink:href='#g1-43' stroke='#000000' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g transform='translate(53.5145,70.234)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-80.84,53.46)scale(-1,-1)'>
+<g fill='#000000'>
+<g stroke='none'>
+<g fill='#000000'>
+<use x='-80.84' y='53.46' xlink:href='#g1-43' stroke='#000000' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g transform='translate(71.6945,70.234)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-80.84,53.46)scale(-1,-1)'>
+<g fill='#000000'>
+<g stroke='none'>
+<g fill='#000000'>
+<use x='-80.84' y='53.46' xlink:href='#g1-43' stroke='#000000' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g transform='translate(44.4245,85.6915)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-80.84,53.46)scale(-1,-1)'>
+<g fill='#000000'>
+<g stroke='none'>
+<g fill='#000000'>
+<use x='-80.84' y='53.46' xlink:href='#g1-43' stroke='#000000' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g transform='translate(62.6045,85.6915)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-80.84,53.46)scale(-1,-1)'>
+<g fill='#000000'>
+<g stroke='none'>
+<g fill='#000000'>
+<use x='-80.84' y='53.46' xlink:href='#g1-43' stroke='#000000' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g transform='translate(53.5145,101.599)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-80.84,53.46)scale(-1,-1)'>
+<g fill='#000000'>
+<g stroke='none'>
+<g fill='#000000'>
+<use x='-80.84' y='53.46' xlink:href='#g1-43' stroke='#000000' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g transform='translate(71.6945,101.599)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-80.84,53.46)scale(-1,-1)'>
+<g fill='#000000'>
+<g stroke='none'>
+<g fill='#000000'>
+<use x='-80.84' y='53.46' xlink:href='#g1-43' stroke='#000000' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<g transform='translate(89.8745,101.599)'>
+<g stroke='none' transform='scale(-1.00375,1.00375)translate(-80.84,53.46)scale(-1,-1)'>
+<g fill='#000000'>
+<g stroke='none'>
+<g fill='#000000'>
+<use x='-80.84' y='53.46' xlink:href='#g1-43' stroke='#000000' stroke-width='0.32'/>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</svg>
