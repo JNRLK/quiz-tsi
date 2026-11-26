@@ -1044,7 +1044,7 @@ window.MathJax = {
   .theme-switch button{border:none; background:transparent; color:var(--muted); font-family:'Lexend',sans-serif; font-weight:600;
     font-size:12px; padding:7px 12px; min-height:36px; border-radius:999px; cursor:pointer; transition:.15s; line-height:1}
   /* bouton choisi : état « choisi » commun, neutre (bloc Aurora) */
-  @media (prefers-reduced-motion:reduce){ *,*::before,*::after{animation-duration:.001ms !important; transition-duration:.001ms !important} }
+  @media (prefers-reduced-motion:reduce){ *,*::before,*::after{animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important} }
 
 .colle-enonce{font-size:15px;line-height:1.75}
 .colle-enonce b{font-weight:600}
@@ -3518,6 +3518,44 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
     #aurCard.aur-m-code #answerZone{grid-area:a; min-width:0}
     #aurCard.aur-m-code #feedback{grid-area:f; min-width:0}
     .ce-ln.err[data-msg]::after{content:attr(data-msg); margin-left:22px; font:500 12.5px/1 'Lexend',sans-serif; color:var(--no-text); background:color-mix(in srgb,var(--no-text) 12%,transparent); padding:3px 9px; border-radius:999px}
+  }
+  /* ═══ Fluidité sur écran tactile (téléphone, tablette) ══════════════════════════════════
+     Tactile = tout ce qui n'est pas « survol + pointeur fin » : complément exact du bloc « Effets réservés
+     à l'ordinateur ». Trois effets ralentissaient le défilement sur iPhone :
+     – le halo du fond (body::before) : un calque fixe d'une fois et demie l'écran dans chaque sens, animé
+       sans fin ; le GPU recomposait l'écran à chaque image, même page immobile, et ce grand calque prenait
+       la mémoire qui sert à préparer la suite de la page pendant un balayage (zones vides qui tardent) ;
+     – le verre dépoli (backdrop-filter) des barres fixes ou collantes, recalculé à chaque image du défilement,
+       et en permanence tant que le halo bougeait dessous ;
+     – et, plus discrète, la flamme de la série (.aur-flame), qui vacillait sans fin : la moindre animation
+       infinie fait recomposer tout l'écran à chaque image. Elle vacille trois fois puis se pose.
+     Ici le halo s'arrête et se cale sur l'écran (même dessin que l'état de départ de l'animation : positions et
+     rayons recalculés pour une boîte inset:0 au lieu de -25 %), et les barres prennent un fond opaque à la place
+     du flou. Les fenêtres (.modal-overlay) gardent leur flou : leur arrière-plan ne bouge plus.
+     Affichage seulement. */
+  @media (hover:none), (pointer:coarse){
+    body::before{inset:0; animation:none;
+      background:
+        radial-gradient(54% 48% at 5% -4%, var(--au1), transparent 70%),
+        radial-gradient(45% 45% at 104% 14%, var(--au2), transparent 70%),
+        radial-gradient(60% 45% at 47% 116%, var(--au3), transparent 72%)}
+    body.aur-quiz::before{
+      background:
+        radial-gradient(54% 48% at 5% -4%, color-mix(in srgb,var(--qc,#a78bfa) 34%,transparent), transparent 70%),
+        radial-gradient(45% 45% at 104% 14%, var(--au2), transparent 70%),
+        radial-gradient(60% 45% at 47% 116%, color-mix(in srgb,var(--qc,#a78bfa) 22%,transparent), transparent 72%)}
+    .aur-tabbar, .cv-bar, .aur-card .srs-grade, .aur-oral-bar, .cloud-status, .theme-switch, .fs-toggle, .mathkb, .stat{
+      -webkit-backdrop-filter:none; backdrop-filter:none}
+    #quizScreen .next-row:has(#nextBtn:not(.hidden)){-webkit-backdrop-filter:none; backdrop-filter:none}   /* à part : :has() inconnu ferait tomber toute la liste */
+    /* fonds OPAQUES et sans color-mix() : avant iOS 16.2, color-mix(…var()…) devient « transparent » au calcul et,
+       sans le flou, la barre serait entièrement transparente ; un repli dans la même règle ne servirait à rien */
+    .aur-tabbar, .cv-bar{background:var(--bg)}
+    .aur-oral-bar, .cloud-status{background:var(--panel)}
+    .aur-flame{animation-iteration-count:3}
+    @media (max-width:600px), (max-height:500px){
+      .aur-card .srs-grade{background:var(--panel)}
+      #quizScreen .next-row:has(#nextBtn:not(.hidden)){background:var(--panel)}
+    }
   }
 </style>
 </head>
