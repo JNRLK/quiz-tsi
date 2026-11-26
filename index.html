@@ -350,6 +350,35 @@ window.MathJax = {
   .sel-all-btn{background:none; border:1px solid var(--line); border-radius:8px; color:var(--muted); font-size:11.5px; font-weight:600; font-family:inherit; padding:4px 10px; cursor:pointer; transition:.14s; letter-spacing:.05em; text-transform:uppercase}
   .sel-all-btn:hover{border-color:var(--accent); color:var(--ink)}
 
+  /* ---- Sélection multi-années : en-tête d'année de l'accordéon + panier des chapitres choisis ---- */
+  .acc-year{display:flex; align-items:center; gap:8px 12px; margin:4px 2px 10px}
+  .acc-year ~ .acc-year{margin-top:24px}
+  .acc-year .ay-t{flex:1; min-width:0}
+  .acc-year .ay-y{margin:0; font:900 19px/1.15 'Literata',serif; color:var(--ink); display:flex; align-items:baseline; gap:8px; flex-wrap:wrap}
+  .acc-year .ay-s{font:500 12px 'Lexend',sans-serif; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
+  .acc-year .ay-n{display:block; margin-top:3px; font-size:12.5px; color:var(--muted)}
+  .acc-year .ay-n b{color:var(--ink)}
+  .sel-tray{margin-top:0; margin-bottom:18px; padding:14px 16px 16px; border:1px solid var(--tile-line); border-radius:18px; background:var(--tile)}
+  .sel-tray[hidden], .cq-count[hidden]{display:none}
+  .sel-tray .st-h{display:flex; align-items:center; gap:6px 12px; flex-wrap:wrap; margin-bottom:11px}
+  .sel-tray .st-t{flex:1; min-width:0; margin:0; font:600 12px 'Lexend',sans-serif; letter-spacing:.16em; text-transform:uppercase; color:var(--ink)}
+  .sel-tray .st-r{order:3; flex-basis:100%; margin-top:-2px; font-size:12.5px; color:var(--muted)}
+  .st-chips{list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:7px}
+  .st-chip{display:inline-flex; align-items:stretch; max-width:100%; min-width:0; border-radius:999px; overflow:hidden;
+    border:1px solid color-mix(in srgb,var(--c) 45%,var(--tile-line)); background:color-mix(in srgb,var(--c) 10%,var(--panel))}
+  .st-go{flex:1 1 auto; min-width:0; display:inline-flex; align-items:center; gap:7px; padding:6px 2px 6px 12px; margin:0;
+    background:none; border:0; color:var(--ink); font:500 13px/1.25 'Lexend',sans-serif; text-align:left; cursor:pointer}
+  .st-go::before{content:""; width:7px; height:7px; border-radius:50%; flex:none; background:var(--c)}
+  .st-y{flex:none; font:700 10.5px 'Lexend',sans-serif; letter-spacing:.06em; color:var(--muted)}
+  .st-n{min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .st-x{flex:none; width:34px; margin:0; padding:0; background:none; border:0; color:var(--muted); font-size:18px; line-height:1; cursor:pointer}
+  .st-x:hover, .st-go:hover .st-n{color:var(--ink)}
+  .st-go:hover .st-n{text-decoration:underline; text-underline-offset:3px}
+  @media (hover:none){ .st-go{min-height:40px} .st-x{width:42px} }
+  .cq-count{flex:none; white-space:nowrap; font:600 11.5px 'Lexend',sans-serif; color:var(--ink); border:1px solid var(--accent);
+    background:color-mix(in srgb,var(--accent) 14%,var(--panel)); border-radius:999px; padding:2px 9px}
+  [data-theme="contraste"] .st-chip{background:var(--panel); border-color:var(--ink)}
+
   .topic-row{display:flex; align-items:center; gap:12px; padding:11px 16px; border-bottom:1px solid rgba(55,65,81,.5); transition:.15s}
   .topic-row:last-child{border-bottom:none}
   .topic-row.on{background:color-mix(in srgb,var(--tc) 5%,transparent)}
@@ -3660,6 +3689,7 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
         <span class="cq-ic">⚙️</span>
         <span class="cq-title">Quiz personnalisé</span>
         <span class="cq-hint">mode · chapitres · nombre</span>
+        <span class="cq-count" id="cqCount" hidden></span>
         <span class="cq-chev">▸</span>
       </summary>
 
@@ -3685,6 +3715,8 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
         <button class="sel-all-btn" id="selectAllBtn" type="button">Tout sélectionner</button>
       </div>
       <div id="famAccordion" style="margin-bottom:18px"></div>
+      <!-- Panier : chapitres choisis, toutes années et matières confondues (rempli par renderSelTray) -->
+      <section id="selTray" class="sel-tray" aria-labelledby="selTrayT" hidden></section>
 
       <!-- Longueur + options -->
       <div class="row" style="margin-top:4px">
@@ -4979,6 +5011,15 @@ function inScopeOf(topicKey, subject){
   return !!t && t.subject === subject && t.level === scopeLevelFor(subject);
 }
 function inActiveScope(topicKey){ const t = TOPICS[topicKey]; return !!t && t.subject === activeSubject && t.level === effLevel(); }
+/* ─── SÉLECTION MULTI-ANNÉES DU QUIZ PERSONNALISÉ ───
+   Les chapitres cochés ne sont plus filtrés par l'année ni par la matière AFFICHÉES : un élève de TSI2
+   mêle des chapitres de TSI1 et de TSI2 (et, au passage, de plusieurs matières) dans une même séance.
+   Seule borne : les années autorisées (allowedLevels, jamais une année supérieure à la sienne).
+   AVANT : poolFilter exigeait inActiveScope, si bien qu'un chapitre coché puis caché par un changement
+   d'année ou de matière restait « sélectionné » mais sortait de la séance sans rien dire.
+   Le panier (#selTray, renderSelTray) montre exactement ce que la séance contiendra. */
+function selScopeOk(topicKey){ const t = TOPICS[topicKey]; if(!t) return false; const l = t.level || 'tsi1'; return l === 'tr' || allowedLevels().includes(l); }
+function selectedInScope(){ return [...selected].filter(selScopeOk); }
 function subjectsWithContent(){ return Object.keys(SUBJECTS).filter(s => isTransversal(s) ? hasContent(s,'tr') : ['tsi1','tsi2'].some(l=>hasContent(s,l))).sort((a,b)=>SUBJECTS[a].order-SUBJECTS[b].order); }
 function levelsWithContent(subject){ if(isTransversal(subject)) return []; return ['tsi1','tsi2'].filter(l=>hasContent(subject,l)).sort((a,b)=>LEVELS[a].order-LEVELS[b].order); }
 /* Phase 2 : l'élève atterrit sur SON année. filiere==='TSI' + annee 0/1/2 → activeLevel.
@@ -17133,7 +17174,8 @@ function buildClassMenu(){
 }
 function buildNavScope(){
   const host=$('#navScope'); if(!host) return;
-  const subs=subjectsForNav(activeLevel);                    // matières affichables (cartes OU rubriques déclarées) pour la classe active
+  // matières affichables (cartes OU rubriques déclarées) pour la classe active ET les autres années que l'accordéon montre
+  const subs=[...new Set([activeLevel, ...allowedLevels()].flatMap(l=>subjectsForNav(l)))].sort((a,b)=>SUBJECTS[a].order-SUBJECTS[b].order);
   if(subs.length<2){ host.style.display='none'; host.innerHTML=''; return; }  // 0 ou 1 matière → pas de sélecteur
   host.style.display='';
   let html=`<div class="scope-row"><span class="scope-lbl">Matière</span>`;
@@ -17143,56 +17185,118 @@ function buildNavScope(){
   host.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>{ activeSubject=b.dataset.sub; buildFamilyAccordion(); updatePoolInfo(); updateSelectAllBtn(); });
 }
 
-/* ====================== ACCORDÉON FAMILLES ====================== */
+/* ====================== ACCORDÉON FAMILLES ======================
+   SÉLECTION MULTI-ANNÉES : une section par année autorisée qui a des chapitres dans la matière (l'année
+   active d'abord), pour qu'un élève de TSI2 coche aussi des chapitres de TSI1 sans changer de classe ni
+   toucher au périmètre de la révision du jour. Les familles (Analyse, Algèbre…) étant communes aux deux
+   années et la numérotation repartant de 1, chaque année a ses propres blocs et son en-tête. Une seule
+   année affichable (élève de TSI1, matière transversale) : rendu inchangé, sans en-tête d'année.
+   Les chapitres retenus s'affichent dans le panier #selTray (renderSelTray), sous l'accordéon. */
+let _topicCards = null;
+function topicHasCards(k){
+  if(!_topicCards){ _topicCards = new Set(); QUESTIONS.forEach(q => _topicCards.add(q.topic)); }
+  return _topicCards.has(k);
+}
+// Années listées par l'accordéon pour la matière active (année active en tête).
+function accLevels(){
+  if(isTransversal(activeSubject)) return ['tr'];
+  const first = effLevel();
+  const L = allowedLevels().filter(l => hasTopics(activeSubject, l));
+  if(!L.length) return [first];
+  return L.sort((a,b) => a===first ? -1 : b===first ? 1 : LEVELS[a].order - LEVELS[b].order);
+}
+// Chapitres cochables affichés : toutes les années de l'accordéon, hors chapitres sans carte.
+function accSelectableKeys(){ return accLevels().flatMap(l => topicsFor(activeSubject, l)).filter(topicHasCards); }
+
 function buildFamilyAccordion(){
   const host=$('#famAccordion'); if(!host) return;
   buildClassMenu();
   buildNavScope();
   host.innerHTML='';
-  const lvl=effLevel();
-  // Aucun chapitre pour cette classe × matière → état « bientôt disponible »
-  const scopeTopics=Object.keys(TOPICS).filter(k=>TOPICS[k].subject===activeSubject && TOPICS[k].level===lvl);
+  const niveaux = accLevels().filter(l => topicsFor(activeSubject, l).length > 0);
+  const multi = niveaux.length > 1;
   // Matière avec rubriques déclarées mais AUCUNE carte (ex. Physique-Chimie TSI1) → mode aperçu « bientôt ».
-  const previewMode = scopeTopics.length>0 && !hasContent(activeSubject, lvl);
-  // En aperçu : on masque « Tout sélectionner » et « Démarrer » (rien à réviser encore). Restaurés sinon.
-  ['#selectAllBtn','#startBtn'].forEach(sel=>{ const el=$(sel); if(el) el.style.display = previewMode ? 'none' : ''; });
-  if(scopeTopics.length===0){
+  const apercu = l => !hasContent(activeSubject, l);
+  const previewMode = niveaux.length > 0 && niveaux.every(apercu);
+  const fin = ()=>{
+    // En aperçu : on masque « Tout sélectionner » et « Démarrer » (rien à réviser encore), sauf si le panier
+    // garde des chapitres d'une autre matière : ils restent lançables.
+    const sa=$('#selectAllBtn'); if(sa) sa.style.display = previewMode ? 'none' : '';
+    const sb=$('#startBtn'); if(sb) sb.style.display = (previewMode && !selectedInScope().some(topicHasCards)) ? 'none' : '';
+    renderSelTray();
+    updateSelectAllBtn();
+  };
+  // Aucun chapitre pour cette classe × matière → état « bientôt disponible »
+  if(niveaux.length===0){
     host.innerHTML=`<div class="scope-soon"><span class="ss-emoji">🚧</span><div class="ss-t">${LEVELS[activeLevel]?LEVELS[activeLevel].short:''} · ${SUBJECTS[activeSubject].name}</div><div class="ss-s">Pas encore de chapitres pour cette classe en ${SUBJECTS[activeSubject].name}. Bientôt disponible.</div></div>`;
-    updateSelectAllBtn();
-    return;
-  }
-  // ---- Aperçu « bientôt » : liste les rubriques du programme, NON sélectionnables (pas de carte). ----
-  if(previewMode){
-    const note=document.createElement('div'); note.className='cm-lbl'; note.style.margin='2px 0 12px';
-    note.innerHTML='🚧 Programme officiel en place · les cartes de révision arrivent bientôt';
-    host.appendChild(note);
-    for(const fkey of familiesFor(activeSubject)){
-      const fam=FAMILIES[fkey];
-      const ts=Object.entries(TOPICS).filter(([,t])=>t.family===fkey && t.subject===activeSubject && t.level===lvl);
-      if(ts.length===0) continue;
-      const block=document.createElement('div'); block.className='fam-block';
-      const hdr=document.createElement('div'); hdr.className='fam-hdr'; hdr.style.cursor='default';
-      hdr.innerHTML=`<span class="fdot" style="background:${fam.raw}"></span><span class="fname">${fam.name}</span><span class="cc-soon">bientôt</span><span class="f-pct">${ts.length} chap.</span>`;
-      const body=document.createElement('div'); body.className='fam-body'; body.style.display='block';
-      for(const [,t] of ts){
-        const row=document.createElement('div'); row.className='topic-row'; row.style.cursor='default'; row.style.opacity='.92'; row.style.setProperty('--tc',t.raw);
-        row.innerHTML=`<span class="topic-sel" aria-hidden="true" style="--c:${t.raw}"><span class="ts-dot" style="background:${t.raw}"></span></span><div class="topic-info"><div class="topic-name">${t.name}</div></div>`;
-        body.appendChild(row);
-      }
-      block.appendChild(hdr); block.appendChild(body); host.appendChild(block);
-    }
-    updateSelectAllBtn();
+    fin();
     return;
   }
   const d=SRS._d(), now=Date.now();
-  // état ouvert par famille (mémoriser entre rebuild)
+  // état ouvert par année × famille (mémorisé entre deux reconstructions)
   if(!buildFamilyAccordion._open) buildFamilyAccordion._open={};
   const openState=buildFamilyAccordion._open;
+  for(const lvl of niveaux){
+    if(multi) host.appendChild(accYearHead(lvl));
+    if(apercu(lvl)) accPreview(host, lvl);
+    else accFamilies(host, lvl, d, now, openState);
+  }
+  fin();
+}
 
+/* En-tête d'une année (seulement quand l'accordéon en montre plusieurs) : nombre de chapitres cochés et
+   bascule « tout / rien » propre à l'année. */
+function accYearHead(lvl){
+  const keys = topicsFor(activeSubject, lvl).filter(topicHasCards);
+  const n = keys.filter(k => selected.has(k)).length;
+  const h = document.createElement('div'); h.className = 'acc-year';
+  const sous = CLS_SUB[lvl] || '';
+  h.innerHTML = `<div class="ay-t"><h3 class="ay-y">${LEVELS[lvl].short}${sous?`<span class="ay-s">${sous}</span>`:''}</h3>`
+    + `<span class="ay-n">${keys.length ? (n ? `<b>${n}</b> chapitre${n>1?'s':''} choisi${n>1?'s':''} sur ${keys.length}` : `${keys.length} chapitre${keys.length>1?'s':''}`) : 'cartes à venir'}</span></div>`;
+  if(keys.length){
+    const allOn = keys.every(k => selected.has(k));
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'sel-all-btn';
+    b.textContent = allOn ? 'Tout désélectionner' : 'Tout sélectionner';
+    b.setAttribute('aria-label', (allOn ? 'Désélectionner' : 'Sélectionner') + ' tous les chapitres de ' + LEVELS[lvl].short);
+    b.onclick = ()=>{
+      const on = keys.every(k => selected.has(k));
+      keys.forEach(k => { if(on) selected.delete(k); else selected.add(k); });
+      buildFamilyAccordion(); updatePoolInfo();
+    };
+    h.appendChild(b);
+  }
+  return h;
+}
+
+// ---- Aperçu « bientôt » : liste les rubriques du programme, NON sélectionnables (pas de carte). ----
+function accPreview(host, lvl){
+  const note=document.createElement('div'); note.className='cm-lbl'; note.style.margin='2px 0 12px';
+  note.innerHTML='🚧 Programme officiel en place · les cartes de révision arrivent bientôt';
+  host.appendChild(note);
+  for(const fkey of familiesFor(activeSubject)){
+    const fam=FAMILIES[fkey];
+    const ts=Object.entries(TOPICS).filter(([,t])=>t.family===fkey && t.subject===activeSubject && t.level===lvl);
+    if(ts.length===0) continue;
+    const block=document.createElement('div'); block.className='fam-block';
+    const hdr=document.createElement('div'); hdr.className='fam-hdr'; hdr.style.cursor='default';
+    hdr.innerHTML=`<span class="fdot" style="background:${fam.raw}"></span><span class="fname">${fam.name}</span><span class="cc-soon">bientôt</span><span class="f-pct">${ts.length} chap.</span>`;
+    const body=document.createElement('div'); body.className='fam-body'; body.style.display='block';
+    for(const [,t] of ts){
+      const row=document.createElement('div'); row.className='topic-row'; row.style.cursor='default'; row.style.opacity='.92'; row.style.setProperty('--tc',t.raw);
+      row.innerHTML=`<span class="topic-sel" aria-hidden="true" style="--c:${t.raw}"><span class="ts-dot" style="background:${t.raw}"></span></span><div class="topic-info"><div class="topic-name">${t.name}</div></div>`;
+      body.appendChild(row);
+    }
+    block.appendChild(hdr); block.appendChild(body); host.appendChild(block);
+  }
+}
+
+// ---- Familles d'une année : en-tête repliable, « tout sélectionner », une ligne par chapitre. ----
+function accFamilies(host, lvl, d, now, openState){
   for(const fkey of familiesFor(activeSubject)){
     const fam=FAMILIES[fkey];
     const famTopics=Object.entries(TOPICS).filter(([,t])=>t.family===fkey && t.subject===activeSubject && t.level===lvl);
     if(famTopics.length===0) continue;
+    const oKey = lvl + '|' + fkey;
     // stats famille
     let famDue=0, famLearned=0, famTotal=0;
     famTopics.forEach(([key])=>{
@@ -17200,14 +17304,14 @@ function buildFamilyAccordion(){
       famDue+=s.due; famLearned+=s.learned; famTotal+=s.total;
     });
     const famPct=famTotal?Math.round(famLearned/famTotal*100):0;
-    const isOpen = openState[fkey]===true; // fermé par défaut au premier chargement
+    const isOpen = openState[oKey]===true; // fermé par défaut au premier chargement
 
     const block=document.createElement('div'); block.className='fam-block';
 
     /* ---- header ---- (F2 : un vrai bouton — Tab, Entrée, Espace ; aria-expanded suit l'ouverture) */
     const hdr=document.createElement('button'); hdr.type='button'; hdr.className='fam-hdr';
     hdr.setAttribute('aria-expanded', isOpen?'true':'false');
-    hdr.setAttribute('aria-controls', 'famBody-'+fkey);
+    hdr.setAttribute('aria-controls', 'famBody-'+lvl+'-'+fkey);
     hdr.innerHTML=`
       <span class="fdot" style="background:${fam.raw}"></span>
       <span class="fname">${fam.name}</span>
@@ -17217,7 +17321,7 @@ function buildFamilyAccordion(){
       <span class="fam-toggle" aria-hidden="true">${isOpen?'▾':'▸'}</span>`;
 
     /* ---- body ---- */
-    const body=document.createElement('div'); body.className='fam-body'; body.id='famBody-'+fkey;
+    const body=document.createElement('div'); body.className='fam-body'; body.id='famBody-'+lvl+'-'+fkey;
     if(!isOpen) body.style.display='none';
 
     // bouton tout sélectionner
@@ -17338,9 +17442,71 @@ function buildFamilyAccordion(){
       body.style.display=now2?'':'none';
       hdr.querySelector('.fam-toggle').textContent=now2?'▾':'▸';
       hdr.setAttribute('aria-expanded', now2?'true':'false');   // F2
-      openState[fkey]=now2;
+      openState[oKey]=now2;
     });
   }
+}
+
+/* ====================== PANIER DES CHAPITRES CHOISIS ======================
+   Sous l'accordéon du quiz personnalisé : tous les chapitres retenus, toutes années et matières
+   confondues (c'est exactement le contenu de la séance), avec l'année en étiquette — les numéros
+   repartent de 1 en TSI2, « 5. … » seul serait ambigu. Toucher un nom rouvre sa famille et y descend ;
+   × le retire. Le nombre s'affiche aussi dans l'en-tête replié du volet (#cqCount). */
+const SEL_MAT_COURT = { maths:'Maths', physique:'Physique', si:'SI', info:'Info', anglais:'Anglais', francais:'Français' };
+function renderSelTray(){
+  const host = $('#selTray');
+  const pos = {}; Object.keys(TOPICS).forEach((k,i) => { pos[k] = i; });
+  const rang = k => { const t = TOPICS[k]; return [(SUBJECTS[t.subject]||{order:9}).order, (LEVELS[t.level]||{order:9}).order, pos[k]]; };
+  const keys = selectedInScope().filter(topicHasCards)
+    .sort((a,b) => { const A = rang(a), B = rang(b); return A[0]-B[0] || A[1]-B[1] || A[2]-B[2]; });
+  const cc = $('#cqCount');
+  if(cc){
+    cc.hidden = !keys.length;
+    cc.textContent = keys.length + ' chapitre' + (keys.length>1 ? 's' : '');
+  }
+  if(!host) return;
+  if(!keys.length){ host.hidden = true; host.innerHTML = ''; return; }
+  host.hidden = false;
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const mats = new Set(keys.map(k => TOPICS[k].subject));
+  const ans = [...new Set(keys.map(k => TOPICS[k].level).filter(l => LEVELS[l] && l !== 'tr'))].sort((a,b) => LEVELS[a].order - LEVELS[b].order);
+  const resume = keys.length + ' chapitre' + (keys.length>1 ? 's' : '') + (ans.length > 1 ? ' · ' + ans.map(l => LEVELS[l].short).join(' + ') : '');
+  host.innerHTML = `<div class="st-h"><h3 class="section-label st-t" id="selTrayT">Ta sélection</h3><span class="st-r">${esc(resume)}</span>`
+    + `<button type="button" class="sel-all-btn" data-st-clear>Tout retirer</button></div>`
+    + `<ul class="st-chips" aria-labelledby="selTrayT">` + keys.map(k => {
+        const t = TOPICS[k];
+        const an = (LEVELS[t.level] && t.level !== 'tr') ? LEVELS[t.level].short : '';
+        const mat = mats.size > 1 ? (SEL_MAT_COURT[t.subject] || (SUBJECTS[t.subject]||{}).name || '') : '';
+        const tag = [mat, an].filter(Boolean).join(' · ');
+        const nom = t.name + (tag ? ' (' + tag + ')' : '');
+        return `<li class="st-chip" style="--c:${esc(t.raw)}">`
+          + `<button type="button" class="st-go" data-st-go="${esc(k)}" title="${esc(nom)} : voir dans la liste">${tag ? `<span class="st-y">${esc(tag)}</span>` : ''}<span class="st-n">${esc(t.name)}</span></button>`
+          + `<button type="button" class="st-x" data-st-x="${esc(k)}" aria-label="Retirer ${esc(nom)}"><span aria-hidden="true">×</span></button></li>`;
+      }).join('') + `</ul>`;
+  host.querySelector('[data-st-clear]').onclick = ()=>{
+    selected.clear(); buildFamilyAccordion(); updatePoolInfo();
+    const sa = $('#selectAllBtn'); if(sa) try{ sa.focus({preventScroll:true}); }catch(e){}
+  };
+  host.querySelectorAll('[data-st-x]').forEach((b, i) => b.onclick = ()=>{
+    selected.delete(b.dataset.stX); buildFamilyAccordion(); updatePoolInfo();
+    // le focus reste dans le panier (chapitre suivant, sinon précédent), sinon il revient au bouton global
+    const xs = host.querySelectorAll('[data-st-x]');
+    const cible = xs[i] || xs[i-1] || $('#selectAllBtn');
+    if(cible) try{ cible.focus({preventScroll:true}); }catch(e){}
+  });
+  host.querySelectorAll('[data-st-go]').forEach(b => b.onclick = ()=> selTrayGo(b.dataset.stGo));
+}
+// Depuis le panier : affiche la matière du chapitre, ouvre sa famille et y descend.
+function selTrayGo(k){
+  const t = TOPICS[k]; if(!t) return;
+  if(t.subject !== activeSubject) activeSubject = t.subject;
+  if(!buildFamilyAccordion._open) buildFamilyAccordion._open = {};
+  buildFamilyAccordion._open[(isTransversal(t.subject) ? 'tr' : t.level) + '|' + t.family] = true;
+  buildFamilyAccordion(); updatePoolInfo();
+  const row = document.querySelector('#famAccordion [data-topic="' + k + '"]');
+  if(!row) return;
+  try{ row.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
+  const b = row.querySelector('.topic-sel'); if(b) try{ b.focus({preventScroll:true}); }catch(e){}
 }
 
 /* Révision SRS ciblée sur un chapitre */
@@ -17635,20 +17801,21 @@ function undoLast(){
 
 /* ====================== START SCREEN ====================== */
 function advAllowed(q){ return q.niveau!=='approfondissement' || includeAdv; }   // cartes d'approfondissement servies seulement si le toggle est actif
-function poolFilter(q){ return selected.has(q.topic) && inActiveScope(q.topic) && (selectedMode==='all' || q.mode===selectedMode) && advAllowed(q); }
+function poolFilter(q){ return selected.has(q.topic) && selScopeOk(q.topic) && (selectedMode==='all' || q.mode===selectedMode) && advAllowed(q); }
 
 function poolSize(){ return QUESTIONS.filter(poolFilter).length; }
 function updatePoolInfo(){
   const pi=$('#poolInfo'); if(pi) pi.style.color='var(--muted)';
   updateSelectAllBtn();
-  if(selected.size===0){ if(pi) pi.textContent='Aucun chapitre sélectionné — touche un thème ci-dessus.'; return; }
+  const _choisis = selectedInScope();
+  if(_choisis.length===0){ if(pi) pi.textContent='Aucun chapitre sélectionné — touche un thème ci-dessus.'; return; }
   const tot = poolSize();
   const n = chosenLen===0 ? tot : Math.min(chosenLen, tot);
   /* Le message d'origine conseillait de « changer de mode » même quand les chapitres choisis
      n'ont tout simplement aucune carte — un conseil impossible à suivre. On distingue les deux cas. */
   let tousVides = false;
-  try{ tousVides = tot===0 && selected.size>0 &&
-       [...selected].every(k => !QUESTIONS.some(q => q.topic===k)); }catch(e){}
+  try{ tousVides = tot===0 && _choisis.length>0 &&
+       _choisis.every(k => !QUESTIONS.some(q => q.topic===k)); }catch(e){}
   if(pi) pi.textContent = tot===0
     ? (tousVides ? 'Ces chapitres n\'ont pas encore de cartes — choisis-en un autre.'
                  : 'Aucune question pour ce filtre — change de mode ou de chapitre.')
@@ -17716,13 +17883,13 @@ function updateModeDesc(){ const el=$('#modeDesc'); if(el) el.textContent = MODE
 /* P1 — bouton global « Tout sélectionner / désélectionner » */
 function updateSelectAllBtn(){
   const b=$('#selectAllBtn'); if(!b) return;
-  const keys=topicsFor(activeSubject, effLevel());
+  const keys=accSelectableKeys();          // tous les chapitres AFFICHÉS (chaque année de l'accordéon), sauf ceux sans carte
   const allOn=keys.length>0 && keys.every(k=>selected.has(k));
   b.textContent = allOn ? 'Tout désélectionner' : 'Tout sélectionner';
 }
 const _selectAllBtn=$('#selectAllBtn');
 if(_selectAllBtn) _selectAllBtn.onclick=()=>{
-  const allKeys=topicsFor(activeSubject, effLevel());
+  const allKeys=accSelectableKeys();
   const allOn=allKeys.length>0 && allKeys.every(k=>selected.has(k));
   if(allOn) allKeys.forEach(k=>selected.delete(k)); else allKeys.forEach(k=>selected.add(k));
   buildFamilyAccordion(); updatePoolInfo();
@@ -17731,7 +17898,7 @@ updateModeDesc();
 
 /* ====================== QUIZ FLOW ====================== */
 $('#startBtn').onclick = ()=>{
-  if(selected.size===0){
+  if(selectedInScope().length===0){
     const pi=$('#poolInfo'); if(pi){ pi.textContent='Sélectionne au moins un chapitre pour commencer.'; pi.style.color='#f87171'; }
     $('#famAccordion').scrollIntoView({behavior:'smooth', block:'center'});
     return;
@@ -19393,11 +19560,11 @@ $('#abandonBtn').onclick = ()=>{
    Réutilise QUESTIONS / TOPICS / shuffle / typeset / selected / advAllowed. QCM uniquement (auto-correction fiable). */
 let EXAM = null;
 let _examTimer = null;
-function examPool(){ return QUESTIONS.filter(q => selected.has(q.topic) && inActiveScope(q.topic) && advAllowed(q) && q.mode==='qcm'); }
+function examPool(){ return QUESTIONS.filter(q => selected.has(q.topic) && selScopeOk(q.topic) && advAllowed(q) && q.mode==='qcm'); }
 function fmtClock(s){ s=Math.max(0,s|0); const m=(s/60)|0; return m+':'+String(s%60).padStart(2,'0'); }
 function startExam(){
   if(!revisionAllowed()){ showAccessGate(); return; }
-  if(selected.size===0){
+  if(selectedInScope().length===0){
     const pi=$('#poolInfo'); if(pi){ pi.textContent='Sélectionne au moins un chapitre pour l\'examen.'; pi.style.color='#f87171'; }
     const fa=$('#famAccordion'); if(fa) fa.scrollIntoView({behavior:'smooth', block:'center'}); return;
   }
@@ -19557,13 +19724,13 @@ function goHomeFromExam(){
    normalement (c'est de la vraie révision). */
 function startSprint(days){
   if(typeof revisionAllowed==='function' && !revisionAllowed()){ showAccessGate(); return; }
-  if(selected.size===0){
+  if(selectedInScope().length===0){
     const pi=$('#poolInfo'); if(pi){ pi.textContent='Sélectionne au moins un chapitre pour le sprint.'; pi.style.color='#f87171'; }
     const fa=$('#famAccordion'); if(fa) fa.scrollIntoView({behavior:'smooth', block:'center'}); return;
   }
   const horizon = Date.now() + (days*86400000) + 86400000;  // inclut toute la journée du DS
   const d = SRS._d();
-  const inScope = q => selected.has(q.topic) && inActiveScope(q.topic) && advAllowed(q);
+  const inScope = q => selected.has(q.topic) && selScopeOk(q.topic) && advAllowed(q);
   const seenDue = [];
   QUESTIONS.forEach(q=>{ if(!inScope(q)) return; const c=d.cards[qHash(q.q)]; if(c && (c.due||0) <= horizon) seenDue.push({q,c}); });
   // priorité : plus en retard d'abord → plus d'oublis → intervalle plus court (plus fragile)
@@ -19701,7 +19868,8 @@ function startColle(){
   const note=(txt,col)=>{ if(pi){ pi.textContent=txt; pi.style.color=col||'#f87171'; } };
 
   const complet = t => COLLE_COURS.some(c=>c.topic===t) && COLLE_EX.some(e=>e.topic===t && e.d===1) && COLLE_EX.some(e=>e.topic===t && e.d>=2);
-  let cand = [...selected].filter(t=> inActiveScope(t) && complet(t));
+  // une colle porte sur la matière affichée, mais le chapitre coché peut être d'une autre année autorisée
+  let cand = selectedInScope().filter(t=> TOPICS[t].subject===activeSubject && complet(t));
   let elargi=false;
   if(!cand.length){
     cand = Object.keys(TOPICS).filter(t=> inActiveScope(t) && complet(t));
@@ -26580,7 +26748,8 @@ function aurSesRender(){
     let st = {total:0, learned:0, due:0, newCards:0};
     try{ st = srsStatsForTopic(q.topic, SRS._d(), Date.now()); }catch(e){}
     const pct = st.total ? Math.round(st.learned / st.total * 100) : 0;
-    const fam = (FAMILIES[t.family] || {}).name || '';
+    // l'année suit la famille : une séance peut mêler TSI1 et TSI2, dont les numéros de chapitre se recoupent
+    const fam = [(FAMILIES[t.family] || {}).name || '', (LEVELS[t.level] && t.level !== 'tr') ? LEVELS[t.level].short : ''].filter(Boolean).join(' · ');
     aside.innerHTML = `<div class="aur-side-card" style="--c:${esc(t.raw || '#a78bfa')}"><span class="aur-k">Chapitre</span>
         <div class="aur-side-chap"><span class="aur-ring${pct ? '' : ' zero'}" style="--p:${pct}"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="rb" cx="60" cy="60" r="52" pathLength="100"/><circle class="rf" cx="60" cy="60" r="52" pathLength="100"/></svg><span class="aur-ring-in">${pct}%</span></span>
           <div><b>${esc(String(t.name || '').replace(/^\s*\d+[.)]\s*/, ''))}</b>${fam ? `<span>${esc(fam)}</span>` : ''}</div></div>
