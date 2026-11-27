@@ -49,6 +49,25 @@
 if(t&&t!=='papier')document.documentElement.setAttribute('data-theme',t);})();
 </script>
 <script>
+/* hors-ligne 27/11 : filet visible. Toute l'app vit dans le grand module, qui pose window.__appPrete à sa dernière
+   ligne. S'il lui manque un fichier (SDK Firebase absent du cache et du réseau), il ne s'exécute pas du tout et la
+   page reste inerte, sans un mot. Ce script classique tourne quand même : 12 s après load (qui n'arrive qu'APRÈS
+   l'exécution du module, même lente), il le dit et propose de recharger (une PWA iOS n'a pas de bouton pour ça). */
+(function(){
+  function filet(){
+    if(window.__appPrete || document.getElementById('appEchec')) return;
+    var m = document.getElementById('mjLoading'); if(m) m.classList.add('hidden');
+    var b = document.createElement('div');
+    b.id = 'appEchec'; b.className = 'aur-toast'; b.setAttribute('role', 'alert');
+    b.innerHTML = '<svg class="i" aria-hidden="true"><use href="#i-alert"/></svg><span>L\'application n\'a pas pu se charger : il manque un fichier téléchargé à la mise à jour. Reconnecte-toi puis touche Recharger.</span>'
+      + '<button type="button" class="btn ghost mini">Recharger</button>';
+    b.querySelector('button').onclick = function(){ location.reload(); };
+    document.body.appendChild(b);
+  }
+  window.addEventListener('load', function(){ setTimeout(filet, 12000); });
+})();
+</script>
+<script>
 window.MathJax = {
   tex: {
     inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']],
@@ -3957,6 +3976,8 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
     <button class="modal-close" id="authClose" aria-label="Fermer"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
     <div class="modal-h"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg><h2 id="authTitle">Connexion</h2></div>
     <p class="auth-sub" id="authSub">Connecte-toi pour accéder à la console de révision.</p>
+    <!-- hors-ligne 27/11 : sans réseau ni session, la fenêtre devient fermable et le dit -->
+    <div class="aur-toast aur-toast-inline hidden" id="authHorsLigne" role="status"><svg class="i" aria-hidden="true"><use href="#i-clock"/></svg><span>Hors ligne : connexion impossible pour l'instant.</span></div>
     <!-- F7 : chaque champ a son étiquette visible (le placeholder disparaissait à la saisie et se coupait sur téléphone) -->
     <label class="fld-l" for="authEmail" id="authEmailL">Adresse e-mail</label>
     <input class="ans-input" id="authEmail" type="email" autocomplete="email" placeholder="ex. prenom.nom@mail.fr" style="width:100%">
@@ -4121,9 +4142,9 @@ code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;pa
 
 <script type="module">
 /* ====================== FIREBASE ====================== */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { initializeApp, SDK_VERSION } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
 import { initializeAppCheck, ReCaptchaV3Provider, getToken as acGetToken } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app-check.js";
-import { getAuth, setPersistence, browserLocalPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, sendEmailVerification } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+import { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, sendEmailVerification } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, updateDoc, getDoc, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp, runTransaction, deleteDoc, Timestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 /* Cloud Functions RETIRÉES : l'app fonctionne sur le tier GRATUIT Firebase (Spark). L'approbation de
    classe et la suppression de compte sont 100 % côté client (voir setMemberStatus / admDeleteOne).
@@ -4156,11 +4177,64 @@ try {
     isTokenAutoRefreshEnabled: true
   });
 } catch (e) { console.warn('AppCheck init', e); }
-const auth = getAuth(fbApp);
+/* hors-ligne 27/11 : SECOURS reCAPTCHA. Le SDK App Check charge api.js UNE fois, sans onerror ni nouvel essai :
+   une app ouverte hors ligne n'obtient plus jamais de jeton, et Auth comme Firestore l'attendent (30 s puis
+   échec, flux jamais ouvert) jusqu'à la fermeture de l'app. Au retour du réseau ou au premier plan, si la
+   bibliothèque manque, on la charge nous-mêmes puis on rejoue le rappel que le SDK a posé en propriété onload de
+   SON élément script (jamais déclenché). Jamais pendant que ce script est encore en chargement (deux rendus), et sans
+   plafond d'essais : un recul dans le temps (15 s, 30 s… 10 min) pour un réseau qui va et vient. Garde : ce
+   rappel est un détail interne du SDK épinglé en 12.14.0 ; une autre version désactive simplement le secours. */
+const RC_URL = 'https://www.google.com/recaptcha/api.js';
+const _rc = { sdk: null, sdkCharge: false, sdkErreur: false, t0: Date.now(), essais: 0, prochain: 0, relance: 0, enCours: false, rejoue: false };
+try{
+  _rc.sdk = [...document.scripts].find(s => s.src === RC_URL) || null;
+  if(_rc.sdk) _rc.sdk.addEventListener('load', () => { _rc.sdkCharge = true; });
+}catch(e){}
+function rcPret(){ try{ return !!(window.grecaptcha && typeof window.grecaptcha.render === 'function'); }catch(e){ return false; } }
+function secoursRecaptcha(){
+  if(!fbAppCheck || !_rc.sdk || _rc.enCours || _rc.rejoue || SDK_VERSION !== '12.14.0') return;
+  if(rcPret() || navigator.onLine === false || Date.now() < _rc.prochain) return;
+  if(!_rc.sdkErreur && !_rc.sdkCharge && Date.now() - _rc.t0 < 45000) return;   // api.js du SDK encore en route
+  if(typeof _rc.sdk.onload !== 'function') return;
+  _rc.enCours = true; _rc.essais++;
+  const s = document.createElement('script');
+  s.src = RC_URL; s.async = true; s.dataset.secours = '1';
+  const echec = () => {
+    _rc.enCours = false; try{ s.remove(); }catch(e){}
+    const d = Math.min(600000, 15000 * Math.pow(2, Math.min(_rc.essais - 1, 6)));
+    _rc.prochain = Date.now() + d;
+    clearTimeout(_rc.relance); _rc.relance = setTimeout(secoursRecaptcha, d + 500);   // réseau « présent » sans événement
+  };
+  const garde = setTimeout(echec, 20000);   // bibliothèque jamais prête : place à un prochain essai
+  s.onerror = () => { clearTimeout(garde); echec(); };
+  s.onload = () => {
+    try{
+      window.grecaptcha.ready(() => {
+        clearTimeout(garde); clearTimeout(_rc.relance); _rc.enCours = false;
+        if(_rc.rejoue) return;
+        _rc.rejoue = true;
+        /* api.js du SDK chargé mais pas la bibliothèque : son rappel a déjà mis le rendu en file, rien à rejouer.
+           Sinon on le rejoue, et on le retire de SON script : s'il finissait par charger, pas de second rendu. */
+        if(!_rc.sdkCharge){ const f = _rc.sdk.onload; _rc.sdk.onload = null; try{ f(); }catch(e){ console.warn('secours reCAPTCHA', e); } }
+        try{ SyncDiag.noter('appcheck:secours-recaptcha', null, {couche:'appcheck', code:'essai-' + _rc.essais}); }catch(e){}
+        setTimeout(() => { try{ _recontrolerCompte(undefined, true); }catch(e){} }, 3000);
+      });
+    }catch(e){ clearTimeout(garde); echec(); }
+  };
+  document.head.appendChild(s);
+}
+window.addEventListener('online', secoursRecaptcha);
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') secoursRecaptcha(); });
+if(_rc.sdk) _rc.sdk.addEventListener('error', () => { _rc.sdkErreur = true; if(navigator.onLine !== false) setTimeout(secoursRecaptcha, 15000); });
+window._secoursRecaptcha = secoursRecaptcha;   // pour la synchro : sonde App Check « delai-depasse »
+/* hors-ligne 27/11 : persistance donnée À LA CRÉATION, localStorage en tête. getAuth partait d'IndexedDB : à
+   chaque chargement, la session migrait localStorage → IndexedDB puis revenait par setPersistence, et une autre
+   page ouverte sur le même stockage voyait passer une « déconnexion subie ». IndexedDB reste en 2e : une session
+   restée là (page tuée pendant l'ancien va-et-vient) est reprise et ramenée dans localStorage. La session reste
+   ainsi active entre les rechargements et les fermetures d'onglet. Ni fenêtre surgissante ni redirection dans
+   l'app : pas de popupRedirectResolver (et plus de gapi chargé au démarrage). */
+const auth = initializeAuth(fbApp, { persistence: [browserLocalPersistence, indexedDBLocalPersistence] });
 auth.languageCode = 'fr';   // e-mails (vérification, reset) ET pages d'action Firebase en français
-// Persistance locale : la session reste active entre les rechargements et les fermetures
-// d'onglet (évite de devoir se reconnecter à chaque visite).
-setPersistence(auth, browserLocalPersistence).catch(e=>console.warn('auth persistence', e));
 const db = getFirestore(fbApp);
 let currentUser = null;
 let isAdmin = false;
@@ -4174,7 +4248,76 @@ let myClassStatus = null;                 // 'approved' | 'pending' | 'rejected'
    début de l'adresse e-mail — soit, pour des adresses en prénom.nom, l'identité de l'élève affichée à
    toute sa classe. On le relit donc du document cloud à chaque démarrage. */
 let myCloudPseudo = null;
-function revisionAllowed(){ return !ACCESS_GATE_ON || isAdmin || myClassStatus === 'approved'; }
+/* hors-ligne 27/11 : ÉTAT PROVISOIRE AU CHARGEMENT. Le 1er événement Auth n'arrive qu'après le rechargement du
+   compte par le SDK (5 s hors ligne, 30 s sur un réseau qui ne répond pas), puis l'ancien gestionnaire attendait
+   trois lectures réseau : la page disait « Se connecter » et « Réviser » ouvrait « réservé aux membres » (40 s
+   mesurées hors ligne). On lit donc la session gardée par la persistance locale : le bouton de compte la montre,
+   et si cet appareil a déjà vu CE compte approuvé (quiztsi_class_approved) et lui garde sa progression
+   (quiztsi_srs_owner), l'accès s'applique tout de suite, à titre provisoire. Le 1er événement Auth puis la
+   lecture cloud tranchent (fail-closed inchangé). Rien ici ne touche au verrou d'écriture SRS. */
+let _authEnAttente = true;          // état Auth inconnu jusqu'au 1er événement onAuthStateChanged
+let _authPretOk = null; const _authPret = new Promise(r => { _authPretOk = r; });   // résolue au 1er événement
+let _sessionProvisoire = null;      // {uid, email, nom, admin} : session persistée, avant le 1er événement
+function _traceCompte(uid){         // cet appareil connaît-il déjà ce compte ?
+  try{ return !!uid && ['quiztsi_srs_owner', 'quiztsi_class_approved', 'quiztsi_profile_done'].some(k => localStorage.getItem(k) === uid); }catch(e){ return false; }
+}
+function _approbationLocale(uid){   // approbation déjà confirmée par le cloud SUR cet appareil, progression de ce compte
+  try{ return !!uid && localStorage.getItem('quiztsi_class_approved') === uid && localStorage.getItem('quiztsi_srs_owner') === uid; }catch(e){ return false; }
+}
+try{
+  const _s = JSON.parse(localStorage.getItem('firebase:authUser:' + firebaseConfig.apiKey + ':[DEFAULT]') || 'null');
+  if(_s && _s.uid){
+    const _em = String(_s.email || '');
+    let _proprio = null; try{ _proprio = localStorage.getItem('quiztsi_srs_owner'); }catch(e){}
+    _sessionProvisoire = { uid: _s.uid, email: _em, nom: _em.split('@')[0] || 'Mon compte',
+      admin: _proprio === _s.uid && ADMIN_EMAILS.map(e=>e.toLowerCase()).includes(_em.toLowerCase()) };
+    if(_approbationLocale(_s.uid)) myClassStatus = 'approved';
+  }
+}catch(e){}
+/* Année de l'élève tirée du profil LOCAL, seulement s'il est celui de CE compte (quiztsi_profile n'est pas indexé
+   par compte, quiztsi_profile_done si). Sans elle, l'accès provisoire ouvrait la révision sur le périmètre par
+   défaut (TSI1) : cartes dues de TSI2 ignorées, nouvelles cartes de TSI1 introduites. La lecture cloud tranche. */
+function _niveauLocal(uid){
+  try{
+    if(!uid || localStorage.getItem('quiztsi_profile_done') !== uid) return false;
+    const p = JSON.parse(localStorage.getItem('quiztsi_profile') || 'null');
+    if(!(p && p.filiere === 'TSI' && ['0','1','2'].includes(String(p.annee)))) return false;
+    applyPreferredLevel(p); return true;
+  }catch(e){ return false; }
+}
+/* Au chargement, l'année provisoire attend la fin de l'évaluation du module (activeLevel et lockedLevel sont
+   déclarés plus bas), puis l'accueil est redessiné. Prof : navigation libre, comme applyPreferredLevel. */
+if(_sessionProvisoire) setTimeout(() => {
+  const sp = _sessionProvisoire;
+  if(!sp || !_authEnAttente || ADMIN_EMAILS.map(e=>e.toLowerCase()).includes(sp.email.toLowerCase())) return;
+  if(!_niveauLocal(sp.uid)) return;
+  sp.niveau = true;
+  try{ updateSrsBar(); updateHeaderStats(); buildFamilyAccordion(); updatePoolInfo(); }catch(e){}
+}, 0);
+/* Filet : si l'initialisation d'Auth n'aboutit jamais (IndexedDB bloqué, stockage plein pendant la reprise de la
+   session), l'attente est levée au bout d'une minute pour que la connexion reste possible. */
+setTimeout(() => {
+  if(!_authEnAttente) return;
+  _authEnAttente = false;
+  try{ SyncDiag.noter('auth:attente-longue', null, {couche:'session', code:'60s'}); }catch(e){}
+  if(_authPretOk){ _authPretOk(); _authPretOk = null; }
+  try{ updateAccountUI(); }catch(e){}
+}, 60000);
+/* Borne une attente réseau : au-delà de ms, rejet {code:'app/delai-depasse'} ; la promesse d'origine continue. */
+function _borne(p, ms){
+  let t; const d = new Promise((_, ko) => { t = setTimeout(() => ko(Object.assign(new Error('délai dépassé'), {code:'app/delai-depasse'})), ms); });
+  return Promise.race([p, d]).finally(() => clearTimeout(t));
+}
+/* Lecture du document users/{uid} qui ne vaut « lecture réussie » que venue du SERVEUR. Dès qu'une écriture y
+   attend (profil, demande d'adhésion), getDoc rend hors ligne la vue LOCALE du SDK : la prendre pour le dernier
+   mot du cloud effaçait un renvoi en attente et clôturait le contrôle du compte sans vraie lecture. */
+async function _lireCompte(){
+  if(!currentUser) return null;
+  const snap = await getDoc(doc(db, 'users', currentUser.uid));
+  if(snap.metadata.fromCache) throw Object.assign(new Error('lu dans le cache'), {code:'unavailable'});
+  return snap.exists() ? snap.data() : null;
+}
+function revisionAllowed(){ return !ACCESS_GATE_ON || isAdmin || myClassStatus === 'approved' || (_authEnAttente && !!_sessionProvisoire && _sessionProvisoire.admin); }
 
 // Clé de réservation d'un pseudo (unicité insensible à la casse, ID Firestore valide)
 function normUsername(s){
@@ -4214,19 +4357,50 @@ const Cloud = {
   /* v455 : une déconnexion VOULUE (bouton « Me déconnecter », gates) pose ce drapeau pour que onAuthStateChanged la
      distingue d'une déconnexion SUBIE (décidée par le SDK ou le stockage) — seule la première purge l'appareil. */
   async signOut(){ _deconnexionVoulue = true; try{ return await signOut(auth); }catch(e){ _deconnexionVoulue = false; throw e; } },
+  /* hors-ligne 27/11 — SÉANCE IDEMPOTENTE. addDoc créait un document NOUVEAU à chaque envoi : un bilan renvoyé (deux
+     pages qui vident la même file, envoi coupé après la séance mais avant agg) comptait double ou plus (4 exemplaires
+     de la séance du 26/11 à 09:22:34). Désormais : un identifiant DÉTERMINISTE, posé une fois sur le bilan et gardé
+     avec lui dans la file d'attente ; le bilan entre dans la file AVANT l'envoi (une app fermée pendant l'envoi ne le
+     perd plus) et n'en sort qu'à l'accusé ; la séance et son agrégat partent dans UNE transaction, sans effet si la
+     séance existe déjà (agg n'est jamais compté deux fois, même si deux pages l'envoient ensemble). La règle interdit
+     à l'élève de réécrire une séance : un refus suivi d'une relecture qui trouve le document = déjà envoyée ; sinon
+     c'est un vrai refus (App Check, réseau) et le bilan reste en attente. */
   async saveSession(s){
     if(!currentUser) return;
     const uid = currentUser.uid;
-    await addDoc(collection(db,'users',uid,'sessions'), {
-      /* v455 : une séance envoyée APRÈS COUP (restée en attente sur l'appareil) garde sa vraie date. */
-      date: (s.enAttente && s.date) ? Timestamp.fromMillis(s.date) : serverTimestamp(), score:s.score, total:s.total, mode:s.mode, topics:s.topics, details:s.details, bestStreak:s.bestStreak||0
-    });
+    if(!s.sid) s.sid = 's' + (s.date || 0) + '-' + (s.total || 0) + '-' + (s.score || 0);
+    if(!s.enAttente && typeof SRS !== 'undefined'){ try{ SRS._garderSeance(s, uid); }catch(_){} }
+    const sref = doc(db,'users',uid,'sessions',s.sid);
+    const enVol = (typeof SRS !== 'undefined') ? SRS._sidsEnVol : null;
+    if(enVol) enVol.add(s.sid);
+    let ecrit = false;   // vrai si CET envoi a créé la séance (faux : elle était déjà au cloud)
+    try{ ecrit = await runTransaction(db, tx => this._seanceTx(tx, s, uid, sref)); }
+    catch(e){
+      let deja = false;
+      if(estRefusJeton(e)){ try{ deja = (await getDoc(sref)).exists(); }catch(_){} }
+      if(!deja) throw e;
+    }
+    finally{ if(enVol) enVol.delete(s.sid); }
+    if(typeof SRS !== 'undefined'){ try{ SRS._oublierSeance(s, uid); }catch(_){} }
+    return !!ecrit;
+  },
+  /* Corps de la transaction (rejouable par le SDK : aucun effet de bord hors tx). Rend true si elle crée la séance. */
+  async _seanceTx(tx, s, uid, sref){
+    if((await tx.get(sref)).exists()) return false;    // déjà envoyée (autre page, envoi précédent coupé)
     const uref = doc(db,'users',uid);
-    const snap = await getDoc(uref);
+    const snap = await tx.get(uref);
     const cur = snap.exists()? snap.data() : {};
     const agg = cur.agg || {totalAnswered:0, totalCorrect:0, bestStreak:0, byTopic:{}, byCard:{}};
     if(!agg.byTopic) agg.byTopic = {};
     if(!agg.byCard) agg.byCard = {};   // agrégat par CARTE (pour le top des cartes ratées côté prof)
+    /* hors-ligne 27/11 : agg.byCard sans les cartes absentes de la banque (retirées ou énoncé modifié ; aucun lecteur
+       ne les affiche) : 451 entrées, ≈ 31 Ko du document d'Arthur (86 % de 1 Mio). Seulement si aucune page plus récente
+       n'a écrit (srsPar, aggPar) : une banque plus neuve connaît des cartes que celle-ci ignore. Jamais depuis une copie
+       de travail (Cloud._copieDeTravail), dont la banque peut porter des retraits non livrés. */
+    const parAgg = +(cur.aggPar && cur.aggPar.v) || 0, pub = !this._copieDeTravail();
+    if(pub && Math.max(+(cur.srsPar && cur.srsPar.v) || 0, parAgg) <= APP_BUILD){
+      const ok = new Set(allQuestionHashes()); for(const h in agg.byCard){ if(!ok.has(h)) delete agg.byCard[h]; }
+    }
     agg.totalAnswered += s.total; agg.totalCorrect += s.score;
     agg.bestStreak = Math.max(agg.bestStreak||0, s.bestStreak||0);
     // analytique session (additif) : nb de sessions, temps cumulé, jours actifs distincts
@@ -4244,12 +4418,27 @@ const Cloud = {
        l'e-mail dans users/{uid}.displayName à chaque fin de session, et c'est ce champ que lit le
        classement. Si aucun nom n'est connu, on n'écrit simplement pas la clé (merge:true la laisse
        intacte) et l'élève s'affiche « Élève » jusqu'à ce qu'il choisisse un pseudo. */
-    const majUser = {email:currentUser.email, lastActive:serverTimestamp(), agg};
+    /* aggPar ne recule jamais : une page plus ancienne (non périmée au sens de srsPar) qui envoie une séance ne doit pas
+       rouvrir l'élagage des cartes qu'une banque plus récente connaît. */
+    const majUser = {email:currentUser.email, lastActive:serverTimestamp(), agg, aggPar:{v: Math.max(pub ? APP_BUILD : 0, parAgg)}};
     if(cur.displayName) majUser.displayName = cur.displayName;
-    await setDoc(uref, majUser, {merge:true});
+    tx.set(sref, {
+      /* v455 : une séance envoyée APRÈS COUP (restée en attente sur l'appareil) garde sa vraie date. */
+      date: (s.enAttente && s.date) ? Timestamp.fromMillis(s.date) : serverTimestamp(), score:s.score, total:s.total, mode:s.mode, topics:s.topics, details:s.details, bestStreak:s.bestStreak||0
+    });
+    /* mergeFields : agg est REMPLACÉ en bloc (lu dans la même transaction, donc à jour), sinon l'élagage ci-dessus
+       resterait sans effet (merge:true ne supprime aucune clé). Les autres champs du document sont intacts. */
+    tx.set(uref, majUser, {mergeFields: Object.keys(majUser)});
+    return true;
   },
   async myAggregate(){ if(!currentUser) return null; const snap = await getDoc(doc(db,'users',currentUser.uid)); return snap.exists()? (snap.data().agg||null) : null; },
-  async myDoc(){ if(!currentUser) return null; const snap = await getDoc(doc(db,'users',currentUser.uid)); return snap.exists()? snap.data() : null; },
+  /* hors-ligne 27/11 : myDoc et loadSRS ne valent « lecture du cloud » que venus du SERVEUR. Une écriture en attente
+     (profil, demande d'adhésion, srs) fait rendre à getDoc, hors ligne, la vue LOCALE du SDK : la prendre pour le cloud
+     ouvrait le compte (_ouvrirCompte) sur un srs vide et mettait en file une écriture qui remplaçait toute la
+     progression au retour du réseau. Même garde que _lireCompte. myAggregate (affichage seul) garde la vue locale. */
+  async myDoc(){ if(!currentUser) return null; const snap = await getDoc(doc(db,'users',currentUser.uid));
+    if(snap.metadata.fromCache) throw Object.assign(new Error('lu dans le cache'), {code:'unavailable'});
+    return snap.exists()? snap.data() : null; },
   async saveProfile(p){ if(!currentUser) return; await setDoc(doc(db,'users',currentUser.uid), {profile:p}, {merge:true}); },
   // --- Classe TSI Chaptal : demande d'adhésion (élève) + roster d'approbation (admin) ---
   // Aucune règle Firestore à changer : la demande est écrite dans le profil de l'élève (clé 'profile'
@@ -4292,7 +4481,14 @@ const Cloud = {
   async getReports(n=500){ const qs = await getDocs(query(collection(db,'reports'), orderBy('date','desc'), limit(n))); return qs.docs.map(d=>({id:d.id, ...d.data()})); },
   /* `uid` explicite (v314) : une lecture ou une écriture reprise après réparation des jetons vise le
      compte qui l'a lancée, jamais celui qui s'est connecté entre-temps. */
-  async loadSRS(uid){ uid = uid || (currentUser && currentUser.uid); if(!uid) return null; const snap = await getDoc(doc(db,'users',uid)); return snap.exists()? (snap.data().srs||null) : null; },
+  async loadSRS(uid){ uid = uid || (currentUser && currentUser.uid); if(!uid) return null; const snap = await getDoc(doc(db,'users',uid));
+    if(snap.metadata.fromCache) throw Object.assign(new Error('lu dans le cache'), {code:'unavailable'});   // hors-ligne 27/11 : voir myDoc
+    if(!snap.exists()) return null;
+    /* hors-ligne 27/11 : la version du dernier écrivain (srsPar, voir saveSRS) accompagne la progression lue, en
+       propriété NON énumérable : SRS._ouvrirCompte la lit, elle n'entre ni dans le magasin local ni dans un paquet. */
+    const data = snap.data(), srs = data.srs || null;
+    if(srs && typeof srs === 'object' && data.srsPar && typeof data.srsPar === 'object'){ try{ Object.defineProperty(srs, 'srsPar', {value: data.srsPar, enumerable: false}); }catch(_){} }
+    return srs; },
   /* `bundle` = {cards, streak, daily, reviewLog}, imbriqué sous la clé `srs`.
 
      ⚠️ REMPLACEMENT, ET NON FUSION. `setDoc(..., {merge:true})` fusionne les maps en
@@ -4305,12 +4501,27 @@ const Cloud = {
      paquet ne pouvait retirer. `updateDoc` sur le champ `srs` écrase la map entière et
      rend la suppression enfin possible. Le repli `setDoc` sert au tout premier écrit,
      quand le document de l'élève n'existe pas encore (updateDoc échoue en `not-found`). */
+  /* hors-ligne 27/11 : COPIE DE TRAVAIL (fichier ouvert en local, serveur localhost ou .test). Elle n'estampille pas la
+     progression (srsPar) et ne relève pas aggPar : une copie dont deploiement.sh a déjà monté APP_BUILD (livraison en
+     échec) ferait sinon passer toutes les pages en ligne du compte en lecture seule jusqu'à la livraison suivante. Pour
+     firestore.rules, ses écritures sont celles d'un ancien client : elle peut ajouter des cartes, pas en retirer.
+     Liste NÉGATIVE : en ligne (education-tsi.fr), la réponse est toujours non. */
+  _copieDeTravail(){
+    try{ const h = location.hostname || ''; return location.protocol === 'file:' || h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || /\.(localhost|test)$/.test(h); }
+    catch(_){ return false; }
+  },
   async saveSRS(bundle, uid){
     uid = uid || (currentUser && currentUser.uid);
     if(!uid) return;
     const ref = doc(db,'users',uid);
+    /* hors-ligne 27/11 : chaque écriture de la progression porte la version de la page qui l'écrit (et un appareil
+       court, pour le diagnostic). Une page plus ancienne que ce numéro ne réécrit plus le cloud (SRS._ouvrirCompte) et
+       la règle Firestore refuse qu'une écriture estampillée le fasse reculer. `t` change à chaque écriture : srsPar
+       diffère donc toujours de sa valeur précédente, ce à quoi la règle reconnaît une écriture estampillée. */
+    const maj = {srs:bundle, srsUpdated:serverTimestamp()};
+    if(!this._copieDeTravail()) maj.srsPar = {v: APP_BUILD, t: Date.now(), ap: SyncDiag.appareil()};
     try{
-      await updateDoc(ref, {srs:bundle, srsUpdated:serverTimestamp()});
+      await updateDoc(ref, maj);
     }catch(e){
       /* DOCUMENT ABSENT (v313). Pour le prof, updateDoc répond not-found. Pour un ÉLÈVE, la règle
          `update` évalue privilegedUnchanged() sur un resource nul et échoue : le serveur répond
@@ -4322,7 +4533,7 @@ const Cloud = {
       if(!absent && /permission-denied/i.test(code)){
         try{ absent = !(await getDoc(ref)).exists(); }catch(_){ absent = false; }
       }
-      if(absent) await setDoc(ref, {srs:bundle, srsUpdated:serverTimestamp()}, {merge:true});
+      if(absent) await setDoc(ref, maj, {merge:true});
       else throw e;
     }
   },
@@ -4443,7 +4654,8 @@ const SyncDiag = {
          session du SDK Auth est-elle encore dans localStorage à cet instant (sinon : lecture vide du stockage). */
       vis: (typeof document !== 'undefined' && document.visibilityState) || null,
       age: Math.round((Date.now() - _T0) / 1000),
-      cleAuth: this.cleAuthPresente() };
+      cleAuth: this.cleAuthPresente(),
+      v: this.version() };   // hors-ligne 27/11 : version de la page qui a vu l'événement
     try{
       const l = JSON.parse(localStorage.getItem(this.CLE) || '[]');
       l.push(x); localStorage.setItem(this.CLE, JSON.stringify(l.slice(-30)));
@@ -4456,15 +4668,34 @@ const SyncDiag = {
     try{ for(let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if(k && k.indexOf('firebase:authUser:') === 0) return true; } return false; }
     catch(_){ return null; }
   },
+  /* hors-ligne 27/11 : version de la page (APP_BUILD est déclarée plus bas, dans la section SRS : null si le journal
+     note quelque chose avant qu'elle existe) et appareil court (système-navigateur[-pwa]), sans identifiant. */
+  version(){ try{ return APP_BUILD; }catch(_){ return null; } },
+  appareil(){
+    try{
+      const ua = navigator.userAgent || '';
+      const os = (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) ? 'ios'
+               : /Android/.test(ua) ? 'android' : /Mac OS X/.test(ua) ? 'mac' : /Windows/.test(ua) ? 'win' : /Linux|CrOS/.test(ua) ? 'linux' : 'autre';
+      const nav = /Edg\//.test(ua) ? 'edge' : /Firefox\/|FxiOS/.test(ua) ? 'firefox' : /CriOS|Chrome\//.test(ua) ? 'chrome' : /Safari\//.test(ua) ? 'safari' : 'autre';
+      const pwa = !!((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true);
+      return os + '-' + nav + (pwa ? '-pwa' : '');
+    }catch(_){ return 'inconnu'; }
+  },
   /* v455 : le journal part au cloud à chaque connexion (users/{uid}.diag, 30 dernières lignes) : une déconnexion
-     subie sur un téléphone se lit ensuite depuis la console, sans toucher à l'appareil. Silencieux. */
+     subie sur un téléphone se lit ensuite depuis la console, sans toucher à l'appareil. Silencieux.
+     hors-ligne 27/11 : `diag` n'était que le journal du DERNIER appareil (celui de l'iPhone écrasé par le Mac). Il
+     reste écrit tel quel (anciennes pages, diag-compte.js), et chaque appareil garde EN PLUS sa propre entrée,
+     diagApp.<appareil> = {v, t, l : 10 dernières lignes} : clés en nombre borné (système × navigateur × pwa), ≈ 2 Ko
+     chacune, fusion profonde (merge) qui ne touche pas aux entrées des autres appareils. */
   async envoyer(uid){
     try{
       const l = this.lire(); if(!uid || !l.length) return;
       const dernier = l[l.length - 1].t || 0;
       let envoye = 0; try{ envoye = +(localStorage.getItem(this.CLE + '_envoye') || 0); }catch(_){}
       if(!(dernier > envoye)) return;
-      await setDoc(doc(db, 'users', uid), {diag: l.slice(-30), diagMaj: serverTimestamp()}, {merge:true});
+      const ap = this.appareil();
+      await setDoc(doc(db, 'users', uid), {diag: l.slice(-30), diagMaj: serverTimestamp(),
+        diagApp: {[ap]: {v: this.version(), t: Date.now(), l: l.slice(-10)}}}, {merge:true});
       try{ localStorage.setItem(this.CLE + '_envoye', String(dernier)); }catch(_){}
     }catch(e){ console.warn('journal synchro : envoi impossible', e); }
   }
@@ -4538,11 +4769,15 @@ function annoncerSessionExpiree(){
     if(hote) hote.appendChild(b); else { b.classList.remove('aur-toast-inline'); document.body.appendChild(b); }
   }catch(e){}
 }
-setInterval(()=>{ try{ authReprendreSiDifferee(); }catch(e){} }, 15000);   // rattrapage si aucun changement d'écran ne l'a fait
+setInterval(()=>{ try{ authReprendreSiDifferee(); authRouvrirApresHorsLigne(); if(_accueilDiffere) _accueilApresProfil(); }catch(e){} }, 15000);   // rattrapage si aucun changement d'écran ne l'a fait
 onAuthStateChanged(auth, async (user)=>{
   currentUser = user;
   isAdmin = !!(user && ADMIN_EMAILS.map(e=>e.toLowerCase()).includes((user.email||'').toLowerCase()));
   const authInitiale = _authInitiale; _authInitiale = false;
+  /* hors-ligne 27/11 : l'état Auth est connu ; la session provisoire du chargement s'efface devant lui. */
+  const _provisoire = _sessionProvisoire; _authEnAttente = false; _sessionProvisoire = null;
+  if(_authPretOk){ _authPretOk(); _authPretOk = null; }
+  if(_provisoire && _provisoire.niveau && (!user || user.uid !== _provisoire.uid) && !authSeanceEnCours()){ activeLevel = 'tsi1'; lockedLevel = null; }   // année provisoire d'un autre compte
   if(user){
     /* v455 : le compte est là (reconnexion de l'élève, ou le SDK qui revient sur sa « déconnexion ») : plus de
        fenêtre différée ni de délai de grâce, et le journal note au bout de combien de temps il est revenu. */
@@ -4550,6 +4785,23 @@ onAuthStateChanged(auth, async (user)=>{
     try{ const b = document.getElementById('authExpBanniere'); if(b) b.remove(); }catch(e){}
     if(_authNullAt){ SyncDiag.noter('auth:connexion', null, {couche:'session', code:'apres-' + Math.round((Date.now() - _authNullAt)/1000) + 's'}); _authNullAt = 0; }
     if(_authExpireeOuverte && typeof closeAuth === 'function'){ try{ closeAuth(); }catch(e){} }
+    /* hors-ligne 27/11 : AVANT toute attente réseau, les drapeaux locaux de CE compte s'appliquent (la lecture
+       cloud, plus bas, garde le dernier mot) : bouton de compte, révision, fenêtres ouvertes à tort. */
+    if(_provisoire && _provisoire.uid !== user.uid && myClassStatus === 'approved') myClassStatus = null;
+    if(myClassStatus !== 'approved' && _approbationLocale(user.uid)) myClassStatus = 'approved';
+    _niveauLocal(user.uid);                        // l'année de l'élève avec l'accès (la lecture cloud tranche)
+    const _tracesAvant = _traceCompte(user.uid);   // relevées AVANT _reclamerSiVide, qui peut poser le propriétaire
+    if(typeof updateAccountUI === 'function') updateAccountUI();
+    if(typeof updateSrsBar === 'function') updateSrsBar();
+    if(typeof updateHeaderStats === 'function') updateHeaderStats();
+    if(typeof buildFamilyAccordion === 'function') buildFamilyAccordion();
+    if(revisionAllowed() && typeof closeAccessGate === 'function') closeAccessGate();
+    if(authInitiale && !verifyGateActive){ const am = document.getElementById('authModal'); if(am && !am.classList.contains('hidden')){ try{ closeAuth(); }catch(e){} } }
+    /* La lecture du profil part tout de suite, en parallèle de celle de la progression (même document) ; si elle
+       aboutit après le délai d'attente plus bas, elle compte comme « prochaine lecture réussie ». Lecture du
+       SERVEUR seulement (_lireCompte) : la vue locale du SDK n'a jamais le dernier mot. */
+    const _pProfil = (user.emailVerified || isAdmin) ? _lireCompte() : null;
+    if(_pProfil) _pProfil.catch(()=>{});
     try{
       // Isolation par compte : si la progression locale appartient à un AUTRE
       // utilisateur (ou à personne), on la purge AVANT de charger le cloud de ce
@@ -4570,7 +4822,10 @@ onAuthStateChanged(auth, async (user)=>{
       /* Garde (v314) : si ce compte s'est déconnecté pendant la lecture, on n'ouvre rien. */
       if(typeof SRS!=='undefined' && auth.currentUser && auth.currentUser.uid === user.uid){
         SRS._ouvrirCompte(user.uid, cloud);
-        if(cloud || SRS._etatSale()) SRS._syncCloud();
+        /* hors-ligne 27/11 : plus d'écriture sans motif à la connexion (avant : dès que le cloud existait, donc même
+           depuis une page périmée qui venait d'effacer les cartes qu'elle ignore). _ouvrirCompte n'a laissé le marqueur
+           que s'il reste des notes à envoyer ou si la fusion apporte au cloud une carte qu'il n'a pas. */
+        if(SRS._etatSale() || (SRS._secours != null && SRS._secoursOk < SRS._secoursN)) SRS._syncCloud();   // hors-ligne 27/11 : _secours = notes en mémoire seulement (stockage plein)
         SRS._envoyerSeancesEnAttente();     // v455 : bilans restés sur l'appareil (déconnecté, refus, réseau)
         SyncDiag.envoyer(user.uid);         // v455 : journal technique lisible depuis la console Firebase
       }
@@ -4580,8 +4835,12 @@ onAuthStateChanged(auth, async (user)=>{
     }
     // Rafraîchit l'état serveur : emailVerified peut être périmé dans le token
     // mis en cache par le navigateur (Chrome surtout). Best-effort, non bloquant.
-    try{ await user.reload(); if(auth.currentUser){ user = auth.currentUser; currentUser = user; } }
-    catch(e){ console.warn('user.reload', e); }
+    /* hors-ligne 27/11 : seulement pour un e-mail pas encore vérifié et avec du réseau, borné à 4 s : hors ligne,
+       il attendait jusqu'à 30 s un jeton App Check introuvable, avant tout le reste. */
+    if(!user.emailVerified && navigator.onLine !== false){
+      try{ await _borne(user.reload(), 4000); if(auth.currentUser){ user = auth.currentUser; currentUser = user; } }
+      catch(e){ console.warn('user.reload', e); }
+    }
     isAdmin = !!(user && ADMIN_EMAILS.map(e=>e.toLowerCase()).includes((user.email||'').toLowerCase()));
     // Blocage tant que l'e-mail n'est pas vérifié (les comptes prof/admin déclarés passent outre)
     if(!user.emailVerified && !isAdmin){
@@ -4593,47 +4852,42 @@ onAuthStateChanged(auth, async (user)=>{
       // défaut on AFFICHE le gate (fail-closed — un compte sans profil connu ne
       // doit jamais passer ; c'était la faille des gates sautés sur Chrome).
       let udoc=null, readOk=false;
-      for(let attempt=0; attempt<2 && !readOk; attempt++){
-        try{ udoc = await Cloud.myDoc(); readOk=true; }
-        catch(e){ console.warn('profile check (essai '+(attempt+1)+')', e); }
-      }
-      myClassStatus = (readOk && udoc && udoc.profile && udoc.profile.classStatus) || null;
-      /* Pseudo : le profil cloud d'abord, le displayName du doc ensuite (il est écrit à l'inscription).
-         On le recopie dans le profil local pour que cet appareil l'ait aussi hors ligne. */
-      if(readOk && udoc){
-        myCloudPseudo = (udoc.profile && udoc.profile.pseudo) || udoc.displayName || null;
-        if(myCloudPseudo){
-          try{ const pl = JSON.parse(localStorage.getItem('quiztsi_profile')||'{}');
-               if(!pl.pseudo){ pl.pseudo = myCloudPseudo; localStorage.setItem('quiztsi_profile', JSON.stringify(pl)); } }catch(e){}
+      /* hors-ligne 27/11 : 1er essai = la lecture lancée à l'arrivée du compte, bornée à 8 s ; 2e essai seulement si
+         elle a échoué (pas expiré) et que le réseau est là. */
+      const _essais = [_pProfil || _lireCompte()];
+      try{ udoc = await _borne(_essais[0], 8000); readOk = true; }
+      catch(e){
+        console.warn('profile check (essai 1)', e);
+        if(navigator.onLine !== false && !(e && e.code === 'app/delai-depasse')){
+          _essais.push(_lireCompte());
+          try{ udoc = await _borne(_essais[1], 8000); readOk = true; }
+          catch(e2){ console.warn('profile check (essai 2)', e2); }
         }
       }
-      // Anti-verrouillage : mémorise une approbation CONFIRMÉE (par compte) et la réutilise
-      // UNIQUEMENT si la lecture cloud échoue totalement (réseau instable, token périmé sur
-      // Chrome). Un membre déjà approuvé n'est ainsi jamais renvoyé vers « Rejoindre la
-      // classe » à cause d'un simple aléa réseau.
-      try{
-        if(readOk){
-          if(myClassStatus==='approved') localStorage.setItem('quiztsi_class_approved', user.uid);
-          else if(localStorage.getItem('quiztsi_class_approved')===user.uid) localStorage.removeItem('quiztsi_class_approved');
-        } else if(localStorage.getItem('quiztsi_class_approved')===user.uid){
-          myClassStatus = 'approved';
-        }
-      }catch(e){}
-      if(readOk && udoc && udoc.profile) applyPreferredLevel(udoc.profile);   // Phase 2 : nav par défaut = année de l'élève
       let needs;
       if(readOk){
-        needs = (typeof needsProfile==='function') && needsProfile(udoc, user);
+        _recontroleUid = null;
+        needs = _appliquerCompteCloud(user, udoc);
       } else {
+        // Anti-verrouillage : une approbation CONFIRMÉE (par compte) sert UNIQUEMENT si la lecture cloud échoue
+        // totalement (réseau instable, token périmé sur Chrome) : un membre approuvé n'est jamais renvoyé vers
+        // « Rejoindre la classe » à cause d'un simple aléa réseau.
+        myClassStatus = null;
+        try{ if(localStorage.getItem('quiztsi_class_approved')===user.uid) myClassStatus = 'approved'; }catch(e){}
         let doneLocal=false; try{ doneLocal = (localStorage.getItem('quiztsi_profile_done')===user.uid); }catch(e){}
-        needs = !doneLocal;
+        /* hors-ligne 27/11 : une lecture ÉCHOUÉE ne vaut plus « profil absent » sur un appareil qui connaît déjà ce
+           compte (progression, approbation ou profil) ; un compte inconnu de l'appareil garde l'écran (fail-closed).
+           Le contrôle complet est refait à la prochaine lecture réussie (_recontrolerCompte). */
+        needs = !doneLocal && !_tracesAvant;
+        _recontroleUid = user.uid; _profilProvisoire = needs;
+        _essais.forEach(p => p.then(d => _recontrolerCompte(d)).catch(()=>{}));
       }
       if(needs && typeof showProfileGate === 'function'){
         showProfileGate(udoc, user);
       } else {
-        // Onboarding seulement après connexion vérifiée et profil complet
-        if(typeof maybeOnboard === 'function') maybeOnboard();
-        // Avis ponctuel (1×/appareil) : informe les élèves déjà inscrits du passage en accès classe
-        if(typeof maybeAccessNotice === 'function') maybeAccessNotice();
+        // Onboarding seulement après connexion vérifiée et profil complet, puis l'avis ponctuel (1×/appareil) du
+        // passage en accès classe. hors-ligne 27/11 : reportés à la fin de la séance si la révision a déjà commencé.
+        _accueilApresProfil();
       }
     }
   } else {
@@ -4659,7 +4913,10 @@ onAuthStateChanged(auth, async (user)=>{
          (SRS_OWNER_KEY) : s'il se reconnecte il la retrouve telle quelle ; si un autre compte se connecte,
          _ouvrirCompte la met de côté et repart à vide. Avant, la purge au chargement suffisait à vider l'appareil
          dès que la session Auth manquait au démarrage. */
-      if(typeof openAuth === 'function') openAuth();
+      /* hors-ligne 27/11 : une séance commencée sur la foi de la session provisoire n'est pas interrompue : même
+         traitement qu'une session expirée (bandeau dans la séance, fenêtre de connexion à la fin). */
+      if(_provisoire && authSeanceEnCours()){ _authDifferee = true; annoncerSessionExpiree(); }
+      else if(typeof openAuth === 'function') openAuth();
     } else {
       /* DÉCONNEXION SUBIE (v455, voir le bloc « DÉCONNEXION SUBIE » plus haut) : rien n'est purgé, on journalise,
          et on laisse quelques secondes au SDK pour revenir sur sa décision avant de déranger l'élève. */
@@ -4673,7 +4930,98 @@ onAuthStateChanged(auth, async (user)=>{
   if(typeof updateSrsBar === 'function') updateSrsBar();
   if(typeof updateHeaderStats === 'function') updateHeaderStats();
   if(typeof buildFamilyAccordion === 'function') buildFamilyAccordion();
+  if(user && revisionAllowed() && typeof closeAccessGate === 'function') closeAccessGate();   // hors-ligne 27/11 : ouverte pendant l'attente
 });
+/* hors-ligne 27/11 : ce que décide une lecture cloud RÉUSSIE du document users/{uid} (le cloud a le dernier mot) :
+   statut de classe (drapeau local posé ou retiré), pseudo, année par défaut, profil complet (drapeau local posé ;
+   profil validé hors ligne renvoyé s'il n'est jamais arrivé). Renvoie true si l'écran de profil est requis. */
+function _appliquerCompteCloud(user, udoc){
+  myClassStatus = (udoc && udoc.profile && udoc.profile.classStatus) || null;
+  /* Pseudo : le profil cloud d'abord, le displayName du doc ensuite (il est écrit à l'inscription).
+     On le recopie dans le profil local pour que cet appareil l'ait aussi hors ligne. */
+  if(udoc){
+    myCloudPseudo = (udoc.profile && udoc.profile.pseudo) || udoc.displayName || null;
+    if(myCloudPseudo){
+      try{ const pl = JSON.parse(localStorage.getItem('quiztsi_profile')||'{}');
+           if(!pl.pseudo){ pl.pseudo = myCloudPseudo; localStorage.setItem('quiztsi_profile', JSON.stringify(pl)); } }catch(e){}
+    }
+  }
+  // Anti-verrouillage : mémorise une approbation CONFIRMÉE (par compte), retirée dès que le cloud la dément.
+  try{
+    if(myClassStatus==='approved') localStorage.setItem('quiztsi_class_approved', user.uid);
+    else if(localStorage.getItem('quiztsi_class_approved')===user.uid) localStorage.removeItem('quiztsi_class_approved');
+  }catch(e){}
+  if(udoc && udoc.profile) applyPreferredLevel(udoc.profile);   // Phase 2 : nav par défaut = année de l'élève
+  /* Profil complet confirmé : drapeau local posé (avant, seuls l'inscription et l'écran de profil SUR cet appareil
+     le posaient, d'où l'écran bloquant hors ligne sur un appareil où l'on s'était seulement connecté). */
+  if(profileIsComplete(udoc && udoc.profile)){
+    try{ localStorage.setItem(PROFILE_DONE_KEY, user.uid); localStorage.removeItem(PROFILE_ENVOI_KEY); }catch(e){}
+    /* Son année aussi, fusionnée dans le profil local : l'accès provisoire hors ligne l'applique (_niveauLocal). */
+    const cp = udoc.profile;
+    if(cp.filiere === 'TSI' && ['0','1','2'].includes(String(cp.annee))){
+      try{ const pl = JSON.parse(localStorage.getItem('quiztsi_profile')||'{}');
+           if(pl.filiere !== cp.filiere || String(pl.annee) !== String(cp.annee)){ pl.filiere = cp.filiere; pl.annee = cp.annee; localStorage.setItem('quiztsi_profile', JSON.stringify(pl)); } }catch(e){}
+    }
+    return false;
+  }
+  let envoi = null; try{ envoi = localStorage.getItem(PROFILE_ENVOI_KEY); }catch(e){}
+  if(envoi === user.uid){
+    let pl = null; try{ pl = JSON.parse(localStorage.getItem('quiztsi_profile') || 'null'); }catch(e){}
+    if(profileIsComplete(pl)){
+      const p = {pseudo: pl.pseudo || null, statut: pl.statut, nom: pl.nom || null, lycee: pl.lycee || null,
+                 filiere: pl.filiere || null, annee: (pl.annee != null ? pl.annee : null), classe: pl.classe || null};
+      Cloud.saveProfile(p).then(() => { try{ localStorage.removeItem(PROFILE_ENVOI_KEY); }catch(e){} })
+        .catch(e => console.warn('saveProfile (renvoi)', e));
+      return false;
+    }
+  }
+  return (typeof needsProfile==='function') && needsProfile(udoc, user);
+}
+/* hors-ligne 27/11 : contrôle du compte refait à la PROCHAINE LECTURE RÉUSSIE (du serveur) quand celle du démarrage a
+   échoué : lecture lente qui aboutit après le délai, retour du réseau, retour au premier plan, secours reCAPTCHA.
+   Au plus une relecture (document d'environ 900 Ko) par demi-minute, sauf après le secours. Jamais en pleine
+   séance (l'écran de profil la couvrirait) : on repasse une minute plus tard. */
+let _recontroleUid = null, _recontroleEnCours = false, _recontroleEncore = false, _recontroleT = 0, _recontroleDernier = 0, _profilProvisoire = false;
+async function _recontrolerCompte(lu, force){
+  const u = currentUser;
+  if(!u || _recontroleUid !== u.uid) return;
+  if(_recontroleEnCours){ if(force) _recontroleEncore = true; return; }   // après le secours : refaite à la fin de celle en cours
+  if(lu === undefined && (navigator.onLine === false || (!force && Date.now() - _recontroleDernier < 30000))) return;
+  if(authSeanceEnCours()){ clearTimeout(_recontroleT); _recontroleT = setTimeout(() => _recontrolerCompte(), 60000); return; }
+  _recontroleEnCours = true;
+  try{
+    if(lu === undefined) _recontroleDernier = Date.now();
+    const udoc = (lu !== undefined) ? lu : await _borne(_lireCompte(), 15000);
+    if(!currentUser || currentUser.uid !== u.uid || _recontroleUid !== u.uid) return;
+    _recontroleUid = null;
+    const needs = _appliquerCompteCloud(u, udoc);
+    const pm = document.getElementById('profileModal');
+    const ouvert = !!pm && !pm.classList.contains('hidden');
+    if(needs){ if(!ouvert && !verifyGateActive && typeof showProfileGate === 'function') showProfileGate(udoc, u); }
+    else if(ouvert && _profilProvisoire){ verifyGateActive = false; pm.classList.add('hidden'); _accueilApresProfil(); }
+    _profilProvisoire = false;
+    if(typeof updateAccountUI === 'function') updateAccountUI();
+    if(typeof updateSrsBar === 'function') updateSrsBar();
+    if(typeof updateHeaderStats === 'function') updateHeaderStats();
+    if(typeof buildFamilyAccordion === 'function') buildFamilyAccordion();
+    if(revisionAllowed() && typeof closeAccessGate === 'function') closeAccessGate();
+  }catch(e){ console.warn('contrôle du compte (reprise)', e); }
+  finally{
+    _recontroleEnCours = false;
+    if(_recontroleEncore){ _recontroleEncore = false; setTimeout(() => _recontrolerCompte(undefined, true), 0); }
+  }
+}
+window.addEventListener('online', () => { _recontrolerCompte(); });
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') _recontrolerCompte(); });
+/* hors-ligne 27/11 : accueil après un profil complet (onboarding, puis avis d'accès classe), reporté à la fin de la
+   séance quand la révision a commencé sur l'accès provisoire ; repris par le rattrapage de 15 s. */
+let _accueilDiffere = false;
+function _accueilApresProfil(){
+  if(authSeanceEnCours()){ _accueilDiffere = true; return; }
+  _accueilDiffere = false;
+  if(typeof maybeOnboard === 'function') maybeOnboard();
+  if(typeof maybeAccessNotice === 'function') maybeAccessNotice();
+}
 
 /* ====================== DONNÉES ====================== */
 const FAMILIES = {
@@ -15001,6 +15349,10 @@ const MODE_LABEL = {qcm:'QCM', trou:'À trou', saisie:'Réponse libre', flash:'F
      leech   : bool        carte chroniquement oubliée (≥ seuil)
    }
    ============================================================ */
+/* hors-ligne 27/11 : numéro de version de CETTE page, égal à celui du cache du Service Worker. Réécrit par
+   deploiement.sh à chaque livraison : ne pas le changer à la main (une seule ligne, motif exact). Il estampille chaque
+   écriture de la progression (srsPar) : une page plus ancienne que le dernier écrivain passe en lecture seule. */
+const APP_BUILD = 483;
 const STATS_KEY = 'quiztsi_srs_v1';
 
 /* Paramètres de planification.
@@ -15174,8 +15526,10 @@ const SRS = {
      02/11/2026, notes d'Arthur figées à 13 h 01. Désormais : on allège (_allege) et on réessaie ; si la place
      manque encore, l'état vit en mémoire (_secours, lu par _d) et part au cloud comme d'habitude, et un bandeau
      le dit. La première écriture réussie ensuite rend la main au stockage local. */
-  _secours: null, _secoursDit: false,
-  _save(d){
+  _secours: null, _secoursDit: false, _secoursN: 0, _secoursOk: 0, _partielEnVol: null, _partielEncore: false,
+  /* hors-ligne 27/11 : `sansMarque` = écriture locale qui ne donne rien à envoyer au cloud (gc, file des séances,
+     qui ne sont pas dans _paquetCloud) : elle ne pose pas le marqueur « notes à synchroniser ». */
+  _save(d, sansMarque){
     let json = JSON.stringify(d);
     try{ localStorage.setItem(STATS_KEY, json); this._secours = null; }
     catch(e){
@@ -15183,14 +15537,14 @@ const SRS = {
       for(let niveau = 1; niveau <= 3; niveau++){
         this._allege(d, niveau); json = JSON.stringify(d);
         try{ localStorage.setItem(STATS_KEY, json); this._secours = null; break; }
-        catch(e2){ if(niveau === 3){ this._secours = json; console.warn('SRS : stockage local plein, progression gardée en mémoire', e2); } }
+        catch(e2){ if(niveau === 3){ this._secours = json; if(!sansMarque) this._secoursN = (this._secoursN || 0) + 1; console.warn('SRS : stockage local plein, progression gardée en mémoire', e2); } }
       }
       if(this._secours != null && !this._secoursDit){
         this._secoursDit = true;
         try{ cloudErr('⚠️ Stockage de l\'appareil plein : la progression est envoyée au cloud' + (currentUser ? '' : ' — connecte-toi pour ne rien perdre')); }catch(_){}
       }
     }
-    this._marquerSale();
+    if(!sansMarque) this._marquerSale();
   },
   /* Allègement progressif, sans jamais toucher aux cartes (la progression) :
      1) historique des séances réduit à ce que lisent les statistiques (chapitre, juste/faux) ;
@@ -15220,36 +15574,43 @@ const SRS = {
      c'est ce que reçoit le cloud —, 20 au plus, chacune marquée de son propriétaire ; un visiteur sans compte
      n'a rien à rattacher. Envoyées par _envoyerSeancesEnAttente à la connexion et après chaque synchro réussie.
      Jamais dans _paquetCloud (le champ `srs` du cloud) ; en revanche dans la mise de côté d'une déconnexion. */
-  _garderSeance(rec){
+  /* hors-ligne 27/11 : `uid` (facultatif) = n'accepter que si la progression locale appartient à ce compte (bilan
+     mis en file par Cloud.saveSession AVANT l'envoi). Écriture sans marqueur : la file ne part pas dans le paquet. */
+  _garderSeance(rec, uid){
     let owner = null; try{ owner = localStorage.getItem(SRS_OWNER_KEY); }catch(_){}
-    if(!owner || !rec || !rec.date) return false;
+    if(!owner || !rec || !rec.date || (uid && owner !== uid)) return false;
     const d = this._d();
     const q = Array.isArray(d.seancesEnAttente) ? d.seancesEnAttente : (d.seancesEnAttente = []);
     if(q.some(s => s && s.date === rec.date && s.proprio === owner)) return true;
     q.push(Object.assign({}, rec, {proprio: owner, enAttente: true}));
     if(q.length > 20) d.seancesEnAttente = q.slice(-20);
-    this._save(d);
+    this._save(d, true);
     return true;
   },
+  /* hors-ligne 27/11 : le bilan accusé par le cloud quitte la file (appelé par Cloud.saveSession). */
+  _oublierSeance(s, uid){
+    const d = this._d();
+    if(!Array.isArray(d.seancesEnAttente) || !d.seancesEnAttente.some(x => x && x.date === s.date && x.proprio === uid)) return;
+    d.seancesEnAttente = d.seancesEnAttente.filter(x => !(x && x.date === s.date && x.proprio === uid));
+    if(!d.seancesEnAttente.length) delete d.seancesEnAttente;
+    this._save(d, true);
+  },
   _seancesEnVol: false,
+  _sidsEnVol: new Set(),   // hors-ligne 27/11 : bilans en cours d'envoi dans CETTE page (pas de second envoi parallèle)
   async _envoyerSeancesEnAttente(){
     if(this._seancesEnVol || typeof currentUser === 'undefined' || !currentUser) return;
     const uid = currentUser.uid;
-    const q = (this._d().seancesEnAttente || []).filter(s => s && s.proprio === uid);
+    const q = (this._d().seancesEnAttente || []).filter(s => s && s.proprio === uid && !(s.sid && this._sidsEnVol.has(s.sid)));
     if(!q.length) return;
     this._seancesEnVol = true;
     let n = 0;
     try{
       for(const s of q){
         if(!currentUser || currentUser.uid !== uid) break;
-        await Cloud.saveSession(s);
-        n++;
-        const d = this._d();
-        d.seancesEnAttente = (d.seancesEnAttente || []).filter(x => !(x && x.date === s.date && x.proprio === uid));
-        if(!d.seancesEnAttente.length) delete d.seancesEnAttente;
-        this._save(d);
+        if(await Cloud.saveSession(s)) n++;   // hors-ligne 27/11 : retire elle-même le bilan de la file à l'accusé ; ne compte que les séances créées (pas un doublon évité)
       }
-      if(n) cloudOk(n > 1 ? '☁️ ' + n + ' séances en attente envoyées' : '☁️ Séance en attente envoyée', true);
+      /* hors-ligne 27/11 : cloudToast et non cloudOk — un bilan envoyé ne dit rien de la progression (Dernière synchro). */
+      if(n) cloudToast('ok!', n > 1 ? '☁️ ' + n + ' séances en attente envoyées' : '☁️ Séance en attente envoyée');
     }catch(e){ console.warn('SRS : séances en attente', e); }
     finally{ this._seancesEnVol = false; }
   },
@@ -15359,6 +15720,24 @@ const SRS = {
            On budgète donc désormais les entrées d'index, et on rogne le JOURNAL — la donnée
            la moins critique, il ne sert qu'aux statistiques de rétention. Les cartes ne sont
            JAMAIS tronquées : c'est la progression de l'élève. */
+  /* Carte allégée pour le cloud (hors-ligne 27/11 : sortie de _paquetCloud, sans changement, pour servir aussi à
+     l'envoi carte par carte d'une page périmée) : sans énoncé ni chapitre, S/D arrondis, sans champ nul ni NaN. */
+  _allegerCarte(c){
+          const o = {};
+          for(const k in c){
+            if(k === 'q') continue;                       // énoncé : reconstructible localement
+            /* hors-ligne 27/11 : chapitre aussi (≈ 67 Ko sur le compte d'Arthur). Toutes les pages en circulation
+               (fusion par mergeCloud depuis v244, v439 compris) le reprennent de leur banque quand la carte du cloud
+               l'emporte (`if(!cc.q){ … if(!cc.topic) cc.topic = qq.topic; }`) ; la copie locale garde le sien. */
+            if(k === 'topic') continue;
+            let v = c[k];
+            if(v === undefined || v === null) continue;   // Firestore refuse undefined ; null inutile
+            if((k === 'S' || k === 'D') && typeof v === 'number' && isFinite(v)) v = Math.round(v*10000)/10000;
+            if(typeof v === 'number' && !isFinite(v)) continue;  // NaN/Infinity : refusés ou toxiques
+            o[k] = v;
+          }
+          return o;
+  },
   _paquetCloud(){
         const dd = this._d();
         let log = (dd.reviewLog||[]).slice(-1000);
@@ -15367,16 +15746,7 @@ const SRS = {
         const slim = {};
         for(const h in dd.cards){
           const c = dd.cards[h]; if(!c) continue;
-          const o = {};
-          for(const k in c){
-            if(k === 'q') continue;                       // énoncé : reconstructible localement
-            let v = c[k];
-            if(v === undefined || v === null) continue;   // Firestore refuse undefined ; null inutile
-            if((k === 'S' || k === 'D') && typeof v === 'number' && isFinite(v)) v = Math.round(v*10000)/10000;
-            if(typeof v === 'number' && !isFinite(v)) continue;  // NaN/Infinity : refusés ou toxiques
-            o[k] = v;
-          }
-          slim[h] = o;
+          slim[h] = this._allegerCarte(c);
         }
         const paquet = { cards: slim, streak: dd.streak || null, daily: dd.daily || null,
                          days: dd.days || null,
@@ -15513,7 +15883,8 @@ const SRS = {
     clearTimeout(this._repriseTimer); this._repriseTimer = null;
     this._echecs = 0; this._raison = null; this._relireAvant = false; this._sansRelire = false; this._lastReadAt = 0;
     /* Un envoi resté pendant (réseau, jeton qui n'arrive pas) ne doit pas bloquer le compte suivant. */
-    this._gen++; this._enVol = null; this._encore = false;
+    this._gen++; this._enVol = null; this._encore = false; this._partielEnVol = null; this._partielEncore = false;
+    this._perimee = false;   // hors-ligne 27/11 : réévaluée à la prochaine lecture (autre compte, autre dernier écrivain)
   },
   /* Connexion : un stockage local VIDE et sans propriétaire (appareil neuf, ou purgé à la déconnexion)
      est attribué tout de suite au compte qui se connecte. Sans cela, les notes prises avant que la
@@ -15531,6 +15902,7 @@ const SRS = {
   /* SEUL point qui ouvre le verrou, toujours APRÈS une lecture réussie du cloud de `uid`. */
   _ouvrirCompte(uid, cloud){
     let localOwner = null; try{ localOwner = localStorage.getItem(SRS_OWNER_KEY); }catch(_){}
+    const saleAvant = localOwner === uid && !!this._etatSale();   // hors-ligne 27/11 : notes de CE compte à envoyer, vues AVANT la fusion (qui marque le magasin)
     if(localOwner !== uid){
       this._mettreDeCote(localOwner);      // l'autre compte retrouvera ses notes ; elles n'iront jamais ici
       this.clear();
@@ -15538,6 +15910,12 @@ const SRS = {
     }
     this._cloudRead = true;
     this._lastReadAt = Date.now();
+    /* hors-ligne 27/11 — PAGE PÉRIMÉE. Le 26/11 à 23:18:03, un client resté au 09/11 (servi depuis le cache du SW) a
+       fusionné le cloud, effacé par gc() toutes les cartes que SA banque ignorait, puis réécrit le cloud sans elles :
+       0 des 337 cartes ajoutées depuis. Désormais chaque écriture porte la version de son auteur (srsPar) ; une page plus
+       ancienne que lui lit et fusionne, mais n'écrit plus rien (ni gc, ni srs) tant qu'elle n'est pas mise à jour. */
+    const par = cloud && cloud.srsPar;
+    this._perimee = !!(par && typeof par.v === 'number' && par.v > APP_BUILD);
     let miseDeCote = null;
     try{ miseDeCote = JSON.parse(localStorage.getItem(SRS_STASH_PREFIX + uid) || 'null'); }catch(_){}
     if(miseDeCote && typeof miseDeCote === 'object'){
@@ -15545,8 +15923,80 @@ const SRS = {
       try{ localStorage.removeItem(SRS_STASH_PREFIX + uid); }catch(_){}
     }
     if(cloud) this.mergeCloud(cloud);
-    if(cloud || miseDeCote) this.gc();
+    /* hors-ligne 27/11 : gc() seulement si la page n'est pas périmée. Un cloud SANS srsPar est sûr à nettoyer pour une
+       page de la version corrigée : toute page ≥ cette version estampille ses écritures, donc son dernier écrivain
+       était une page ≤ v481, dont la banque ne connaît aucune carte que celle-ci ignore (APP_BUILD > 481 dès la
+       première livraison de ce correctif, les numéros ne font que croître). Avec srsPar, v ≤ APP_BUILD dit la même
+       chose. Le gc ne fait que nettoyer le magasin local : il n'écrit pas au cloud (voir le motif ci-dessous). */
+    if((cloud || miseDeCote) && !this._perimee) this.gc();
+    /* hors-ligne 27/11 — MOTIF D'ÉCRITURE. La fusion pose le marqueur « à synchroniser » (_save). On l'efface si rien
+       ne justifie d'écrire : ni notes de ce compte en attente avant la fusion, ni mise de côté réintégrée, ni carte
+       locale absente du cloud lu ou plus récente (par `last`) que la sienne. Connexion et retour au premier plan
+       n'écrivent donc plus sans motif ; un simple gc n'en est pas un. */
+    if(!(saleAvant || miseDeCote || this._apporteAuCloud(cloud))){ try{ localStorage.removeItem(this._CLE_SALE); }catch(_){} this._secoursOk = this._secoursN; }
+    if(this._perimee) this._lectureSeule(par);
+    /* hors-ligne 27/11 : lecture réussie et rien à envoyer = le cloud porte déjà tout ce que sait l'appareil, synchro
+       vérifiée : « Dernière synchro » la date (sans cela, un appareil qui ne fait que lire restait à « jamais »). */
+    else if(!this._etatSale() && !(this._secours != null && this._secoursOk < this._secoursN)) this._dateSynchro();
     try{ this._cartesLues = Object.keys(this._d().cards || {}).length; }catch(_){ this._cartesLues = 0; }   // v455 : repère anti-écrasement
+  },
+  /* hors-ligne 27/11 : date « Dernière synchro » sans bandeau (voir cloudOk pour une écriture réussie). */
+  _dateSynchro(){
+    try{ lastSyncTs = Date.now(); localStorage.setItem('quiztsi_lastsync', String(lastSyncTs)); }catch(_){}
+    try{ if(typeof updateLastSyncLabel === 'function') updateLastSyncLabel(); }catch(_){}
+  },
+  /* hors-ligne 27/11 : la fusion apporte-t-elle au cloud une carte qu'il n'a pas, ou notée plus récemment ? C'est ce qui
+     remet au cloud les cartes qu'une page périmée en a retirées ; les orphelines déjà ôtées par gc ne comptent pas.
+     Idem pour le reste du paquet que mergeCloud fusionne (union ou maximum) : une colle, un exercice de DS, une remise,
+     une série ou un volume du jour que le cloud a perdus (écrasés par un autre appareil qui écrivait sans relire) sont
+     réécrits par l'appareil qui les a. Chaque test reprend la clé de fusion de mergeCloud, donc un cloud écrit par ce
+     paquet ne déclenche rien (pas d'écriture à chaque retour). reviewLog n'est pas comparé : _paquetCloud le rogne au
+     budget (faux positif permanent), et ses lignes accompagnent des notes de cartes, déjà couvertes ci-dessus. */
+  _apporteAuCloud(cloud){
+    const d = this._d(), loc = d.cards || {};
+    const cc = (cloud && cloud.cards && typeof cloud.cards === 'object') ? cloud.cards : (cloud || {});
+    for(const h in loc){ const l = loc[h], c = cc[h]; if(l && (!c || typeof c !== 'object' || (l.last || 0) > (c.last || 0))) return true; }
+    const k = (cloud && typeof cloud === 'object') ? cloud : {};
+    const manque = (l, r, cle) => { if(!Array.isArray(l) || !l.length) return false; const vus = new Set((Array.isArray(r) ? r : []).map(cle)); return l.some(x => x && !vus.has(cle(x))); };
+    if(manque((d.colleLog || []).slice(-300), k.colleLog, e => String(e && e.ts))) return true;
+    if(manque((d.dsLog || []).slice(-400), k.dsLog, e => e ? e.ds + '|' + e.exo + '|' + e.t : '')) return true;
+    const ke = (k.colleEx && typeof k.colleEx === 'object') ? k.colleEx : {};
+    for(const h in (d.colleEx || {})){ const l = d.colleEx[h], r = ke[h]; if(l && typeof l === 'object' && (!r || typeof r !== 'object' || (l.n || 0) > (r.n || 0) || (l.t || 0) > (r.t || 0) || (!!l.ko && !r.ko) || (!!l.aide && !r.aide))) return true; }
+    const kr = (k.remises && typeof k.remises === 'object') ? k.remises : {};
+    for(const h in (d.remises || {})){ if((+d.remises[h] || 0) > (+kr[h] || 0)) return true; }
+    const ko = (k.oralDernier && typeof k.oralDernier === 'object') ? k.oralDernier : {};
+    for(const h in (d.oralDernier || {})){ if(ko[h] == null) return true; }
+    const ls = d.streak, cs = k.streak;
+    if(ls && ls.lastDay && (!cs || !cs.lastDay || ls.lastDay > cs.lastDay || (ls.lastDay === cs.lastDay && (ls.count || 0) > (cs.count || 0)))) return true;
+    const t = this._today(), ld = d.daily;
+    if(ld && ld.day === t){ const cd = (k.daily && k.daily.day === t) ? k.daily : {}; if((ld.newSeen || 0) > (cd.newSeen || 0) || (ld.total || 0) > (cd.total || 0)) return true; }
+    const kd = (k.days && typeof k.days === 'object' && (k.daysSeed || 0) >= this._SEED_VER) ? k.days : {};
+    for(const j in (d.days || {})){ if((+d.days[j] || 0) > (+kd[j] || 0)) return true; }
+    return false;
+  },
+  /* hors-ligne 27/11 : page plus ancienne que le dernier écrivain. Les notes locales restent marquées à envoyer et
+     partiront de la nouvelle version ; on demande la mise à jour du SW (son rechargement est l'affaire du bloc
+     d'enregistrement, qui lit window._majObligatoire). Un seul bandeau par page. */
+  _lectureSeule(par){
+    try{ window._majObligatoire = true; }catch(_){}
+    try{ if('serviceWorker' in navigator) navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(()=>{}); }catch(_){}
+    if(this._perimeeDite) return;
+    this._perimeeDite = true;
+    SyncDiag.noter('perimee', null, {couche:'version', code: APP_BUILD + '<' + par.v});
+    try{ if(typeof cloudToast === 'function') cloudToast('ok!', 'Nouvelle version : l\'app se met à jour.'); }catch(_){}
+  },
+  /* hors-ligne 27/11 : écriture refusée (permission-denied). Depuis la garde de firestore.rules, c'est aussi la réponse
+     à une écriture plus ancienne que le cloud : on relit, et si une page plus récente a écrit entre-temps, on passe en
+     lecture seule au lieu d'annoncer une panne. Renvoie true dans ce cas, false sinon (vrai refus : App Check…). */
+  async _verifierPeremption(uid, actuel){
+    try{
+      const cloud = await Cloud.loadSRS(uid);
+      const par = cloud && cloud.srsPar;
+      if(!actuel() || !(par && typeof par.v === 'number' && par.v > APP_BUILD)) return false;
+      this._ouvrirCompte(uid, cloud);
+      this._rafraichirUI();
+      return true;
+    }catch(_){ return false; }
   },
   _rafraichirUI(){
     try{
@@ -15577,12 +16027,76 @@ const SRS = {
       } else throw e1;
     }
   },
+  /* hors-ligne 27/11 — PAGE PÉRIMÉE + STOCKAGE PLEIN. L'état n'existe qu'en mémoire (_secours) et le rechargement de
+     mise à jour l'effacerait. On relit le cloud juste avant d'envoyer (une page périmée ne relit nulle part ailleurs),
+     on le fusionne en local comme à la connexion (union des journaux, carte la plus récente, notes annulées ici
+     respectées), puis on n'envoie, champ par champ, que ce qui diffère de ce cloud FRAIS : les cartes plus récentes
+     (srs.cards.<hash>, ou la carte rétablie après annulation d'une note déjà partie), et, en entier, colleLog, dsLog,
+     colleEx, remises ou oralDernier s'ils ont gagné quelque chose (la fusion locale les contient tout entiers). Jamais
+     srsPar ni srs complet : rien de ce qu'une version plus récente a écrit n'est retiré, et la garde de firestore.rules
+     l'accepte (srsPar inchangé, aucune carte retirée). Série, volumes du jour et journal des notes ne partent pas : la
+     nouvelle version les refera. Renvoie true si tout l'état en mémoire est au cloud. Ne lève jamais. */
+  async _pousserCartes(){
+    if(this._partielEnVol){ this._partielEncore = true; return this._partielEnVol; }   // relancé à l'accusé
+    if(typeof currentUser === 'undefined' || !currentUser) return false;
+    const uid = currentUser.uid, gen = this._gen;
+    const actuel = () => gen === this._gen && currentUser && currentUser.uid === uid;
+    const p = (async ()=>{
+      try{
+        const frais = await Cloud.loadSRS(uid);
+        if(!actuel() || !this._perimee) return false;
+        if(!frais || !frais.cards || typeof frais.cards !== 'object') return false;   // un cloud estampillé a toujours srs.cards
+        this.mergeCloud(frais);
+        const n0 = this._secoursN;                       // relevé APRÈS la fusion (elle repasse par _save)
+        const dd = this._d(), loc = dd.cards || {}, an = dd.annulees || {}, fc = frais.cards, maj = {}; let n = 0;
+        for(const h in loc){
+          const c = loc[h]; if(!c) continue;
+          const l = +c.last || 0, v = (fc[h] && +fc[h].last) || 0;
+          if(l > v || (an[h] && an[h] === v && l !== v)){ maj['srs.cards.' + h] = this._allegerCarte(c); n++; }
+        }
+        const manque = (l, r, cle) => { if(!Array.isArray(l) || !l.length) return false; const vus = new Set((Array.isArray(r) ? r : []).map(cle)); return l.some(x => x && !vus.has(cle(x))); };
+        if(manque((dd.colleLog || []).slice(-300), frais.colleLog, e => String(e && e.ts))){ maj['srs.colleLog'] = dd.colleLog.slice(-300); n++; }
+        if(manque((dd.dsLog || []).slice(-400), frais.dsLog, e => e ? e.ds + '|' + e.exo + '|' + e.t : '')){ maj['srs.dsLog'] = dd.dsLog.slice(-400); n++; }
+        for(const champ of ['colleEx', 'remises', 'oralDernier']){
+          const m = dd[champ], r = (frais[champ] && typeof frais[champ] === 'object') ? frais[champ] : {};
+          if(m && typeof m === 'object' && Object.keys(m).some(k => m[k] != null && JSON.stringify(m[k]) !== JSON.stringify(r[k]))){ maj['srs.' + champ] = m; n++; }
+        }
+        if(n){
+          maj.srsUpdated = serverTimestamp();
+          await updateDoc(doc(db, 'users', uid), maj);
+          if(!actuel()) return false;
+          SyncDiag.noter('perimee:cartes', null, {couche:'version', code: n + ' champ(s)'});
+        }
+        this._secoursOk = Math.max(this._secoursOk, n0);
+        this._echecs = 0; this._raison = null;
+        return true;
+      }catch(e){
+        SyncDiag.noter('perimee:cartes', e, {couche:'version'});
+        if(actuel()) this._surEchec(e, 'perimee');     // reprises espacées, relance au retour du réseau
+        return false;
+      }
+    })();
+    this._partielEnVol = p;                            // affecté AVANT que la fin (même immédiate) ne le libère
+    p.then(()=>{
+      if(this._partielEnVol === p) this._partielEnVol = null;
+      if(this._partielEncore){ this._partielEncore = false; if(actuel() && this._secours != null && this._secoursOk < this._secoursN) this._syncCloud(); }
+    });
+    return p;
+  },
   /* Lit (si besoin), fusionne, écrit. Renvoie true si le cloud est à jour. Ne lève jamais. */
   async _pousser(motif){
     if(typeof currentUser==='undefined' || !currentUser) return false;
     if(this._enVol){ this._encore = true; return this._enVol; }
     clearTimeout(this._cloudTimer); this._cloudTimer = null;
     clearTimeout(this._repriseTimer); this._repriseTimer = null;
+    /* hors-ligne 27/11 : page périmée (_ouvrirCompte) = lecture seule ; les notes attendent la nouvelle version. */
+    if(this._perimee){
+      if(motif === 'manuel'){ try{ cloudToast('ok!', 'Nouvelle version : l\'app se met à jour.'); }catch(_){} }
+      /* Exception : stockage local plein (_secours). Les notes n'existent alors qu'en mémoire, et le rechargement de
+         mise à jour les effacerait : on envoie les seules cartes notées depuis la lecture, champ par champ. */
+      if(this._secours != null && this._secoursOk < this._secoursN) return this._pousserCartes();
+      return false;
+    }
     this._dernierEssai = Date.now();
     const uid = currentUser.uid, gen = this._gen;
     const actuel = () => gen === this._gen && currentUser && currentUser.uid === uid;
@@ -15617,10 +16131,23 @@ const SRS = {
         }
         this._sansRelire = false;
         if(!actuel()) return false;
+        if(this._perimee) return false;          // hors-ligne 27/11 : la relecture vient de révéler une version plus récente
+        /* hors-ligne 27/11 : rien à envoyer (aucune note, et la fusion n'apporte rien au cloud : voir _ouvrirCompte) →
+           aucune écriture, au retour au premier plan comme ailleurs. Seule la synchro manuelle écrit toujours. */
+        if(motif !== 'manuel' && !this._etatSale() && !(this._secours != null && this._secoursOk < this._secoursN)){
+          const retabli = this._echecs > 0;
+          this._echecs = 0; this._raison = null;
+          if(retabli){ SyncDiag.noter('retabli:' + motif, null, {couche:'ok', repare:true}); cloudToast('ok!', '☁️ Synchro rétablie'); }
+          try{ if(typeof updateLastSyncLabel === 'function') updateLastSyncLabel(); }catch(_){}
+          this._envoyerSeancesEnAttente();
+          return true;
+        }
         let marque = null; try{ marque = localStorage.getItem(this._CLE_SALE); }catch(_){}
+        const nSecours = this._secoursN;   // hors-ligne 27/11 : états en mémoire couverts par ce paquet
         const paquet = this._paquetCloud();
         await avecReprise(()=>this._ecrire(paquet, uid), uid);
         if(!actuel()) return false;
+        this._secoursOk = Math.max(this._secoursOk, nSecours);
         this._cartesLues = Object.keys(paquet.cards || {}).length;   // v455 : le cloud porte désormais ce nombre de cartes
         const retabli = this._echecs > 0;
         this._echecs = 0; this._raison = null;
@@ -15630,10 +16157,12 @@ const SRS = {
           else this._syncCloud();
         }catch(_){}
         if(retabli) SyncDiag.noter('retabli:' + motif, null, {couche:'ok', repare:true});
-        cloudOk(retabli ? '☁️ Synchro rétablie' : '☁️ SRS sauvegardé', retabli);
+        cloudOk(retabli ? '☁️ Synchro rétablie' : '☁️ SRS sauvegardé', retabli, true);   // hors-ligne 27/11 : seul cas qui date « Dernière synchro »
         this._envoyerSeancesEnAttente();   // v455 : la voie est libre, les bilans en attente suivent
         return true;
       }catch(e){
+        /* hors-ligne 27/11 : un refus peut venir de la garde de firestore.rules (version plus récente écrite entre-temps). */
+        if(actuel() && estRefusJeton(e) && await this._verifierPeremption(uid, actuel)){ if((this._secours != null && this._secoursOk < this._secoursN)) this._syncCloud(); return false; }
         if(actuel()) this._surEchec(e, motif);
         return false;
       }finally{
@@ -15679,6 +16208,9 @@ const SRS = {
     /* reCAPTCHA jamais chargé (bloqueur de contenu, appli ouverte hors ligne) : seul un
        rechargement relance le script — on le dit au lieu de laisser croire à une lenteur. */
     const bloque = n >= 3 && /delai-depasse/.test(String((r && r.code2) || s.code || ''));
+    /* hors-ligne 27/11 : jeton App Check jamais obtenu = reCAPTCHA pas chargé ; le secours du démarrage le recharge
+       (il garde ses propres garde-fous : script du SDK en cours de chargement, hors ligne, recul dans le temps). */
+    if(/delai-depasse/.test(String((r && r.code2) || s.code || ''))){ try{ if(typeof window._secoursRecaptcha === 'function') window._secoursRecaptcha(); }catch(_){} }
     if(n === 2) cloudErr('⏳ Synchro lente — nouvel essai en cours ; ta progression est gardée sur cet appareil.');
     else if(bloque && n % 5 === 3) cloudErr('⚠️ Synchro bloquée — recharge la page quand tu auras fini ; ta progression est gardée sur cet appareil.');
   },
@@ -16079,7 +16611,7 @@ const SRS = {
     const valid = new Set(allQuestionHashes());
     let removed = 0;
     for(const h in d.cards){ if(!valid.has(h)){ delete d.cards[h]; removed++; } }
-    if(removed){ this._save(d); }
+    if(removed){ this._save(d, true); }   // hors-ligne 27/11 : un nettoyage n'est pas un motif d'écriture au cloud (il partira avec la prochaine note)
     return removed;
   },
 
@@ -16187,10 +16719,22 @@ function figKey(spec){
    Registre : clé → [largeur, hauteur, empreinte du fichier] ; fichiers img/tikz/<clé>.<empreinte>.<thème>.svg.
    Image introuvable (hors ligne et jamais vue) : tkzKo() remplace la boîte par le dessin FIG. */
 var TKZ_SPEC={};
+/* hors-ligne 27/11 : chemin du fichier d'un schéma pour un thème (p, n, c). Seul calcul du nom, partagé par TIKZ(),
+   liaisonImgHTML() et prechargerImages() : le préchargement met en cache exactement les fichiers affichés. */
+function tkzSrc(k,t){ var o=TIKZ_IMG[k]; return o.p ? o[t] : 'img/tikz/'+k+'.'+o[2]+'.'+{p:'papier',n:'nuit',c:'contraste'}[t]+'.svg'; }
+/* hors-ligne 27/11 : schéma TikZ SEUL, dont la spec n'est qu'un cadre « Schéma » / « Schéma de la fiche » ou une
+   figure vide (136 cartes et 61 schémas de fiches en v481) : sans l'image, FIG ne dessinerait qu'un cadre vide. */
+function tkzSansDessin(sp){
+  var it=sp && sp.items, lab=false; if(!it || !it.length) return true;
+  for(var i=0;i<it.length;i++){ var x=it[i]; if(!x) continue;
+    if(typeof x.label==='string' && /^\\text\{Sch[ée]ma( de la fiche)?\}$/.test(x.label)) lab=true;
+    else if(!x.polygon) return false; }
+  return lab;
+}
 function TIKZ(k,spec){
   var o=TIKZ_IMG[k], w=o.w||o[0], h=o.h||o[1];
   TKZ_SPEC[k]=spec;
-  function im(t,cl){ var src=o.p ? o[t] : 'img/tikz/'+k+'.'+o[2]+'.'+{p:'papier',n:'nuit',c:'contraste'}[t]+'.svg';
+  function im(t,cl){ var src=tkzSrc(k,t);
     return '<img class="tkz '+cl+'" src="'+src+'" width="'+w+'" height="'+h+'" loading="lazy" decoding="async" alt="schéma de la notion" style="width:'+w+'px" onerror="window.tkzKo&&tkzKo(this)">'; }
   return '<span class="tkz-box" data-tkz="'+k+'">'+im('p','tkz-p')+im('n','tkz-n')+im('c','tkz-c')+'</span>';
 }
@@ -16198,9 +16742,18 @@ window.tkzKo=function(img){
   var box=img.closest && img.closest('.tkz-box'); if(!box || box.getAttribute('data-ko')) return;
   box.setAttribute('data-ko','1');
   var sp=TKZ_SPEC[box.getAttribute('data-tkz')]; if(!sp) return;
-  var tmp=document.createElement('span'); tmp.innerHTML=FIG(sp,true);
+  var tmp=document.createElement('span');
+  if(tkzSansDessin(sp)){ tmp.innerHTML='<div class="empty-state">Schéma disponible une fois en ligne.</div>'; box.parentNode.replaceChild(tmp.firstChild,box); return; }   // hors-ligne 27/11 : cadre neutre, la carte reste utilisable
+  tmp.innerHTML=FIG(sp,true);
   var fig=tmp.firstChild, par=box.parentNode; par.replaceChild(fig,box);
   mjRendre(fig).then(function(){ aurWideMath(fig); }, function(){});   // G2 : rendu en file
+};
+/* hors-ligne 27/11 : schéma de liaison (liaisonImgHTML) introuvable hors ligne → l'ancienne image LIAISON_IMG, préchargée. */
+window.tkzLiaisonKo=function(img){
+  var box=img.closest && img.closest('.tkz-box'); if(!box || box.getAttribute('data-ko')) return;
+  box.setAttribute('data-ko','1');
+  var tmp=document.createElement('span'); tmp.innerHTML=liaisonImgHTML(box.getAttribute('data-liaison'), img.getAttribute('alt')||'', +box.getAttribute('data-h')||0, true);
+  if(tmp.firstChild) box.parentNode.replaceChild(tmp.firstChild,box);
 };
 function FIG(spec,sansTikz){
   if(spec && !sansTikz && typeof TIKZ_IMG!=='undefined'){
@@ -16531,12 +17084,12 @@ const LIAISON_TAB=[{k:"pivot",nom:"Pivot",ddl:1,cine:"$$\\{\\mathcal{V}(2/1)\\}=
 /* Image d'une liaison normalisée (qimg, aimg, tableau récapitulatif). Chaque liaison a un schéma TikZ vectoriel
    par thème, clé « liaison_<k> » du registre TIKZ_IMG (couleurs du cours : 1 rouge, 2 bleu) ; l'ancienne image
    (LIAISON_IMG, JPG/PNG sur fond blanc) ne sert plus qu'à défaut. h : hauteur imposée en px, sinon taille naturelle. */
-function liaisonImgHTML(k, alt, h){
-  var o=(typeof TIKZ_IMG!=='undefined')?TIKZ_IMG['liaison_'+k]:null;
+function liaisonImgHTML(k, alt, h, sansTikz){   // sansTikz : repli de tkzLiaisonKo (hors-ligne 27/11)
+  var o=(!sansTikz && typeof TIKZ_IMG!=='undefined')?TIKZ_IMG['liaison_'+k]:null;
   if(o){
     var w=o.w||o[0], hh=o.h||o[1], st=h?'height:'+h+'px;width:auto':'width:'+w+'px';
-    var im=function(t,cl){ return '<img class="tkz '+cl+'" src="img/tikz/liaison_'+k+'.'+o[2]+'.'+t+'.svg" width="'+w+'" height="'+hh+'" loading="lazy" decoding="async" alt="'+alt+'" style="'+st+'">'; };
-    return '<span class="tkz-box"'+(h?' style="display:inline-block;margin:0"':'')+'>'+im('papier','tkz-p')+im('nuit','tkz-n')+im('contraste','tkz-c')+'</span>';
+    var im=function(t,cl){ return '<img class="tkz '+cl+'" src="'+tkzSrc('liaison_'+k,t)+'" width="'+w+'" height="'+hh+'" loading="lazy" decoding="async" alt="'+alt+'" style="'+st+'" onerror="window.tkzLiaisonKo&&tkzLiaisonKo(this)">'; };
+    return '<span class="tkz-box" data-liaison="'+k+'" data-h="'+(h||0)+'"'+(h?' style="display:inline-block;margin:0"':'')+'>'+im('p','tkz-p')+im('n','tkz-n')+im('c','tkz-c')+'</span>';
   }
   var src=(typeof LIAISON_IMG!=='undefined')?LIAISON_IMG[k]:null; if(!src) return '';
   return h ? '<img src="'+src+'" alt="'+alt+'" style="height:'+h+'px;background:#fff;border-radius:6px;padding:3px">'
@@ -25332,9 +25885,13 @@ function updateLastSyncLabel(){
   try{ if(typeof SRS!=='undefined' && SRS._echecs > 0 && SRS._raison) t += ' · ⚠️ en attente ('+SRS._raison+')'; }catch(e){}
   el.textContent = t;
 }
-function cloudOk(msg='☁️ Sauvegardé', visible=false){
-  lastSyncTs = Date.now();
-  try{ localStorage.setItem('quiztsi_lastsync', String(lastSyncTs)); }catch(e){}
+/* hors-ligne 27/11 : « Dernière synchro » ne date que d'une écriture RÉUSSIE de la progression (srsEcrit, passé par
+   SRS._pousser) : une séance ou un signalement envoyés ne disent rien des notes, encore en route ou restées sur l'appareil. */
+function cloudOk(msg='☁️ Sauvegardé', visible=false, srsEcrit=false){
+  if(srsEcrit){
+    lastSyncTs = Date.now();
+    try{ localStorage.setItem('quiztsi_lastsync', String(lastSyncTs)); }catch(e){}
+  }
   updateLastSyncLabel();
   cloudToast(visible ? 'ok!' : 'ok', msg);
 }
@@ -25408,11 +25965,11 @@ function updateClassJoinUI(){
         host.querySelectorAll('[data-join-year]').forEach(x=>{ x.disabled=true; });
         btn.textContent = 'Envoi…';
         try{
-          await Cloud.requestClass(yr);
+          await _demanderClasse(yr);   // hors-ligne 27/11 : plus de « Envoi… » figé
           try{ const p = JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); p.classRequest='tsi-chaptal'; p.filiere='TSI'; p.annee=Number(yr); localStorage.setItem('quiztsi_profile', JSON.stringify(p)); }catch(e){}
           myClassStatus = 'pending';
           updateClassJoinUI();
-        }catch(e){ console.warn('requestClass', e); host.querySelectorAll('[data-join-year]').forEach(x=>{ x.disabled=false; }); btn.textContent='Rejoindre TSI'+yr; alert('Demande impossible pour le moment. Réessaie.'); }
+        }catch(e){ console.warn('requestClass', e); host.querySelectorAll('[data-join-year]').forEach(x=>{ x.disabled=false; }); btn.textContent='Rejoindre TSI'+yr; f3Toast(_msgDemandeImpossible(e), 'alert'); }
       };
     });
   }
@@ -25432,13 +25989,29 @@ function showAccessGate(){
       <button class="btn" data-gate-year="1" type="button" style="flex:1;min-width:90px">TSI1</button>
       <button class="btn" data-gate-year="2" type="button" style="flex:1;min-width:90px">TSI2</button></div>`;
     body.querySelectorAll('[data-gate-year]').forEach(b=>{ b.onclick = async ()=>{ const yr=b.dataset.gateYear; body.querySelectorAll('[data-gate-year]').forEach(x=>{ x.disabled=true; }); b.textContent='Envoi…';
-      try{ await Cloud.requestClass(yr); myClassStatus='pending';
+      try{ await _demanderClasse(yr); myClassStatus='pending';   // hors-ligne 27/11 : borné
         try{ const p=JSON.parse(localStorage.getItem('quiztsi_profile')||'{}'); p.classRequest='tsi-chaptal'; p.filiere='TSI'; p.annee=Number(yr); localStorage.setItem('quiztsi_profile', JSON.stringify(p)); }catch(e){}
         if(typeof updateClassJoinUI==='function') updateClassJoinUI(); showAccessGate();
-      }catch(e){ console.warn('requestClass', e); body.querySelectorAll('[data-gate-year]').forEach(x=>{ x.disabled=false; }); b.textContent='TSI'+yr; alert('Demande impossible pour le moment. Réessaie.'); }
+      }catch(e){ console.warn('requestClass', e); body.querySelectorAll('[data-gate-year]').forEach(x=>{ x.disabled=false; }); b.textContent='TSI'+yr; f3Toast(_msgDemandeImpossible(e), 'alert'); }
     }; });
   }
   m.classList.remove('hidden');
+}
+/* hors-ligne 27/11 : demande d'adhésion bornée (l'écriture n'aboutit qu'à l'accusé du serveur) ; bandeau au lieu
+   d'une alerte native. Sans réseau, ou tant qu'aucune lecture du serveur n'a abouti sur cette page, rien n'est mis
+   en file (même raison que pour le profil) ; on relance alors le contrôle du compte. Au-delà de 6 s, l'écriture
+   reste en file dans le SDK et peut encore partir : le message le dit. */
+function _demanderClasse(yr){
+  if(navigator.onLine === false || (currentUser && _recontroleUid === currentUser.uid)){
+    try{ _recontrolerCompte(); }catch(e){}
+    return Promise.reject(Object.assign(new Error('réseau indisponible'), {code:'app/hors-ligne'}));
+  }
+  return _borne(Cloud.requestClass(yr), 6000);
+}
+function _msgDemandeImpossible(e){
+  if(e && e.code === 'app/hors-ligne') return navigator.onLine === false ? 'Hors ligne : demande impossible pour l\'instant.' : 'Serveur injoignable : demande impossible pour l\'instant.';
+  if(e && e.code === 'app/delai-depasse') return 'Pas encore de réponse du serveur : réessaie dans un moment.';
+  return 'Demande impossible pour le moment. Réessaie.';
 }
 function closeAccessGate(){ const m=$('#accessModal'); if(m) m.classList.add('hidden'); }
 $('#accessClose').onclick = closeAccessGate;
@@ -25462,13 +26035,19 @@ function updateAccountUI(){
     btn.innerHTML = ic('user'); btn.appendChild(nom);
     btn.title = currentUser.email + (isAdmin?' (prof)':'');
     btn.setAttribute('aria-label', 'Mon compte : ' + nom.textContent);
+  } else if(_authEnAttente){
+    /* hors-ligne 27/11 : état Auth pas encore connu : la session gardée sur l'appareil, sinon « Connexion… » */
+    nom.textContent = _sessionProvisoire ? _sessionProvisoire.nom : 'Connexion…';
+    btn.innerHTML = ic('user'); btn.appendChild(nom);
+    btn.title = _sessionProvisoire ? _sessionProvisoire.email : 'Connexion en cours';
+    btn.setAttribute('aria-label', _sessionProvisoire ? 'Mon compte : ' + nom.textContent : 'Connexion en cours');
   } else {
     nom.textContent = 'Se connecter';
     btn.innerHTML = ic('key'); btn.appendChild(nom);
     btn.title = 'Synchroniser ma progression';
     btn.removeAttribute('aria-label');
   }
-  btn.classList.toggle('aur-in', !!currentUser);
+  btn.classList.toggle('aur-in', !!currentUser || (_authEnAttente && !!_sessionProvisoire));
   const adminBtn = $('#adminBtn');
   if(adminBtn) adminBtn.classList.toggle('hidden', !isAdmin);
   updateClassJoinUI();
@@ -25478,17 +26057,45 @@ function updateAccountUI(){
 let authMode = 'login';
 let pendingVerify = false;
 let verifyGateActive = false;
-function openAuth(motif){ authMode='login'; pendingVerify=false; refreshAuthModal(); const cb=$('#authClose'); if(cb) cb.style.display=currentUser?'':'none'; const am=$('#authModal'); if(am.classList.contains('hidden')) am._aurRetourForce=document.activeElement; am.classList.remove('hidden'); $('#authEmail').focus();   // fenetres-v1-01 : déclencheur mémorisé avant le focus
+function openAuth(motif){
+  /* hors-ligne 27/11 : 1er événement Auth pas encore arrivé : on l'attend, au lieu d'ouvrir une fenêtre non
+     fermable par-dessus une session qui revient (et jamais par-dessus une séance différée). */
+  if(_authEnAttente){ _authPret.then(() => { if(!currentUser && !_authDifferee && !authSeanceEnCours() && $('#authModal').classList.contains('hidden')) openAuth(motif); }); return; }
+  authMode='login'; pendingVerify=false; refreshAuthModal(); authMajHorsLigne(); const am=$('#authModal'); if(am.classList.contains('hidden')) am._aurRetourForce=document.activeElement; am.classList.remove('hidden'); $('#authEmail').focus();   // fenetres-v1-01 : déclencheur mémorisé avant le focus
   /* v455 : session expirée (déconnexion subie) — on le dit, et on rassure : rien n'est perdu. */
   _authExpireeOuverte = (motif === 'expiree');
   if(_authExpireeOuverte){ try{ const sub=$('#authSub'); if(sub) sub.textContent = 'Ta session a expiré : reconnecte-toi pour continuer.'; authNote('Rien n\'est perdu : ta progression est gardée sur cet appareil et sera synchronisée dès ta reconnexion.'); }catch(e){} }
 }
 function closeAuth(){ pendingVerify=false; _authExpireeOuverte=false; $('#authModal').classList.add('hidden'); $('#authErr').classList.add('hidden'); $('#authEmail').value=''; $('#authPass').value=''; const p=$('#authPseudo'); if(p) p.value=''; }
+/* hors-ligne 27/11 : sans réseau et sans session, la connexion est impossible : la fenêtre devient fermable (QCM
+   libres utilisables) et le dit. Au retour du réseau elle redevient obligatoire, rouverte hors séance. */
+let _authHorsLigne = false, _authFermeeHorsLigne = false;   // signIn échoué faute de réseau ; fenêtre fermée hors ligne
+function authFermableHorsLigne(){ return !currentUser && !verifyGateActive && (navigator.onLine === false || _authHorsLigne); }
+function authMajHorsLigne(){
+  if(verifyGateActive) return;
+  const hl = authFermableHorsLigne();
+  const cb = $('#authClose'); if(cb) cb.style.display = (currentUser || hl) ? '' : 'none';
+  const l = $('#authHorsLigne'); if(l) l.classList.toggle('hidden', !hl);
+  /* devenue fermable alors qu'elle était ouverte : son entrée d'historique, que le retour du téléphone consommera */
+  const am = $('#authModal');
+  if(hl && am && !am.classList.contains('hidden') && typeof aurDlgTop === 'function' && aurDlgTop() === am) aurHistModal(am);
+}
+function authFermerSiPermis(){
+  if(currentUser && !verifyGateActive){ closeAuth(); return; }
+  if(authFermableHorsLigne()){ _authFermeeHorsLigne = true; closeAuth(); }
+}
+function authRouvrirApresHorsLigne(){   // seulement quand le réseau est revenu (événement online, qui remet _authHorsLigne)
+  if(!_authFermeeHorsLigne || _authHorsLigne || currentUser || _authEnAttente || navigator.onLine === false || authSeanceEnCours()) return;
+  _authFermeeHorsLigne = false;
+  if($('#authModal').classList.contains('hidden')) openAuth();
+}
+window.addEventListener('offline', () => { try{ if(!$('#authModal').classList.contains('hidden')) authMajHorsLigne(); }catch(e){} });
+window.addEventListener('online', () => { _authHorsLigne = false; try{ if(!$('#authModal').classList.contains('hidden')) authMajHorsLigne(); authRouvrirApresHorsLigne(); }catch(e){} });
 function refreshAuthModal(){
   pendingVerify=false; verifyGateActive=false;
   ['authEmail','authPass','authEmailL','authPassL','authSubmit','authSwitchLine'].forEach(id=>{ const e=$('#'+id); if(e) e.style.display=''; });
   const _av=$('#authVerify'); if(_av) _av.style.display='none';
-  const cb=$('#authClose'); if(cb) cb.style.display = currentUser ? '' : 'none';
+  authMajHorsLigne();   // hors-ligne 27/11 : croix si compte connecté, ou sans réseau (ligne « Hors ligne »)
   const signup = authMode==='signup';
   $('#authTitle').textContent = signup ? 'Créer un compte' : 'Connexion';
   const sub=$('#authSub'); if(sub) sub.textContent = signup ? 'Crée ton compte pour suivre ta progression.' : 'Connecte-toi pour accéder à la console de révision.';
@@ -25541,13 +26148,15 @@ const AUTH_MSG = {
   'auth/missing-email':"Entre ton adresse e-mail."
 };
 $('#accountBtn').onclick = ()=>{
+  /* hors-ligne 27/11 : état Auth pas encore connu : ni fenêtre de connexion ni déconnexion, on le dit. */
+  if(_authEnAttente){ f3Toast('Connexion en cours, réessaie dans un instant.', 'clock'); return; }
   if(currentUser){
-    aurConfirm('Tu pourras te reconnecter à tout moment.', {titre:'Te déconnecter\u00a0?', ok:'Me déconnecter', cancel:'Rester connecté', danger:true})
+    aurConfirm(navigator.onLine === false ? 'Sans réseau, tu ne pourras pas te reconnecter avant son retour.' : 'Tu pourras te reconnecter à tout moment.', {titre:'Te déconnecter\u00a0?', ok:'Me déconnecter', cancel:'Rester connecté', danger:true})
       .then(oui=>{ if(oui) Cloud.signOut(); });   // résidus G1 : confirmation Aurora au lieu du confirm natif
   } else openAuth();
 };
-$('#authClose').onclick = ()=>{ if(currentUser && !verifyGateActive) closeAuth(); };
-$('#authModal').addEventListener('click', e=>{ if(e.target.id==='authModal' && currentUser && !verifyGateActive) closeAuth(); });
+$('#authClose').onclick = authFermerSiPermis;   // hors-ligne 27/11 : compte connecté, ou hors ligne sans session
+$('#authModal').addEventListener('click', e=>{ if(e.target.id==='authModal') authFermerSiPermis(); });
 $('#authSubmit').onclick = async ()=>{
   if(pendingVerify){ pendingVerify=false; closeAuth(); return; }
   const email = $('#authEmail').value.trim(), pass = $('#authPass').value;
@@ -25583,7 +26192,10 @@ $('#authSubmit').onclick = async ()=>{
       });
       // Compte créé mais non vérifié → la « verify gate » prend le relais (onAuthStateChanged).
     }
-  }catch(err){ authError(AUTH_MSG[err.code] || ('Erreur : '+(err.code||err.message))); }
+  }catch(err){
+    if(err && err.code === 'auth/network-request-failed'){ _authHorsLigne = true; authMajHorsLigne(); }   // hors-ligne 27/11
+    authError(AUTH_MSG[err.code] || ('Erreur : '+(err.code||err.message)));
+  }
   finally{ $('#authSubmit').disabled = false; }
 };
 /* Mot de passe oublié : e-mail de réinitialisation (Firebase) */
@@ -25605,6 +26217,7 @@ function showVerifyGate(user){
   ['authEmail','authPass','authEmailL','authPassL','authProfile','authSubmit','authForgot','authSwitchLine'].forEach(id=>{ const e=$('#'+id); if(e) e.style.display='none'; });
   const v=$('#authVerify'); if(v) v.style.display='';
   const cb=$('#authClose'); if(cb) cb.style.display='none';
+  const hl=$('#authHorsLigne'); if(hl) hl.classList.add('hidden');   // hors-ligne 27/11
   const err=$('#authErr'); if(err){ err.classList.add('hidden'); err.classList.remove('ok'); err.style.color=''; }
   $('#authModal').classList.remove('hidden');
 }
@@ -25625,11 +26238,12 @@ $('#verifyDoneBtn').onclick = async ()=>{
   }catch(err){ authError('Erreur : '+(err.code||err.message)); }
   finally{ const b=$('#verifyDoneBtn'); if(b) b.disabled=false; }
 };
-$('#verifyLogout').onclick = ()=>{ verifyGateActive=false; Cloud.signOut(); };
+$('#verifyLogout').onclick = ()=>{ _deconnexionPermise().then(oui=>{ if(oui){ verifyGateActive=false; Cloud.signOut(); } }); };   // hors-ligne 27/11
 $('#authPass').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#authSubmit').click(); });
 
 /* ---- Complétion de profil obligatoire (comptes créés avant la mise à jour) ---- */
 const PROFILE_DONE_KEY = 'quiztsi_profile_done';
+const PROFILE_ENVOI_KEY = 'quiztsi_profile_envoi';   // hors-ligne 27/11 : profil validé ici dont l'envoi a expiré (uid)
 function profileIsComplete(p){
   if(!p || !p.statut) return false;
   if(p.statut==='visiteur') return true;                 // visiteur : le statut suffit
@@ -25708,17 +26322,40 @@ $('#pgSubmit').onclick = async ()=>{
     classe: (statut==='eleve' ? classe : null) || null
   };
   $('#pgSubmit').disabled = true;
-  try{ await Cloud.saveProfile(profile); }
-  catch(e){ console.warn('saveProfile', e); }   // règles Firestore : profil non synchro, mais on ne bloque pas
+  /* hors-ligne 27/11 : l'envoi n'aboutit qu'à l'accusé du serveur (jamais hors ligne, ni App Check bloqué). Sans
+     réseau, ou tant qu'aucune lecture du serveur n'a abouti sur cette page (écran ouvert faute de lecture), rien
+     n'est mis en file : une écriture en attente ferait exister dans le SDK une vue locale du document, que des
+     lectures prendraient pour le cloud. Sinon l'envoi est borné à 8 s. Dans les deux cas, le profil reste sur
+     l'appareil et il est renvoyé à la prochaine lecture réussie si le cloud ne l'a pas (PROFILE_ENVOI_KEY). Pas
+     de rechargement : sans réseau, il pourrait ne pas aboutir. */
+  let _delai = navigator.onLine === false || _recontroleUid === u.uid;
+  if(!_delai){
+    try{ await _borne(Cloud.saveProfile(profile), 8000); }
+    catch(e){ _delai = !!(e && e.code === 'app/delai-depasse'); console.warn('saveProfile', e); }   // règles Firestore : profil non synchro, mais on ne bloque pas
+  }
   try{ localStorage.setItem(PROFILE_DONE_KEY, u.uid); }catch(e){}
   /* Fusion, jamais remplacement : toutes les autres écritures de cette clé repartent de l'objet stocké. */
   try{ const anc = JSON.parse(localStorage.getItem('quiztsi_profile')||'{}');
        localStorage.setItem('quiztsi_profile', JSON.stringify(Object.assign(anc, profile))); }catch(e){}
-  verifyGateActive = false;
+  verifyGateActive = false; _profilProvisoire = false;
   $('#profileModal').classList.add('hidden');
+  if(_delai){
+    try{ localStorage.setItem(PROFILE_ENVOI_KEY, u.uid); }catch(e){}
+    $('#pgSubmit').disabled = false;
+    _niveauLocal(u.uid);   // l'année déclarée, comme le ferait le rechargement
+    try{ updateSrsBar(); updateHeaderStats(); buildFamilyAccordion(); updatePoolInfo(); }catch(e){}
+    f3Toast('Profil gardé sur cet appareil : il partira avec le réseau.', 'clock');
+    _accueilApresProfil();
+    return;
+  }
   location.reload();
 };
-$('#pgLogout').onclick = ()=>{ verifyGateActive=false; try{ $('#profileModal').classList.add('hidden'); }catch(e){} Cloud.signOut(); };
+/* hors-ligne 27/11 : sans réseau, se déconnecter empêche de se reconnecter avant son retour : on le demande. */
+function _deconnexionPermise(){
+  if(navigator.onLine !== false) return Promise.resolve(true);
+  return aurConfirm('Sans réseau, tu ne pourras pas te reconnecter avant son retour.', {titre:'Te déconnecter\u00a0?', ok:'Me déconnecter', cancel:'Rester connecté', danger:true});
+}
+$('#pgLogout').onclick = ()=>{ _deconnexionPermise().then(oui=>{ if(!oui) return; verifyGateActive=false; try{ $('#profileModal').classList.add('hidden'); }catch(e){} Cloud.signOut(); }); };
 
 /* ====================== TABLEAU DE BORD PROF ====================== */
 /* État de la console : données chargées une fois, filtres conservés en mémoire (pas de localStorage). */
@@ -26303,8 +26940,40 @@ window.addEventListener('pagehide', ()=>{ try{ flushSession('leave'); }catch(e){
     }catch(e){}
   };
   const auRepos = ()=> ('requestIdleCallback' in window) ? requestIdleCallback(lancer, {timeout: 20000}) : setTimeout(lancer, 8000);
-  if(document.readyState === 'complete') setTimeout(auRepos, 5000);
-  else window.addEventListener('load', ()=> setTimeout(auRepos, 5000), {once: true});
+  /* hors-ligne 27/11 : les schémas TikZ (TIKZ_IMG, ≈ 12,6 Mo bruts et 3,7 Mo transférés par thème) ne s'affichaient hors
+     ligne que s'ils avaient déjà été vus. On précharge ceux du THÈME ACTIF (tkzSrc, le chemin même de TIKZ()) ~20 s après
+     le chargement : lots de 4 au repos, pause entre les lots (plus longue pendant une séance), déjà en cache = sauté,
+     arrêt hors ligne ou au premier échec réseau (reprise au lancement suivant ou au retour du réseau). Clés nommées
+     d'abord (schémas sans vrai dessin de secours), puis les clés h… (repli FIG). Nouveau thème = même préchargement. */
+  let tkzGen = 0, tkzMin = null;
+  const tkzThemeActif = ()=> ({nuit:'n', contraste:'c'})[document.documentElement.getAttribute('data-theme')] || 'p';
+  let tkzTheme = tkzThemeActif();
+  const tkzSeance = ()=>{ try{ return document.body.classList.contains('aur-focus') || (typeof window._seanceEnCours === 'function' && window._seanceEnCours()); }catch(e){ return false; } };
+  const lancerTikz = async ()=>{
+    const g = ++tkzGen, t = tkzTheme = tkzThemeActif();
+    try{
+      if(typeof TIKZ_IMG === 'undefined' || (navigator.connection && navigator.connection.saveData)) return;
+      await navigator.serviceWorker.ready;
+      const cache = await caches.open('quiz-tsi-img');
+      const deja = new Set((await cache.keys()).map(r=>r.url));
+      const hk = k=> /^h[0-9a-f]{16}$/.test(k) ? 1 : 0;
+      const srcs = Object.keys(TIKZ_IMG).sort((a,b)=> hk(a)-hk(b)).map(k=>tkzSrc(k,t))
+        .filter(u=> /^img\//.test(u) && !deja.has(new URL(u, document.baseURI).href));
+      for(let i = 0, vides = 0; i < srcs.length; i += 4){
+        await new Promise(r=> ('requestIdleCallback' in window) ? requestIdleCallback(r, {timeout: 3000}) : setTimeout(r, 0));
+        if(g !== tkzGen || !navigator.onLine || (navigator.connection && navigator.connection.saveData)) return;   // thème changé (autre boucle), hors ligne, économie de données
+        const res = await Promise.all(srcs.slice(i, i+4).map(u=> fetch(u).then(r=> r.ok ? cache.put(u, r).then(()=>1) : 0, ()=>-1)));
+        if(res.includes(-1)) return;                                    // réseau perdu : on reprendra
+        vides = res.includes(1) ? 0 : vides+1; if(vides >= 3) return;   // fichiers absents en série : on n'insiste pas
+        await new Promise(r=> setTimeout(r, tkzSeance() ? 2000 : 300));
+      }
+    }catch(e){}   // quota plein, cache indisponible : on s'arrête
+  };
+  const planifierTikz = ms=>{ clearTimeout(tkzMin); tkzMin = setTimeout(()=> ('requestIdleCallback' in window) ? requestIdleCallback(lancerTikz, {timeout: 20000}) : lancerTikz(), ms); };
+  try{ new MutationObserver(()=>{ if(tkzThemeActif() !== tkzTheme) planifierTikz(3000); }).observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']}); }catch(e){}
+  window.addEventListener('online', ()=> planifierTikz(5000));
+  if(document.readyState === 'complete'){ setTimeout(auRepos, 5000); planifierTikz(20000); }
+  else window.addEventListener('load', ()=>{ setTimeout(auRepos, 5000); planifierTikz(20000); }, {once: true});
 })();
 
 /* ═══ AURORA (v403) : navigation, réglages, confettis ═════════════════════════════════════
@@ -26951,29 +27620,74 @@ function aurAsideApres(){
     c.style.setProperty('--mx', (e.clientX - r.left) + 'px'); c.style.setProperty('--my', (e.clientY - r.top) + 'px');
   }, {passive:true});
 })();
+/* hors-ligne 27/11 : notes gardées en mémoire seulement (stockage local plein) et pas encore accusées par le cloud :
+   un rechargement de mise à jour les effacerait (lu par window._rechargementSur, bloc d'enregistrement du SW). */
+window._notesNonEnvoyees = function(){ try{ return SRS._secours != null && SRS._secoursOk < SRS._secoursN; }catch(_){ return false; } };
+window.__appPrete = true;   // hors-ligne 27/11 : DERNIÈRE ligne du module (le filet du <head> la guette) ; rien après
 </script>
 
 <!-- PWA : enregistrement du service worker (hors module pour rester robuste) -->
 <script>
+/* Une séance est-elle en cours ? Recharger à ce moment-là fait perdre la file et la position. hors-ligne 27/11 : défini
+   dès l'analyse, hors du test du service worker et avant le module différé, parce que la connexion (authSeanceEnCours)
+   s'en sert aussi, dès l'accès provisoire et dans tout navigateur. */
+window._seanceEnCours = function(){
+  try{
+    return ['quizScreen','examScreen','colleScreen','oralScreen','dsScreen'].some(id=>{
+      const e = document.getElementById(id);
+      return e && !e.classList.contains('hidden');
+    });
+  }catch(e){ return false; }
+};
 if ('serviceWorker' in navigator) {
+  /* hors-ligne 27/11 : filet de la détection. Une mise à jour activée avant que l'écouteur 'updatefound' (posé
+     après load) existe, par la vérification que le navigateur lance lui-même au chargement, n'était pas vue : la
+     page restait l'ancienne. Un nouveau SW qui prend une page DÉJÀ contrôlée au chargement = vraie mise à jour
+     (la toute première installation, elle, prend une page qui ne l'était pas). */
+  const controleAuChargement = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if(!controleAuChargement || !navigator.serviceWorker.controller) return;
+    window._majPrete = true;
+    if(typeof window.appliquerMaj === 'function') window.appliquerMaj();
+  });
   window.addEventListener('load', () => {
     // updateViaCache:'none' => sw.js n'est jamais servi depuis le cache HTTP,
     // donc une nouvelle version est toujours détectée.
-    /* Une séance est-elle en cours ? Recharger à ce moment-là fait perdre la file et la position. */
-  window._seanceEnCours = function(){
+  /* hors-ligne 27/11 : moment sûr pour recharger = hors séance, aucune fenêtre ouverte (connexion, profil,
+     vérification de l'e-mail, confirmation…), aucun champ de saisie actif, et jamais hors ligne (navigator.onLine
+     faux). _seanceEnCours garde son sens : la connexion s'en sert aussi. */
+  window._rechargementSur = function(){
     try{
-      return ['quizScreen','examScreen','colleScreen','oralScreen','dsScreen'].some(id=>{
-        const e = document.getElementById(id);
-        return e && !e.classList.contains('hidden');
-      });
+      if(navigator.onLine === false || window._seanceEnCours()) return false;
+      if(typeof window._notesNonEnvoyees === 'function' && window._notesNonEnvoyees()) return false;
+      if(document.querySelector('.modal-overlay:not(.hidden)')) return false;
+      const a = document.activeElement;
+      return !(a && (a.isContentEditable || a.tagName === 'TEXTAREA' ||
+        (a.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|reset|range|color|file)$/i.test(a.type))));
     }catch(e){ return false; }
   };
-  /* Applique la mise à jour si c'est sûr ; sinon l'annonce et repasse plus tard. */
-  window.appliquerMaj = function(){
-    if(!window._majPrete) return false;
-    if(window._seanceEnCours()){ annoncerMaj(); return false; }
+  /* hors-ligne 27/11 : _majObligatoire (page plus ancienne que le cloud, posé par la synchro) recharge comme
+     _majPrete. Sans nouvelle version active, la même page pourrait revenir : un tel rechargement au plus toutes
+     les 10 min, noté en sessionStorage (illisible ou non écrit = on attend la nouvelle version, pas de boucle). */
+  function majEnAttente(){
+    if(window._majPrete) return true;
+    if(!window._majObligatoire) return false;
+    try{ return Date.now() - (+sessionStorage.getItem('quiztsi_maj_obligatoire') || 0) > 600000; }catch(e){ return false; }
+  }
+  function rechargerMaj(){
+    if(!window._majPrete){
+      try{ const t = String(Date.now()); sessionStorage.setItem('quiztsi_maj_obligatoire', t); if(sessionStorage.getItem('quiztsi_maj_obligatoire') !== t) return false; }
+      catch(e){ return false; }
+    }
     location.reload();
     return true;
+  }
+  /* Applique la mise à jour si c'est sûr ; sinon l'annonce et repasse plus tard. */
+  window.appliquerMaj = function(){
+    if(!majEnAttente()) return false;
+    if(window._seanceEnCours()){ annoncerMaj(); return false; }
+    if(!window._rechargementSur()) return false;   // hors-ligne 27/11 : fenêtre ouverte ou hors ligne : on repassera
+    return rechargerMaj();
   };
   /* F1 : bandeau commun .aur-toast (centré, au-dessus de la barre d'onglets ; l'ancien centrage par
      translateX en faisait une colonne de 200 px posée sur les boutons). Pendant une séance, il se range DANS
@@ -26995,9 +27709,9 @@ if ('serviceWorker' in navigator) {
   }
   /* Deux occasions de rattraper : le retour à un écran calme, et le passage en arrière-plan
      (là, le rechargement est invisible pour l'élève). */
-  setInterval(()=>{ if(window._majPrete && !window._seanceEnCours()) location.reload(); }, 20000);
+  setInterval(()=>{ if(majEnAttente() && window._rechargementSur()) rechargerMaj(); }, 20000);
   document.addEventListener('visibilitychange', ()=>{
-    if(document.visibilityState === 'hidden' && window._majPrete && !window._seanceEnCours()) location.reload();
+    if(document.visibilityState === 'hidden' && majEnAttente() && window._rechargementSur()) rechargerMaj();
   });
 
   navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
