@@ -1013,6 +1013,7 @@ window.MathJax = {
   .adm-stat .d{font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--muted)}
   .adm-stat .m{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:13px}
   .adm-badge{display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; border:1px solid var(--line); color:var(--muted)}
+  .adm-badge.adh-ok{color:var(--ok-text); border-color:color-mix(in srgb,var(--ok-text) 35%,transparent)} .adm-badge.adh-wait{color:var(--warn-text); border-color:color-mix(in srgb,var(--warn-text) 40%,transparent)} .adm-badge.adh-no{color:var(--no-text); border-color:color-mix(in srgb,var(--no-text) 35%,transparent)} .adm-badge.adh-libre{border-style:dashed}
   .adm-badge.eleve{color:var(--info-text); border-color:color-mix(in srgb,var(--accent-2) 33%,transparent)} .adm-badge.prof{color:var(--accent-soft); border-color:color-mix(in srgb,var(--accent-bright) 33%,transparent)} .adm-badge.visiteur{color:var(--muted)}
   .adm-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px 16px; padding:13px}
   .adm-field{display:flex; flex-direction:column; gap:2px; min-width:0}
@@ -15352,7 +15353,7 @@ const MODE_LABEL = {qcm:'QCM', trou:'À trou', saisie:'Réponse libre', flash:'F
 /* hors-ligne 27/11 : numéro de version de CETTE page, égal à celui du cache du Service Worker. Réécrit par
    deploiement.sh à chaque livraison : ne pas le changer à la main (une seule ligne, motif exact). Il estampille chaque
    écriture de la progression (srsPar) : une page plus ancienne que le dernier écrivain passe en lecture seule. */
-const APP_BUILD = 483;
+const APP_BUILD = 484;
 const STATS_KEY = 'quiztsi_srs_v1';
 
 /* Paramètres de planification.
@@ -26593,14 +26594,31 @@ function admFiltered(){
 let _qByHashCache=null;
 function qByHashMap(){ if(!_qByHashCache){ _qByHashCache={}; QUESTIONS.forEach(q=>{ _qByHashCache[qHash(q.q)]=q; }); } return _qByHashCache; }
 function admFmtDur(ms){ const m=Math.round(ms/60000); if(m<1) return '<1 min'; if(m<60) return m+' min'; const h=Math.floor(m/60), mm=m%60; return h+' h'+(mm?' '+String(mm).padStart(2,'0'):''); }
+/* Adhésion telle que la voit le VERROU de l'élève (revisionAllowed) : son PROPRE classStatus, sans le repli
+   sur l'ancien roster (même règle que selfStatus et pendingC du panneau « Classes TSI »). « Élève · TSI 2 »
+   n'est que le profil déclaré : sans cette pastille, un compte jamais accepté qui avait fait des QCM libres
+   semblait suivi comme un membre (27/11/2026). */
+function admAdhesion(u){
+  const p = u.profile||{}; const st = p.classStatus||null;
+  const req = p.classRequestedAt||0, dec = p.classDecidedAt||0;
+  const le = ms => ms ? ' le '+admFmtDate(new Date(ms)) : '';
+  if(u.email && ADMIN_EMAILS.map(e=>e.toLowerCase()).includes(String(u.email).toLowerCase()))
+    return {cls:'adh-ok', label:'Admin', detail:'Admin : accès complet'};
+  if(st==='approved') return {cls:'adh-ok', label:'Membre', detail:'Membre (accepté'+le(dec)+') : révision et suivi ouverts'};
+  if(p.classRequest && req>=dec) return {cls:'adh-wait', label:'En attente', detail:'Demande envoyée'+le(req)+', pas encore acceptée : QCM libres seulement'};
+  if(st==='rejected') return {cls:'adh-no', label:'Refusé', detail:'Refusé'+le(dec)+' : QCM libres seulement'};
+  return {cls:'adh-libre', label:'Non membre', detail:'Aucune demande d\'adhésion : QCM libres seulement'};
+}
 function admStudentRow(u){
   const p = u.profile||{}; const a = u.agg||{};
   const ans = a.totalAnswered||0; const pct = ans ? Math.round(a.totalCorrect/ans*100) : null;
   const pctCls = pct==null ? '' : (pct>=80?' ok':pct>=50?' mid':' ko');   // F7 : couleurs des thèmes (#fbbf24 tombait à 1,47:1 en Papier)
   const st = p.statut||''; const name = p.nom || u.displayName || u.email || '—';
   const incomplete = !profileIsComplete(p);
-  const sub = [ st?`<span class="adm-badge ${admEsc(st)}">${STATUT_LABEL[st]||st}</span>`:'',
-               p.classe?admEsc(p.classe):'', (p.annee!=null&&p.annee!=='')?(ANNEE_LABEL[p.annee]||('Année '+admEsc(p.annee))):'' ].filter(Boolean).join(' · ');
+  const adh = admAdhesion(u);
+  const sub = [ (st?`<span class="adm-badge ${admEsc(st)}">${STATUT_LABEL[st]||st}</span> `:'')+`<span class="adm-badge ${adh.cls}" title="${admEsc(adh.detail)}">${adh.label}</span>`,
+               p.classe?admEsc(p.classe):'', (p.annee!=null&&p.annee!=='')?(ANNEE_LABEL[p.annee]||('Année '+admEsc(p.annee))):'',
+               (!st && !p.classe && (p.annee==null||p.annee===''))?'<span style="color:var(--muted)">profil à compléter</span>':'' ].filter(Boolean).join(' · ');
   let weakHtml='';
   const weak = Object.entries(a.byTopic||{}).map(([k,s])=>({k,a:s.a,c:s.c,r:s.a?s.c/s.a:1})).filter(x=>x.a>=2).sort((x,y)=>x.r-y.r).slice(0,3);
   if(weak.length){ weakHtml = `<div class="adm-weak">`+weak.map(w=>{const t=TOPICS[w.k]; if(!t)return''; return `<span class="adm-chip adm-chip-c" style="--c:${t.raw}">${admEsc(t.name)} · ${Math.round(w.r*100)}%</span>`;}).join('')+`</div>`; }
@@ -26620,6 +26638,7 @@ function admStudentRow(u){
     ${field('Filière', admEsc(p.filiere||'—'))}
     ${field('Classe', admEsc(p.classe||'—'))}
     ${field('Année', admEsc((p.annee!=null&&p.annee!=='')?(ANNEE_LABEL[p.annee]||p.annee):'—'))}
+    ${field('Adhésion', admEsc(adh.detail))}
     ${field('Inscrit le', admFmtDate(u.createdAt))}
     ${field('Dernière activité', admFmtDate(u.lastActive))}
     ${field('Réponses', ans)}
